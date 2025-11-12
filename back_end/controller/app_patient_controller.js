@@ -1,6 +1,7 @@
 const sql = require('mssql');
 
 // Get all patients
+//making change for purpose of testing of SonarQube
 const getAllPatients = async (req, res) => {
     try {
         const request = new sql.Request();
