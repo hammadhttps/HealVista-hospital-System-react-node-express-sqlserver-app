@@ -9,6 +9,7 @@ on:
 jobs:
   analyze:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,23 +21,25 @@ jobs:
         with:
           node-version: 20
 
-      # FRONTEND (adjust path if needed)
+      # ---- FRONT END (React in front_end/)
       - name: Install FE deps
-        working-directory: frontend
+        working-directory: front_end
         run: npm ci
 
       - name: FE tests (coverage)
-        working-directory: frontend
-        run: npm test -- --coverage --watchAll=false || echo "no FE tests"
+        working-directory: front_end
+        run: |
+          npm test -- --coverage --watchAll=false || echo "no FE tests"
 
-      # BACKEND (adjust path if needed)
+      # ---- BACK END (Node/Express in back_end/)
       - name: Install BE deps
-        working-directory: backend
+        working-directory: back_end
         run: npm ci
 
       - name: BE tests (coverage)
-        working-directory: backend
-        run: npm test -- --coverage --watchAll=false || echo "no BE tests"
+        working-directory: back_end
+        run: |
+          npm test -- --coverage --watchAll=false || echo "no BE tests"
 
       - name: SonarCloud scan
         uses: SonarSource/sonarcloud-github-action@v2
