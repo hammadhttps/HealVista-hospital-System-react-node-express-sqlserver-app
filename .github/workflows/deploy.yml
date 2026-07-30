@@ -1,0 +1,196 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_migrations:
+        description: 'Skip Prisma migrations (only if the schema is unchanged)'
+        type: boolean
+        default: false
+
+# Never let two deploys race — a half-applied migration is very hard to unwind.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ── Gate: CI must be green before anything ships ───────────────────────────
+  verify:
+    name: Verify build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build -w packages/shared --if-present
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: apps/server
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test
+      - run: npm run build
+
+  # ── Migrations run FIRST — the API must never boot against an old schema ───
+  migrate:
+    name: Run migrations
+    runs-on: ubuntu-latest
+    needs: verify
+    if: ${{ !inputs.skip_migrations }}
+    environment:
+      name: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Show pending migrations
+        run: npx prisma migrate status
+        working-directory: apps/server
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      # migrate deploy — never `migrate dev`, never `db push`, against production.
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+        working-directory: apps/server
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+  # ── API + worker ───────────────────────────────────────────────────────────
+  deploy-server:
+    name: Deploy API
+    runs-on: ubuntu-latest
+    needs: [verify, migrate]
+    if: always() && needs.verify.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+    environment:
+      name: production
+      url: ${{ secrets.API_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Railway
+        uses: bervProject/railway-deploy@v1.3.0
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: ${{ secrets.RAILWAY_SERVICE_API }}
+
+      - name: Deploy worker service
+        uses: bervProject/railway-deploy@v1.3.0
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: ${{ secrets.RAILWAY_SERVICE_WORKER }}
+
+      - name: Wait for API to become healthy
+        run: |
+          echo "Polling ${{ secrets.API_URL }}/api/health"
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.API_URL }}/api/health" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "API healthy after ${i} attempt(s)."
+              curl -s "${{ secrets.API_URL }}/api/health"
+              exit 0
+            fi
+            echo "attempt ${i}: HTTP ${code} — retrying in 10s"
+            sleep 10
+          done
+          echo "::error::API did not become healthy within 5 minutes."
+          exit 1
+
+  # ── Client last — it depends on the API being live ─────────────────────────
+  deploy-client:
+    name: Deploy client
+    runs-on: ubuntu-latest
+    needs: deploy-server
+    environment:
+      name: production
+      url: ${{ secrets.CLIENT_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build -w packages/shared --if-present
+
+      - name: Build client
+        run: npm run build -w apps/client
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_SOCKET_URL: ${{ secrets.VITE_SOCKET_URL }}
+          VITE_STRIPE_PUBLIC_KEY: ${{ secrets.VITE_STRIPE_PUBLIC_KEY }}
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: apps/client
+
+  # ── Smoke test what actually shipped ───────────────────────────────────────
+  smoke-test:
+    name: Smoke test
+    runs-on: ubuntu-latest
+    needs: [deploy-server, deploy-client]
+
+    steps:
+      - name: API health
+        run: |
+          curl -sf "${{ secrets.API_URL }}/api/health" | tee /dev/stderr | grep -q '"status":"ok"'
+
+      - name: API docs reachable
+        run: curl -sf -o /dev/null "${{ secrets.API_URL }}/api/docs"
+
+      - name: Public doctor search responds
+        run: curl -sf -o /dev/null "${{ secrets.API_URL }}/api/doctors?limit=1"
+
+      - name: Client loads
+        run: curl -sf "${{ secrets.CLIENT_URL }}" | grep -qi '<div id="root">'
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Deployment"
+            echo ""
+            echo "| Target | URL |"
+            echo "|---|---|"
+            echo "| API | ${{ secrets.API_URL }} |"
+            echo "| Client | ${{ secrets.CLIENT_URL }} |"
+            echo ""
+            echo "Commit \`${GITHUB_SHA::7}\` on \`${GITHUB_REF_NAME}\`."
+          } >> "$GITHUB_STEP_SUMMARY"

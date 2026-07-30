@@ -1,133 +1,82 @@
-# Healvista Hospital Management System
+# MediCore — HealVista Hospital Management System
 
-A modern, full-stack hospital management system for seamless hospital operations, built with React, Tailwind CSS, Zustand, Lucide React, Node.js, Express, and MS SQL Server.
+A production-oriented Hospital Management System: front desk, clinical records, pharmacy, laboratory,
+billing, and a Gemini + pgvector RAG layer over patient data.
 
----
+## Stack
 
-## 🚀 Project Overview
+| Layer        | Technology                                                                    |
+| ------------ | ----------------------------------------------------------------------------- |
+| Frontend     | React 19 + Vite, TypeScript, Tailwind v4 + shadcn/ui, TanStack Query, Zustand |
+| Backend      | Node 20 + Express 5, TypeScript, Prisma                                       |
+| Database     | PostgreSQL (Neon) + pgvector                                                  |
+| Cache/Queues | Redis (Upstash / Docker)                                                      |
+| AI           | Google Gemini (free tier) + pgvector RAG                                      |
+| Payments     | Stripe + Razorpay                                                             |
 
-Healvista is a role-based hospital management platform designed to streamline hospital workflows for administrators, doctors, and patients. It provides real-time dashboards, management tools, and a beautiful, responsive UI for all user types.
+## Getting started
 
----
-
-## 🛠️ Tech Stack
-
-- **Frontend:** React, Tailwind CSS, Zustand, Lucide React, React Router
-- **Backend:** Node.js, Express, mssql (MS SQL Server)
-- **Database:** MS SQL Server
-
----
-
-## ✨ Features
-
-### Authentication & Role-Based Access
-- Secure login for Admin, Doctor, and Patient roles
-- Role-based dashboards and navigation
-
-### Admin Dashboard
-- Overview widgets: doctors, patients, appointments, billing, pharmacy, labs, etc.
-- Management pages for:
-  - Users
-  - Doctors
-  - Patients
-  - Appointments
-  - Pharmacy (medicines)
-  - Labs (lab tests)
-  - Billing
-  - Ambulances
-  - Feedback
-- CRUD operations for all entities
-
-### Doctor Dashboard
-- Overview: today's appointments, total patients, pending labs, critical patients
-- Appointments management
-- Patient list and details
-- Lab test management
-- Pharmacy (prescribe/view medicines)
-- Responsive, real-time data
-
-### Patient Dashboard
-- Overview: upcoming appointments, lab results, billing, etc.
-- Book/view appointments
-- View available doctors
-- View all available medicines
-- View lab reports
-- Request ambulance
-- Submit/view feedback
-
----
-
-## 📦 Project Structure
-
-```
-Healvista--hospital-management-system/
-├── back_end/           # Node.js/Express backend
-│   ├── config/         # Database config
-│   ├── controller/     # Route controllers
-│   ├── routes/         # API routes
-│   └── server.js       # Entry point
-├── front_end/          # React frontend
-│   ├── src/
-│   │   ├── components/ # UI and layout components
-│   │   ├── pages/      # Page components (dashboards, management)
-│   │   ├── store/      # Zustand stores
-│   │   └── App.jsx     # Main app
-│   └── ...
-├── README.md           # This file
-└── ...
-```
-
----
-
-## ⚡ Getting Started
-
-### Prerequisites
-- Node.js (v16+ recommended)
-- npm
-- MS SQL Server (local or remote)
-
-### 1. Clone the Repository
 ```bash
-git clone <repo-url>
-cd Healvista--hospital-management-system
-```
+# 1. Start local infrastructure
+docker compose up -d
 
-### 2. Backend Setup
-```bash
-cd back_end
+# 2. Install dependencies
 npm install
-# Configure your .env file with DB credentials (see config/db.js)
-npm start
-```
 
-### 3. Frontend Setup
-```bash
-cd ../front_end
-npm install
+# 3. Configure environment
+cp apps/server/.env.example apps/server/.env
+cp apps/client/.env.example apps/client/.env
+# Fill in DATABASE_URL, JWT secrets, etc.
+
+# 4. Run database migration and seed
+npm run db:migrate
+npm run db:seed
+
+# 5. Start both apps in dev mode
 npm run dev
 ```
 
-### 4. Access the App
-- Open [http://localhost:5173](http://localhost:5173) in your browser.
-- Login as Admin, Doctor, or Patient (see your Users table for credentials).
+- Client: http://localhost:5173
+- Server: http://localhost:5000
+- API docs: http://localhost:5000/api/docs
 
----
+## Project structure
 
-## 📝 Usage Notes
-- **Role-based routing:** Users are redirected to their dashboard after login.
-- **Admin:** Full access to all management features.
-- **Doctor:** Can view/manage their appointments, patients, labs, and more.
-- **Patient:** Can view appointments, doctors, medicines, labs, and request ambulance.
-- **Medicines:** All patients see all available medicines (no patient-specific filtering yet).
-- **API Proxy:** The frontend uses a Vite proxy to connect to the backend (`/api/*` routes).
+```
+apps/client/        React frontend (Vite)
+apps/server/        Express API + BullMQ workers
+packages/shared/    Zod schemas, types, constants
+docs/               Architecture, setup, roadmap
+```
 
----
+## Available commands
 
-## 📚 Customization & Extending
-- To add patient-specific medicines, implement a patient-medicine relationship in the backend and expose an endpoint like `/api/pharmacy/patient/:id`.
-- To add more granular permissions, implement route protection using a PrivateRoute/ProtectedRoute component.
-- Easily extend dashboards with more widgets, analytics, or management features.
+| Command              | Description                          |
+| -------------------- | ------------------------------------ |
+| `npm run dev`        | Start both apps                      |
+| `npm run dev:client` | Vite dev server on :5173             |
+| `npm run dev:server` | Express dev server on :5000          |
+| `npm run build`      | Build all packages                   |
+| `npm run typecheck`  | TypeScript check across all packages |
+| `npm run lint`       | ESLint across all packages           |
+| `npm run test`       | Run all tests (Vitest)               |
+| `npm run db:migrate` | Prisma migrate dev                   |
+| `npm run db:seed`    | Seed demo data                       |
+| `npm run db:studio`  | Prisma Studio                        |
 
+## Architecture rules
 
+- **Backend**: Routes → Controller → Service → Prisma. Never skip or invert.
+- **Frontend**: TanStack Query for server state, Zustand for client state. No `useEffect` fetching.
+- **AI**: Gemini behind `AIProvider` interface. RAG with pgvector. Permissions filtered before retrieval.
+- **Database**: Soft deletes (`deletedAt`), audit logs for clinical/financial writes.
 
+See `docs/architecture/` for details.
 
+## Roles
+
+`PATIENT` · `DOCTOR` · `RECEPTIONIST` · `PHARMACIST` · `LAB_TECHNICIAN` · `ACCOUNTANT` · `ADMIN`
+
+## Deployment
+
+See `docs/setup/` for Neon, Upstash, and deployment guides.

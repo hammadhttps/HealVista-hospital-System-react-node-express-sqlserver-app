@@ -1,0 +1,257 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new push to the same PR cancels the previous run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ── Detect what changed so we only run what's relevant ──────────────────────
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.filter.outputs.server }}
+      client: ${{ steps.filter.outputs.client }}
+      shared: ${{ steps.filter.outputs.shared }}
+      prisma: ${{ steps.filter.outputs.prisma }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            server:
+              - 'apps/server/**'
+              - 'packages/shared/**'
+              - 'package.json'
+              - 'package-lock.json'
+            client:
+              - 'apps/client/**'
+              - 'packages/shared/**'
+              - 'package.json'
+              - 'package-lock.json'
+            shared:
+              - 'packages/shared/**'
+            prisma:
+              - 'apps/server/prisma/**'
+
+  # ── Lint + typecheck the whole workspace ───────────────────────────────────
+  quality:
+    name: Lint & typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # packages/shared must be built before either app can typecheck
+      - name: Build shared package
+        run: npm run build -w packages/shared --if-present
+
+      - name: Generate Prisma client
+        run: npm run db:generate -w apps/server --if-present
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+
+      - name: Prettier check
+        run: npx prettier --check . || echo "::warning::Formatting issues found — run 'npm run format'"
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript
+        run: npm run typecheck
+
+  # ── Server tests against real Postgres + Redis ─────────────────────────────
+  test-server:
+    name: Server tests
+    runs-on: ubuntu-latest
+    needs: [changes, quality]
+    if: needs.changes.outputs.server == 'true'
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: medicore
+          POSTGRES_PASSWORD: medicore
+          POSTGRES_DB: medicore_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U medicore"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://medicore:medicore@localhost:5432/medicore_test
+      DIRECT_URL: postgresql://medicore:medicore@localhost:5432/medicore_test
+      REDIS_URL: redis://localhost:6379
+      CLIENT_URL: http://localhost:5173
+      JWT_ACCESS_SECRET: ci_access_secret_at_least_32_characters_long
+      JWT_REFRESH_SECRET: ci_refresh_secret_at_least_32_characters_long
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build -w packages/shared --if-present
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+        working-directory: apps/server
+
+      - name: Test
+        run: npm run test -w apps/server --if-present -- --coverage
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: server-coverage
+          path: apps/server/coverage
+          retention-days: 7
+
+  # ── Client tests + production build ────────────────────────────────────────
+  test-client:
+    name: Client tests & build
+    runs-on: ubuntu-latest
+    needs: [changes, quality]
+    if: needs.changes.outputs.client == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build -w packages/shared --if-present
+
+      - name: Test
+        run: npm run test -w apps/client --if-present -- --coverage
+
+      - name: Build
+        run: npm run build -w apps/client
+        env:
+          VITE_API_BASE_URL: http://localhost:5000/api
+          VITE_SOCKET_URL: http://localhost:5000
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: client-coverage
+          path: apps/client/coverage
+          retention-days: 7
+
+  # ── Prisma schema sanity ───────────────────────────────────────────────────
+  prisma-check:
+    name: Prisma schema
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.prisma == 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Validate schema
+        run: npx prisma validate
+        working-directory: apps/server
+        env:
+          DATABASE_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+          DIRECT_URL: postgresql://placeholder:placeholder@localhost:5432/placeholder
+
+      - name: Check schema is formatted
+        run: npx prisma format --check
+        working-directory: apps/server
+
+      # A schema change without a migration means production drifts from the code.
+      - name: Require a migration alongside schema changes
+        run: |
+          if git diff --name-only origin/main...HEAD | grep -q 'prisma/schema.prisma'; then
+            if ! git diff --name-only origin/main...HEAD | grep -q 'prisma/migrations/'; then
+              echo "::error::schema.prisma changed but no migration was added. Run 'npm run db:migrate'."
+              exit 1
+            fi
+          fi
+
+  # ── Dependency audit ───────────────────────────────────────────────────────
+  security:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: npm audit (high and above)
+        run: npm audit --audit-level=high
+
+      # Catches a secret pasted into a commit before it reaches main.
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Single required status check ───────────────────────────────────────────
+  ci-passed:
+    name: CI passed
+    runs-on: ubuntu-latest
+    needs: [quality, test-server, test-client, prisma-check, security]
+    if: always()
+    steps:
+      - name: Fail if any job failed
+        run: |
+          if echo '${{ join(needs.*.result, ' ') }}' | grep -qE 'failure|cancelled'; then
+            echo "::error::One or more CI jobs failed."
+            exit 1
+          fi
+          echo "All CI jobs passed or were skipped."
