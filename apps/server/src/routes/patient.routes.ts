@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { validate } from "../middlewares/validate.middleware";
 import { authenticate } from "../middlewares/auth.middleware";
 import { requireRole } from "../middlewares/rbac.middleware";
@@ -48,6 +49,26 @@ router.delete(
   "/:id/emergency-contacts/:contactId",
   authenticate,
   patientController.removeEmergencyContact,
+);
+
+router.get(
+  "/me/favourites",
+  authenticate,
+  requireRole("PATIENT"),
+  patientController.listFavourites,
+);
+router.post(
+  "/me/favourites",
+  authenticate,
+  requireRole("PATIENT"),
+  validate(z.object({ doctorId: z.string().uuid() })),
+  patientController.addFavourite,
+);
+router.delete(
+  "/me/favourites/:doctorId",
+  authenticate,
+  requireRole("PATIENT"),
+  patientController.removeFavourite,
 );
 
 export default router;

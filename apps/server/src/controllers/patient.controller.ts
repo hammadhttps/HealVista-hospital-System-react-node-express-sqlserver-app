@@ -74,3 +74,33 @@ export async function removeEmergencyContact(req: Request, res: Response, next: 
     next(err);
   }
 }
+
+export async function addFavourite(req: Request, res: Response, next: NextFunction) {
+  try {
+    const patient = await patientService.getPatientByUserId(req.user!.userId);
+    const fav = await patientService.addFavouriteDoctor(patient.id, req.body.doctorId);
+    sendSuccess(res, fav, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function removeFavourite(req: Request, res: Response, next: NextFunction) {
+  try {
+    const patient = await patientService.getPatientByUserId(req.user!.userId);
+    await patientService.removeFavouriteDoctor(patient.id, req.params.doctorId as string);
+    sendSuccess(res, null, 204);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listFavourites(req: Request, res: Response, next: NextFunction) {
+  try {
+    const patient = await patientService.getPatientByUserId(req.user!.userId);
+    const favs = await patientService.listFavouriteDoctors(patient.id);
+    sendSuccess(res, favs);
+  } catch (err) {
+    next(err);
+  }
+}

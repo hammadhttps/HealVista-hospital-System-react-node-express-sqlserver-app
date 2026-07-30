@@ -145,3 +145,54 @@ export async function removeEmergencyContact(patientId: string, contactId: strin
   if (!contact) throw new AppError("Emergency contact not found", 404);
   await prisma.emergencyContact.delete({ where: { id: contactId } });
 }
+
+export async function addFavouriteDoctor(patientId: string, doctorId: string) {
+  const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
+  if (!doctor || doctor.deletedAt) throw new AppError("Doctor not found", 404);
+
+  try {
+    return await prisma.favouriteDoctor.create({
+      data: { patientId, doctorId },
+      include: {
+        doctor: {
+          include: {
+            user: { select: { avatarUrl: true } },
+            departments: { include: { department: true } },
+          },
+        },
+      },
+    });
+  } catch (err: any) {
+    if (err.code === "P2002") throw new AppError("Already a favourite", 409);
+    throw err;
+  }
+}
+
+export async function removeFavouriteDoctor(patientId: string, doctorId: string) {
+  const fav = await prisma.favouriteDoctor.findUnique({
+    where: { patientId_doctorId: { patientId, doctorId } },
+  });
+  if (!fav) throw new AppError("Favourite not found", 404);
+  await prisma.favouriteDoctor.delete({ where: { patientId_doctorId: { patientId, doctorId } } });
+}
+
+export async function listFavouriteDoctors(patientId: string) {
+  return prisma.favouriteDoctor.findMany({
+    where: { patientId },
+    include: {
+      doctor: {
+        include: {
+          user: { select: { avatarUrl: true } },
+          departments: { include: { department: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getPatientByUserId(userId: string) {
+  const patient = await prisma.patient.findUnique({ where: { userId } });
+  if (!patient) throw new AppError("Patient not found", 404);
+  return patient;
+}

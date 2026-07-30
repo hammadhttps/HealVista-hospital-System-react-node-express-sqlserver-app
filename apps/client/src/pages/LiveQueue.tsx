@@ -1,0 +1,63 @@
+import { useState } from "react";
+import { useParams } from "react-router-dom";
+import { useQueue } from "../hooks/queries/useAppointments";
+import { useCallNextPatient } from "../hooks/mutations/useAppointmentMutations";
+import { Button } from "../components/UI/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/UI/card";
+import { Badge } from "../components/UI/badge";
+import { Skeleton } from "../components/primitives/Skeleton";
+import { EmptyState } from "../components/primitives/EmptyState";
+import { format } from "date-fns";
+
+const statusColor: Record<string, string> = {
+  waiting: "default",
+  called: "warning",
+  served: "success",
+  skipped: "destructive",
+};
+
+export default function LiveQueue() {
+  const { doctorId } = useParams<{ doctorId: string }>();
+  const [date] = useState(format(new Date(), "yyyy-MM-dd"));
+  const { data: tokens, isLoading } = useQueue(doctorId ?? "", date);
+  const callNext = useCallNextPatient();
+
+  const queueTokens = Array.isArray(tokens) ? tokens : [];
+
+  const handleCallNext = () => {
+    if (doctorId) callNext.mutate(doctorId);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Live Queue</h1>
+        <Button onClick={handleCallNext} disabled={callNext.isPending}>
+          {callNext.isPending ? "Calling..." : "Call Next"}
+        </Button>
+      </div>
+
+      {isLoading && <Skeleton className="h-64" />}
+
+      {!isLoading && queueTokens.length === 0 && (
+        <EmptyState title="Queue is empty" description="No patients waiting." />
+      )}
+
+      {!isLoading && queueTokens.length > 0 && (
+        <div className="space-y-3">
+          {queueTokens.map((token: any) => (
+            <Card key={token.id}>
+              <CardContent className="flex items-center justify-between p-4">
+                <div>
+                  <span className="text-2xl font-bold mr-4">#{token.tokenNumber}</span>
+                  <span>{token.appointment?.patient?.fullName ?? "Walk-in"}</span>
+                </div>
+                <Badge variant={statusColor[token.status] as any}>{token.status}</Badge>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

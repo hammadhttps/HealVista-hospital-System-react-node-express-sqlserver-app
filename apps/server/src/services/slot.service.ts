@@ -25,11 +25,14 @@ export async function generateSlotsForDoctor(doctorId: string, dateFrom?: Date, 
     include: { availability: { where: { isActive: true } } },
   });
   if (!doctor) throw new AppError("Doctor not found", 404);
-  if (doctor.availability.length === 0) return [];
 
   const range = getDateRange();
   const from = dateFrom || range.start;
   const to = dateTo || range.end;
+
+  if (doctor.availability.length === 0) return { count: 0, range: { from, to } };
+
+  if (doctor.availability.length === 0) return { count: 0, range: { from, to } };
 
   const [holidays, exceptions, existingSlots] = await Promise.all([
     prisma.holiday.findMany({
@@ -133,7 +136,7 @@ export async function generateSlotsForDoctor(doctorId: string, dateFrom?: Date, 
     current.setUTCDate(current.getUTCDate() + 1);
   }
 
-  if (slotsToCreate.length === 0) return [];
+  if (slotsToCreate.length === 0) return { count: 0, range: { from, to } };
 
   const created = await prisma.appointmentSlot.createMany({
     data: slotsToCreate,
@@ -152,7 +155,7 @@ export async function generateSlotsForAllDoctors() {
   const results: Array<{ doctorId: string; count: number }> = [];
   for (const d of doctors) {
     const result = await generateSlotsForDoctor(d.id);
-    results.push({ doctorId: d.id, count: (result as any).count ?? 0 });
+    results.push({ doctorId: d.id, count: result.count });
   }
   return results;
 }
