@@ -1,17 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import * as appointmentService from "../services/appointment.service";
 import * as slotService from "../services/slot.service";
+import * as patientService from "../services/patient.service";
 import { sendSuccess, sendPaginated } from "../utils/apiResponse";
-import { AppError } from "../utils/AppError";
 
 export async function book(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = req.user!.userId;
-    const patient = await import("../config/db").then((db) =>
-      db.prisma.patient.findUnique({ where: { userId } }),
-    );
-    if (!patient) throw new AppError("Patient profile not found", 404);
-
+    const patient = await patientService.getPatientByUserId(req.user!.userId);
     const appointment = await appointmentService.bookAppointment({
       patientId: patient.id,
       doctorId: req.body.doctorId,
@@ -62,13 +57,9 @@ export async function list(req: Request, res: Response, next: NextFunction) {
 
 export async function listMine(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = req.user!.userId;
-    const patient = await import("../config/db").then((db) =>
-      db.prisma.patient.findUnique({ where: { userId } }),
-    );
-
+    const patient = await patientService.getPatientByUserId(req.user!.userId);
     const result = await appointmentService.getAppointments({
-      patientId: patient?.id,
+      patientId: patient.id,
       status: req.query.status as string,
       fromDate: req.query.fromDate as string,
       toDate: req.query.toDate as string,
