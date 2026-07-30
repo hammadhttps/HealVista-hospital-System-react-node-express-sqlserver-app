@@ -237,7 +237,7 @@ jobs:
 
       # Catches a secret pasted into a commit before it reaches main.
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
