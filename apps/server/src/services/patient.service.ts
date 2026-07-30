@@ -1,0 +1,147 @@
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { prisma } from "../config/db";
+import { AppError } from "../utils/AppError";
+import { writeAuditLog } from "../utils/audit";
+import type { PatientRegistrationInput } from "@medicore/shared";
+
+const BCRYPT_ROUNDS = 12;
+
+function generateMrn(): string {
+  return `MRN-${Date.now().toString(36).toUpperCase()}-${crypto.randomInt(1000, 9999)}`;
+}
+
+export async function registerPatient(input: PatientRegistrationInput, registeredById?: string) {
+  const existing = await prisma.user.findUnique({
+    where: { email: input.email },
+  });
+  if (existing) throw new AppError("Email already registered", 409);
+
+  const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+
+  const user = await prisma.user.create({
+    data: {
+      email: input.email,
+      passwordHash,
+      role: "PATIENT",
+      phone: input.phone,
+      patient: {
+        create: {
+          mrn: generateMrn(),
+          fullName: input.fullName,
+          dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : undefined,
+          gender: input.gender,
+          bloodGroup: input.bloodGroup,
+          registeredById,
+        },
+      },
+    },
+    include: { patient: true },
+  });
+
+  if (registeredById) {
+    await writeAuditLog({
+      actorUserId: registeredById,
+      action: "PATIENT_REGISTERED",
+      targetType: "Patient",
+      targetId: user.patient!.id,
+    });
+  }
+
+  return user;
+}
+
+export async function listPatients(params: { search?: string; page: number; limit: number }) {
+  const { search, page, limit } = params;
+  const where: any = { deletedAt: null };
+
+  if (search) {
+    where.OR = [
+      { fullName: { contains: search, mode: "insensitive" } },
+      { mrn: { contains: search, mode: "insensitive" } },
+      { user: { phone: { contains: search } } },
+    ];
+  }
+
+  const [data, total] = await Promise.all([
+    prisma.patient.findMany({
+      where,
+      include: { user: { select: { id: true, email: true, phone: true } } },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.patient.count({ where }),
+  ]);
+
+  return { data, total, page, limit };
+}
+
+export async function getPatientById(id: string) {
+  const patient = await prisma.patient.findUnique({
+    where: { id },
+    include: {
+      user: { select: { id: true, email: true, phone: true, avatarUrl: true } },
+      emergencyContacts: true,
+    },
+  });
+  if (!patient || patient.deletedAt) throw new AppError("Patient not found", 404);
+  return patient;
+}
+
+export async function updatePatient(
+  id: string,
+  data: Partial<{
+    fullName: string;
+    dateOfBirth: string;
+    gender: string;
+    bloodGroup: string;
+    maritalStatus: string;
+    occupation: string;
+    addressLine1: string;
+    city: string;
+    isOrganDonor: boolean;
+  }>,
+  actorUserId?: string,
+) {
+  await getPatientById(id);
+  const updateData: any = { ...data };
+  if (data.dateOfBirth) updateData.dateOfBirth = new Date(data.dateOfBirth);
+  const updated = await prisma.patient.update({ where: { id }, data: updateData });
+
+  if (actorUserId) {
+    await writeAuditLog({
+      actorUserId,
+      action: "PATIENT_UPDATED",
+      targetType: "Patient",
+      targetId: id,
+    });
+  }
+
+  return updated;
+}
+
+export async function createEmergencyContact(
+  patientId: string,
+  input: {
+    name: string;
+    relationship: string;
+    phone: string;
+    isPrimary?: boolean;
+  },
+) {
+  await getPatientById(patientId);
+  return prisma.emergencyContact.create({ data: { patientId, ...input } });
+}
+
+export async function listEmergencyContacts(patientId: string) {
+  return prisma.emergencyContact.findMany({ where: { patientId } });
+}
+
+export async function removeEmergencyContact(patientId: string, contactId: string) {
+  const contact = await prisma.emergencyContact.findFirst({
+    where: { id: contactId, patientId },
+  });
+  if (!contact) throw new AppError("Emergency contact not found", 404);
+  await prisma.emergencyContact.delete({ where: { id: contactId } });
+}
