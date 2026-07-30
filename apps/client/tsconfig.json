@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "outDir": "dist",
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": false,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@medicore/shared": ["../../packages/shared/src"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "src/**/*.jsx"]
+}
