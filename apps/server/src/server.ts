@@ -2,12 +2,17 @@ import app from "./app";
 import { env } from "./config/env";
 import { logger } from "./utils/logger";
 import { setupSocketIO } from "./sockets";
+import { startSlotGenerationWorker } from "./slots/worker";
 
 const server = app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, `Server listening on port ${env.PORT}`);
 });
 
 setupSocketIO(server);
+
+if (env.NODE_ENV !== "test") {
+  startSlotGenerationWorker();
+}
 
 process.on("SIGTERM", () => {
   logger.info("SIGTERM received, shutting down gracefully");
