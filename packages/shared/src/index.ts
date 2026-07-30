@@ -3,3 +3,4 @@ export * from "./schemas/auth";
 export * from "./schemas/users";
 export * from "./schemas/departments";
 export * from "./schemas/settings";
+export * from "./schemas/availability";

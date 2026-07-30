@@ -15,6 +15,8 @@ import holidayRoutes from "./routes/holiday.routes";
 import patientRoutes from "./routes/patient.routes";
 import doctorRoutes from "./routes/doctor.routes";
 import staffRoutes from "./routes/staff.routes";
+import appointmentRoutes from "./routes/appointment.routes";
+import queueRoutes from "./routes/queue.routes";
 
 const app = express();
 
@@ -32,17 +34,13 @@ app.use(cookieParser());
 
 // Correlation id
 app.use((req, _res, next) => {
-  req.correlationId =
-    (req.headers["x-correlation-id"] as string) || crypto.randomUUID();
+  req.correlationId = (req.headers["x-correlation-id"] as string) || crypto.randomUUID();
   next();
 });
 
 // Request logging
 app.use((req, _res, next) => {
-  logger.info(
-    { method: req.method, url: req.url, correlationId: req.correlationId },
-    "request",
-  );
+  logger.info({ method: req.method, url: req.url, correlationId: req.correlationId }, "request");
   next();
 });
 
@@ -67,9 +65,7 @@ app.get("/api/health", async (_req, res) => {
     await prisma.$queryRaw`SELECT 1`;
     res.json({ status: "ok", db: "ok", uptime: process.uptime() });
   } catch {
-    res
-      .status(503)
-      .json({ status: "error", db: "error", uptime: process.uptime() });
+    res.status(503).json({ status: "error", db: "error", uptime: process.uptime() });
   }
 });
 
@@ -81,6 +77,8 @@ app.use("/api/holidays", holidayRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/staff", staffRoutes);
+app.use("/api/appointments", appointmentRoutes);
+app.use("/api/queue", queueRoutes);
 
 // ─── Error handler (must be last) ──────────────────────────────────
 app.use(errorHandler);
