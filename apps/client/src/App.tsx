@@ -33,6 +33,7 @@ import BillingConsole from "./pages/BillingConsole";
 import PaymentHistory from "./pages/PaymentHistory";
 import Referrals from "./pages/Referrals";
 import MyReferrals from "./pages/MyReferrals";
+import SOAPNoteEditor from "./pages/SOAPNoteEditor";
 import { AdminDashboard, DoctorDashboard, PatientDashboard } from "./pages/Dashboard";
 
 export default function App() {
@@ -124,6 +125,14 @@ export default function App() {
                 element={
                   <RoleRoute role="DOCTOR">
                     <Referrals />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/consultation/:appointmentId"
+                element={
+                  <RoleRoute role="DOCTOR">
+                    <SOAPNoteEditor />
                   </RoleRoute>
                 }
               />

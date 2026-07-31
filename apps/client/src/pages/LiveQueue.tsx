@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useQueue } from "../hooks/queries/useAppointments";
 import { useCallNextPatient } from "../hooks/mutations/useAppointmentMutations";
 import { Button } from "../components/ui/button";
@@ -62,7 +62,18 @@ export default function LiveQueue() {
                   <span className="text-2xl font-bold mr-4">#{token.tokenNumber}</span>
                   <span>{token.appointment?.patient?.fullName ?? "Walk-in"}</span>
                 </div>
-                <Badge variant={statusColor[token.status] as any}>{token.status}</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={statusColor[token.status] as any}>{token.status}</Badge>
+                  {token.appointment?.id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      render={<Link to={`/consultation/${token.appointment.id}`} />}
+                    >
+                      Consult
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}

@@ -225,7 +225,12 @@ export async function getNote(appointmentId: string, actor: Actor) {
  * doctor opens before a follow-up, and the source of the previous-visit comparison.
  */
 export async function listPatientNotes(patientId: string, actor: Actor, limit = 20) {
-  await assertClinicalAccess(patientId, actor);
+  const access = await assertClinicalAccess(patientId, actor);
+  // Pharmacists and lab technicians hold scoped access for their own modules; the
+  // consultation record is between the patient and their treating doctors.
+  if (access.reason === "dispensing_pharmacist" || access.reason === "lab_technician") {
+    throw new AppError("Not authorised to list this patient's notes", 403);
+  }
 
   const notes = await prisma.consultationNote.findMany({
     where: {
