@@ -65,34 +65,106 @@ export function useResolveCondition(patientId: string) {
   return useMutation({ mutationFn: historyApi.resolveCondition, onSuccess: invalidate });
 }
 
-export function useAddVaccination(patientId: string) {
+export function useRemoveCondition(patientId: string) {
+  const invalidate = useInvalidateHistory(patientId);
+  return useMutation({ mutationFn: historyApi.removeCondition, onSuccess: invalidate });
+}
+
+function useInvalidateVaccinations(patientId: string) {
   const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: historyKeys.vaccinations(patientId) });
+    queryClient.invalidateQueries({ queryKey: historyKeys.summary(patientId) });
+  };
+}
+
+export function useAddVaccination(patientId: string) {
+  const invalidate = useInvalidateVaccinations(patientId);
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => historyApi.addVaccination(patientId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: historyKeys.vaccinations(patientId) });
-      queryClient.invalidateQueries({ queryKey: historyKeys.summary(patientId) });
-    },
+    onSuccess: invalidate,
   });
 }
 
-export function useAddSurgery(patientId: string) {
+export function useUpdateVaccination(patientId: string) {
+  const invalidate = useInvalidateVaccinations(patientId);
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      historyApi.updateVaccination(id, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRemoveVaccination(patientId: string) {
+  const invalidate = useInvalidateVaccinations(patientId);
+  return useMutation({ mutationFn: historyApi.removeVaccination, onSuccess: invalidate });
+}
+
+function useInvalidateSurgeries(patientId: string) {
   const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: historyKeys.surgeries(patientId) });
+    queryClient.invalidateQueries({ queryKey: historyKeys.summary(patientId) });
+  };
+}
+
+export function useAddSurgery(patientId: string) {
+  const invalidate = useInvalidateSurgeries(patientId);
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => historyApi.addSurgery(patientId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: historyKeys.surgeries(patientId) });
-      queryClient.invalidateQueries({ queryKey: historyKeys.summary(patientId) });
-    },
+    onSuccess: invalidate,
   });
+}
+
+export function useUpdateSurgery(patientId: string) {
+  const invalidate = useInvalidateSurgeries(patientId);
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      historyApi.updateSurgery(id, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRemoveSurgery(patientId: string) {
+  const invalidate = useInvalidateSurgeries(patientId);
+  return useMutation({ mutationFn: historyApi.removeSurgery, onSuccess: invalidate });
+}
+
+function useInvalidateFamilyHistory(patientId: string) {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: historyKeys.family(patientId) });
+    queryClient.invalidateQueries({ queryKey: historyKeys.summary(patientId) });
+  };
+}
+
+export function useAddFamilyHistory(patientId: string) {
+  const invalidate = useInvalidateFamilyHistory(patientId);
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => historyApi.addFamilyHistory(patientId, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateFamilyHistory(patientId: string) {
+  const invalidate = useInvalidateFamilyHistory(patientId);
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      historyApi.updateFamilyHistory(id, data),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRemoveFamilyHistory(patientId: string) {
+  const invalidate = useInvalidateFamilyHistory(patientId);
+  return useMutation({ mutationFn: historyApi.removeFamilyHistory, onSuccess: invalidate });
 }
 
 export function useUpsertLifestyle(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => historyApi.upsertLifestyle(patientId, data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: historyKeys.lifestyle(patientId) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: historyKeys.lifestyle(patientId) }),
   });
 }
 
@@ -270,8 +342,7 @@ export function useCreateReferral() {
 export function useRespondToReferral() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      referralApi.respond(id, status),
+    mutationFn: ({ id, status }: { id: string; status: string }) => referralApi.respond(id, status),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["referrals"] }),
   });
 }

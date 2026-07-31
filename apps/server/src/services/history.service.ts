@@ -91,6 +91,186 @@ export async function removeAllergy(allergyId: string, actor: Actor) {
   });
 }
 
+/**
+ * A history row that exists is better than one that cannot be corrected. Every
+ * history type therefore supports update and delete — an un-editable clinical
+ * record forces clinicians to re-enter it, which is how duplicates happen. All
+ * mutations are audit-logged against the owning patient.
+ */
+
+// ─── Conditions ─────────────────────────────────────────────────────────────
+
+export async function deleteCondition(conditionId: string, actor: Actor) {
+  const existing = await prisma.patientCondition.findUnique({ where: { id: conditionId } });
+  if (!existing) throw new AppError("Condition not found", 404);
+  await assertClinicalWriteAccess(existing.patientId, actor);
+
+  await prisma.patientCondition.delete({ where: { id: conditionId } });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "CONDITION_REMOVED",
+    targetType: "patient_condition",
+    targetId: conditionId,
+    metadata: { patientId: existing.patientId, condition: existing.condition },
+  });
+}
+
+// ─── Vaccinations ───────────────────────────────────────────────────────────
+
+export async function updateVaccination(
+  vaccinationId: string,
+  input: {
+    vaccineName?: string;
+    doseNumber?: number | null;
+    administeredAt?: string;
+    administeredBy?: string | null;
+    batchNumber?: string | null;
+    nextDueAt?: string | null;
+  },
+  actor: Actor,
+) {
+  const existing = await prisma.vaccination.findUnique({ where: { id: vaccinationId } });
+  if (!existing) throw new AppError("Vaccination not found", 404);
+  await assertClinicalWriteAccess(existing.patientId, actor);
+
+  const data: any = {};
+  if (input.vaccineName !== undefined) data.vaccineName = input.vaccineName.trim();
+  if (input.doseNumber !== undefined) data.doseNumber = input.doseNumber;
+  if (input.administeredAt !== undefined) data.administeredAt = new Date(input.administeredAt);
+  if (input.administeredBy !== undefined) data.administeredBy = input.administeredBy;
+  if (input.batchNumber !== undefined) data.batchNumber = input.batchNumber;
+  if (input.nextDueAt !== undefined)
+    data.nextDueAt = input.nextDueAt ? new Date(input.nextDueAt) : null;
+
+  const updated = await prisma.vaccination.update({ where: { id: vaccinationId }, data });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "VACCINATION_UPDATED",
+    targetType: "vaccination",
+    targetId: vaccinationId,
+    metadata: { patientId: existing.patientId },
+  });
+
+  return updated;
+}
+
+export async function deleteVaccination(vaccinationId: string, actor: Actor) {
+  const existing = await prisma.vaccination.findUnique({ where: { id: vaccinationId } });
+  if (!existing) throw new AppError("Vaccination not found", 404);
+  await assertClinicalWriteAccess(existing.patientId, actor);
+
+  await prisma.vaccination.delete({ where: { id: vaccinationId } });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "VACCINATION_REMOVED",
+    targetType: "vaccination",
+    targetId: vaccinationId,
+    metadata: { patientId: existing.patientId, vaccineName: existing.vaccineName },
+  });
+}
+
+// ─── Surgical history ───────────────────────────────────────────────────────
+
+export async function updateSurgery(
+  surgeryId: string,
+  input: {
+    procedure?: string;
+    performedAt?: string | null;
+    hospital?: string | null;
+    surgeon?: string | null;
+    notes?: string | null;
+  },
+  actor: Actor,
+) {
+  const existing = await prisma.surgicalHistory.findUnique({ where: { id: surgeryId } });
+  if (!existing) throw new AppError("Surgery not found", 404);
+  await assertClinicalWriteAccess(existing.patientId, actor);
+
+  const data: any = {};
+  if (input.procedure !== undefined) data.procedure = input.procedure.trim();
+  if (input.performedAt !== undefined)
+    data.performedAt = input.performedAt ? new Date(input.performedAt) : null;
+  if (input.hospital !== undefined) data.hospital = input.hospital;
+  if (input.surgeon !== undefined) data.surgeon = input.surgeon;
+  if (input.notes !== undefined) data.notes = input.notes;
+
+  const updated = await prisma.surgicalHistory.update({ where: { id: surgeryId }, data });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "SURGERY_UPDATED",
+    targetType: "surgical_history",
+    targetId: surgeryId,
+    metadata: { patientId: existing.patientId },
+  });
+
+  return updated;
+}
+
+export async function deleteSurgery(surgeryId: string, actor: Actor) {
+  const existing = await prisma.surgicalHistory.findUnique({ where: { id: surgeryId } });
+  if (!existing) throw new AppError("Surgery not found", 404);
+  await assertClinicalWriteAccess(existing.patientId, actor);
+
+  await prisma.surgicalHistory.delete({ where: { id: surgeryId } });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "SURGERY_REMOVED",
+    targetType: "surgical_history",
+    targetId: surgeryId,
+    metadata: { patientId: existing.patientId, procedure: existing.procedure },
+  });
+}
+
+// ─── Family history ─────────────────────────────────────────────────────────
+
+export async function updateFamilyHistory(
+  entryId: string,
+  input: { relationship?: string; condition?: string; notes?: string | null },
+  actor: Actor,
+) {
+  const existing = await prisma.familyHistory.findUnique({ where: { id: entryId } });
+  if (!existing) throw new AppError("Family history entry not found", 404);
+  await assertClinicalWriteAccess(existing.patientId, actor);
+
+  const data: any = {};
+  if (input.relationship !== undefined) data.relationship = input.relationship.trim();
+  if (input.condition !== undefined) data.condition = input.condition.trim();
+  if (input.notes !== undefined) data.notes = input.notes;
+
+  const updated = await prisma.familyHistory.update({ where: { id: entryId }, data });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "FAMILY_HISTORY_UPDATED",
+    targetType: "family_history",
+    targetId: entryId,
+    metadata: { patientId: existing.patientId },
+  });
+
+  return updated;
+}
+
+export async function deleteFamilyHistory(entryId: string, actor: Actor) {
+  const existing = await prisma.familyHistory.findUnique({ where: { id: entryId } });
+  if (!existing) throw new AppError("Family history entry not found", 404);
+  await assertClinicalWriteAccess(existing.patientId, actor);
+
+  await prisma.familyHistory.delete({ where: { id: entryId } });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "FAMILY_HISTORY_REMOVED",
+    targetType: "family_history",
+    targetId: entryId,
+    metadata: { patientId: existing.patientId },
+  });
+}
+
 // ─── Conditions ─────────────────────────────────────────────────────────────
 
 export async function listConditions(patientId: string, actor: Actor) {
@@ -378,9 +558,7 @@ export async function getPatientHistory(patientId: string, actor: Actor) {
     allergies,
     conditions,
     vaccinations,
-    upcomingVaccinations: vaccinations.filter(
-      (v) => v.nextDueAt && v.nextDueAt >= new Date(),
-    ),
+    upcomingVaccinations: vaccinations.filter((v) => v.nextDueAt && v.nextDueAt >= new Date()),
     surgeries,
     familyHistory,
     lifestyle,

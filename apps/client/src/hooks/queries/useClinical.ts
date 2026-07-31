@@ -15,6 +15,7 @@ export const historyKeys = {
   conditions: (patientId: string) => ["history", patientId, "conditions"] as const,
   vaccinations: (patientId: string) => ["history", patientId, "vaccinations"] as const,
   surgeries: (patientId: string) => ["history", patientId, "surgeries"] as const,
+  family: (patientId: string) => ["history", patientId, "family"] as const,
   lifestyle: (patientId: string) => ["history", patientId, "lifestyle"] as const,
 };
 
@@ -97,6 +98,14 @@ export function useLifestyle(patientId: string) {
   return useQuery({
     queryKey: historyKeys.lifestyle(patientId),
     queryFn: () => historyApi.getLifestyle(patientId),
+    enabled: !!patientId,
+  });
+}
+
+export function useFamilyHistory(patientId: string) {
+  return useQuery({
+    queryKey: historyKeys.family(patientId),
+    queryFn: () => historyApi.listFamilyHistory(patientId),
     enabled: !!patientId,
   });
 }

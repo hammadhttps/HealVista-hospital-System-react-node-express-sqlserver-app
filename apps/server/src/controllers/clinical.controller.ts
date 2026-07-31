@@ -23,10 +23,7 @@ export async function getHistory(req: Request, res: Response, next: NextFunction
 
 export async function listAllergies(req: Request, res: Response, next: NextFunction) {
   try {
-    const allergies = await historyService.listAllergies(
-      req.params.patientId as string,
-      req.user!,
-    );
+    const allergies = await historyService.listAllergies(req.params.patientId as string, req.user!);
     sendSuccess(res, allergies);
   } catch (err) {
     next(err);
@@ -98,6 +95,15 @@ export async function resolveCondition(req: Request, res: Response, next: NextFu
   }
 }
 
+export async function removeCondition(req: Request, res: Response, next: NextFunction) {
+  try {
+    await historyService.deleteCondition(req.params.id as string, req.user!);
+    sendSuccess(res, { removed: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function listVaccinations(req: Request, res: Response, next: NextFunction) {
   try {
     const vaccinations = await historyService.listVaccinations(
@@ -123,12 +129,75 @@ export async function addVaccination(req: Request, res: Response, next: NextFunc
   }
 }
 
-export async function listSurgeries(req: Request, res: Response, next: NextFunction) {
+export async function updateVaccination(req: Request, res: Response, next: NextFunction) {
   try {
-    const surgeries = await historyService.listSurgeries(
-      req.params.patientId as string,
+    const vaccination = await historyService.updateVaccination(
+      req.params.id as string,
+      req.body,
       req.user!,
     );
+    sendSuccess(res, vaccination);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function removeVaccination(req: Request, res: Response, next: NextFunction) {
+  try {
+    await historyService.deleteVaccination(req.params.id as string, req.user!);
+    sendSuccess(res, { removed: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateSurgery(req: Request, res: Response, next: NextFunction) {
+  try {
+    const surgery = await historyService.updateSurgery(
+      req.params.id as string,
+      req.body,
+      req.user!,
+    );
+    sendSuccess(res, surgery);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function removeSurgery(req: Request, res: Response, next: NextFunction) {
+  try {
+    await historyService.deleteSurgery(req.params.id as string, req.user!);
+    sendSuccess(res, { removed: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateFamilyHistory(req: Request, res: Response, next: NextFunction) {
+  try {
+    const entry = await historyService.updateFamilyHistory(
+      req.params.id as string,
+      req.body,
+      req.user!,
+    );
+    sendSuccess(res, entry);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function removeFamilyHistory(req: Request, res: Response, next: NextFunction) {
+  try {
+    await historyService.deleteFamilyHistory(req.params.id as string, req.user!);
+    sendSuccess(res, { removed: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listSurgeries(req: Request, res: Response, next: NextFunction) {
+  try {
+    const surgeries = await historyService.listSurgeries(req.params.patientId as string, req.user!);
     sendSuccess(res, surgeries);
   } catch (err) {
     next(err);
@@ -230,10 +299,7 @@ export async function getVitals(req: Request, res: Response, next: NextFunction)
 
 export async function getLatestVitals(req: Request, res: Response, next: NextFunction) {
   try {
-    const latest = await vitalsService.getLatestVitals(
-      req.params.patientId as string,
-      req.user!,
-    );
+    const latest = await vitalsService.getLatestVitals(req.params.patientId as string, req.user!);
     sendSuccess(res, latest);
   } catch (err) {
     next(err);
@@ -340,11 +406,7 @@ export async function getPrescription(req: Request, res: Response, next: NextFun
   }
 }
 
-export async function listPatientPrescriptions(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+export async function listPatientPrescriptions(req: Request, res: Response, next: NextFunction) {
   try {
     const prescriptions = await prescriptionService.listForPatient(
       req.params.patientId as string,
@@ -454,10 +516,7 @@ export async function addNoteAddendum(req: Request, res: Response, next: NextFun
 
 export async function getPreviousNote(req: Request, res: Response, next: NextFunction) {
   try {
-    const note = await noteService.getPreviousNote(
-      req.params.appointmentId as string,
-      req.user!,
-    );
+    const note = await noteService.getPreviousNote(req.params.appointmentId as string, req.user!);
     sendSuccess(res, note);
   } catch (err) {
     next(err);
@@ -466,10 +525,7 @@ export async function getPreviousNote(req: Request, res: Response, next: NextFun
 
 export async function listPatientNotes(req: Request, res: Response, next: NextFunction) {
   try {
-    const notes = await noteService.listPatientNotes(
-      req.params.patientId as string,
-      req.user!,
-    );
+    const notes = await noteService.listPatientNotes(req.params.patientId as string, req.user!);
     sendSuccess(res, notes);
   } catch (err) {
     next(err);

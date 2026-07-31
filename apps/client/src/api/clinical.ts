@@ -11,8 +11,7 @@ export const historyApi = {
     patientId: string,
     data: { allergen: string; severity: string; reaction?: string },
   ) => api.post(`/patients/${patientId}/allergies`, data).then((r) => r.data.data),
-  confirmAllergy: (id: string) =>
-    api.patch(`/allergies/${id}/confirm`).then((r) => r.data.data),
+  confirmAllergy: (id: string) => api.patch(`/allergies/${id}/confirm`).then((r) => r.data.data),
   removeAllergy: (id: string) => api.delete(`/allergies/${id}`).then((r) => r.data.data),
 
   listConditions: (patientId: string) =>
@@ -21,18 +20,32 @@ export const historyApi = {
     patientId: string,
     data: { condition: string; diagnosedAt?: string; notes?: string },
   ) => api.post(`/patients/${patientId}/conditions`, data).then((r) => r.data.data),
-  resolveCondition: (id: string) =>
-    api.patch(`/conditions/${id}/resolve`).then((r) => r.data.data),
+  resolveCondition: (id: string) => api.patch(`/conditions/${id}/resolve`).then((r) => r.data.data),
+  removeCondition: (id: string) => api.delete(`/conditions/${id}`).then((r) => r.data.data),
 
   listVaccinations: (patientId: string) =>
     api.get(`/patients/${patientId}/vaccinations`).then((r) => r.data.data),
   addVaccination: (patientId: string, data: Record<string, unknown>) =>
     api.post(`/patients/${patientId}/vaccinations`, data).then((r) => r.data.data),
+  updateVaccination: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/vaccinations/${id}`, data).then((r) => r.data.data),
+  removeVaccination: (id: string) => api.delete(`/vaccinations/${id}`).then((r) => r.data.data),
 
   listSurgeries: (patientId: string) =>
     api.get(`/patients/${patientId}/surgeries`).then((r) => r.data.data),
   addSurgery: (patientId: string, data: Record<string, unknown>) =>
     api.post(`/patients/${patientId}/surgeries`, data).then((r) => r.data.data),
+  updateSurgery: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/surgeries/${id}`, data).then((r) => r.data.data),
+  removeSurgery: (id: string) => api.delete(`/surgeries/${id}`).then((r) => r.data.data),
+
+  listFamilyHistory: (patientId: string) =>
+    api.get(`/patients/${patientId}/family-history`).then((r) => r.data.data),
+  addFamilyHistory: (patientId: string, data: Record<string, unknown>) =>
+    api.post(`/patients/${patientId}/family-history`, data).then((r) => r.data.data),
+  updateFamilyHistory: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/family-history/${id}`, data).then((r) => r.data.data),
+  removeFamilyHistory: (id: string) => api.delete(`/family-history/${id}`).then((r) => r.data.data),
 
   getLifestyle: (patientId: string) =>
     api.get(`/patients/${patientId}/lifestyle`).then((r) => r.data.data),
@@ -50,9 +63,7 @@ export const vitalsApi = {
     readings: { type: string; value: number }[],
     appointmentId?: string,
   ) =>
-    api
-      .post(`/patients/${patientId}/vitals`, { readings, appointmentId })
-      .then((r) => r.data.data),
+    api.post(`/patients/${patientId}/vitals`, { readings, appointmentId }).then((r) => r.data.data),
 };
 
 export const noteApi = {
@@ -65,9 +76,7 @@ export const noteApi = {
   sign: (appointmentId: string) =>
     api.post(`/appointments/${appointmentId}/note/sign`).then((r) => r.data.data),
   addAddendum: (appointmentId: string, content: string) =>
-    api
-      .post(`/appointments/${appointmentId}/note/addenda`, { content })
-      .then((r) => r.data.data),
+    api.post(`/appointments/${appointmentId}/note/addenda`, { content }).then((r) => r.data.data),
   listForPatient: (patientId: string) =>
     api.get(`/patients/${patientId}/notes`).then((r) => r.data.data),
 
@@ -103,16 +112,19 @@ export const dependentApi = {
   list: () => api.get("/dependents").then((r) => r.data.data),
   listGuardians: () => api.get("/guardians").then((r) => r.data.data),
   /** Links by MRN, never by patient id — an id is guessable from a URL. */
-  add: (data: { mrn: string; relationship: string; canViewRecords?: boolean; canBookAppointments?: boolean }) =>
-    api.post("/dependents", data).then((r) => r.data.data),
+  add: (data: {
+    mrn: string;
+    relationship: string;
+    canViewRecords?: boolean;
+    canBookAppointments?: boolean;
+  }) => api.post("/dependents", data).then((r) => r.data.data),
   updatePermissions: (id: string, data: Record<string, unknown>) =>
     api.patch(`/dependents/${id}`, data).then((r) => r.data.data),
   remove: (id: string) => api.delete(`/dependents/${id}`).then((r) => r.data.data),
 };
 
 export const referralApi = {
-  create: (data: Record<string, unknown>) =>
-    api.post("/referrals", data).then((r) => r.data.data),
+  create: (data: Record<string, unknown>) => api.post("/referrals", data).then((r) => r.data.data),
   incoming: (status?: string) =>
     api.get("/referrals/incoming", { params: { status } }).then((r) => r.data.data),
   outgoing: () => api.get("/referrals/outgoing").then((r) => r.data.data),
