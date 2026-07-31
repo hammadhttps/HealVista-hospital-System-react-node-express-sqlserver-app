@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# Pre-push gate. Render and Vercel deploy straight off a push to main, so a broken
+# commit is a broken production deploy — this is the last place to catch it.
+#
+# Runs the same checks CI does, in the order that fails fastest.
+#
+# Wired up automatically by the root `prepare` script (git config core.hooksPath
+# .githooks). To bypass in an emergency: git push --no-verify
+#
+set -e
+
+printf '\n\033[1mPre-push checks\033[0m — typecheck, lint, test, build\n\n'
+
+fail() {
+  printf '\n\033[31m✗ %s failed. Push aborted.\033[0m\n' "$1"
+  printf '  Fix it, or bypass with: git push --no-verify\n\n'
+  exit 1
+}
+
+printf '\033[2m→ typecheck\033[0m\n'
+npm run typecheck --silent || fail "typecheck"
+
+printf '\033[2m→ lint\033[0m\n'
+npm run lint --silent || fail "lint"
+
+printf '\033[2m→ test\033[0m\n'
+npm run test --silent || fail "tests"
+
+# The build is the check that matters most here. `tsc --noEmit` does not catch
+# what killed the last Vercel deploy: bundler-only resolution, and imports whose
+# casing is wrong on a case-sensitive filesystem. This builds shared, then the
+# server, then the client — the same order production does.
+printf '\033[2m→ build (shared → server → client)\033[0m\n'
+npm run build --silent || fail "build"
+
+printf '\n\033[32m✓ All checks passed — pushing.\033[0m\n\n'
