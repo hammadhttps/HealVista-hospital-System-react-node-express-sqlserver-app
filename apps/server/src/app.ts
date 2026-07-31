@@ -19,6 +19,7 @@ import appointmentRoutes from "./routes/appointment.routes.js";
 import queueRoutes from "./routes/queue.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
+import clinicalRoutes from "./routes/clinical.routes.js";
 import billingRoutes, { discountRouter, insuranceRouter } from "./routes/billing.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
 import * as paymentController from "./controllers/payment.controller.js";
@@ -112,6 +113,9 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
+// Clinical routes mount at /api so they can own several top-level nouns
+// (/api/patients/:id/history, /api/prescriptions, /api/dependents).
+app.use("/api", clinicalRoutes);
 app.use("/api/bills", billingRoutes);
 app.use("/api/discounts", discountRouter);
 app.use("/api/insurance", insuranceRouter);
