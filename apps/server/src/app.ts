@@ -84,7 +84,7 @@ const swaggerSpec = swaggerJsdoc({
   definition: {
     openapi: "3.0.0",
     info: {
-      title: "MediCore API",
+      title: "HealVista API",
       version: "1.0.0",
       description: "HealVista Hospital Management System",
     },

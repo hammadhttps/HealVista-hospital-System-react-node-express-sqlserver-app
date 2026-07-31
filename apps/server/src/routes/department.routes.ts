@@ -2,7 +2,7 @@ import { Router } from "express";
 import { validate } from "../middlewares/validate.middleware.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { requireRole } from "../middlewares/rbac.middleware.js";
-import { createDepartmentSchema, updateDepartmentSchema } from "@medicore/shared";
+import { createDepartmentSchema, updateDepartmentSchema } from "@healvista/shared";
 import * as departmentController from "../controllers/department.controller.js";
 
 const router = Router();

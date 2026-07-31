@@ -7,7 +7,7 @@ import {
   patientRegistrationSchema,
   updatePatientSchema,
   emergencyContactSchema,
-} from "@medicore/shared";
+} from "@healvista/shared";
 import * as patientController from "../controllers/patient.controller.js";
 
 const router = Router();

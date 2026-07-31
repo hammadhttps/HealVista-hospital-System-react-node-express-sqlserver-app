@@ -3,7 +3,7 @@ import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import type { Actor } from "./bill.service.js";
 import { getDependentPatientIds } from "./access.service.js";
-import type { CreateInsuranceInput, UpdateInsuranceInput } from "@medicore/shared";
+import type { CreateInsuranceInput, UpdateInsuranceInput } from "@healvista/shared";
 
 const INSURANCE_STAFF_ROLES = ["ACCOUNTANT", "RECEPTIONIST", "ADMIN"];
 

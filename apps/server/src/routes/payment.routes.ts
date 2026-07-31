@@ -7,7 +7,7 @@ import {
   createIntentSchema,
   paymentHistorySchema,
   refundSchema,
-} from "@medicore/shared";
+} from "@healvista/shared";
 import * as paymentController from "../controllers/payment.controller.js";
 
 const router = Router();

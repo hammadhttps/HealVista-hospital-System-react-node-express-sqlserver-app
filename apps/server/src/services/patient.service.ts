@@ -4,7 +4,7 @@ import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { getDependentPatientIds, type Actor } from "./access.service.js";
-import type { PatientRegistrationInput } from "@medicore/shared";
+import type { PatientRegistrationInput } from "@healvista/shared";
 
 const BCRYPT_ROUNDS = 12;
 

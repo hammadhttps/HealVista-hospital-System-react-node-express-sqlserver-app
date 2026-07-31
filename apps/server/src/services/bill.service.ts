@@ -10,7 +10,7 @@ import type {
   CreateBillInput,
   ListBillsInput,
   UpdateBillInput,
-} from "@medicore/shared";
+} from "@healvista/shared";
 
 const D = Prisma.Decimal;
 type Decimal = Prisma.Decimal;

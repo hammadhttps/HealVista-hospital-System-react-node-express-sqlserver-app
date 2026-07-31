@@ -3,7 +3,7 @@ import { AppError } from "../utils/AppError.js";
 import type {
   CreateDepartmentInput,
   UpdateDepartmentInput,
-} from "@medicore/shared";
+} from "@healvista/shared";
 
 export async function list(slug?: string) {
   const where = slug ? { slug } : {};

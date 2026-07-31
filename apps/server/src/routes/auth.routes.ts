@@ -12,7 +12,7 @@ import {
   changeEmailSchema,
   changePhoneSchema,
   updateProfileSchema,
-} from "@medicore/shared";
+} from "@healvista/shared";
 
 const router = Router();
 

@@ -8,7 +8,7 @@ import {
   doctorAvailabilityArraySchema,
   availabilityExceptionSchema,
   symptomMatchSchema,
-} from "@medicore/shared";
+} from "@healvista/shared";
 import * as doctorController from "../controllers/doctor.controller.js";
 
 const router = Router();

@@ -1,5 +1,5 @@
 {
-  "name": "@medicore/server",
+  "name": "@healvista/server",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@medicore/shared": "*",
+    "@healvista/shared": "*",
     "@prisma/client": "^6.5.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^6.0.0",

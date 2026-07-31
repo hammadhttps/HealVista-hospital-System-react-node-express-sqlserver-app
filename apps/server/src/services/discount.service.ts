@@ -8,7 +8,7 @@ import type {
   ApplyDiscountInput,
   CreateDiscountInput,
   UpdateDiscountInput,
-} from "@medicore/shared";
+} from "@healvista/shared";
 
 const D = Prisma.Decimal;
 

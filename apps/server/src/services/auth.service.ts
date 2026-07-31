@@ -5,7 +5,7 @@ import { prisma } from "../config/db.js";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
-import type { RegisterInput, LoginInput } from "@medicore/shared";
+import type { RegisterInput, LoginInput } from "@healvista/shared";
 
 const BCRYPT_ROUNDS = 12;
 const LOCKOUT_THRESHOLD = 5;

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { validate } from "../middlewares/validate.middleware.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
-import { updateNotificationPreferenceSchema, markReadSchema } from "@medicore/shared";
+import { updateNotificationPreferenceSchema, markReadSchema } from "@healvista/shared";
 import * as notificationController from "../controllers/notification.controller.js";
 
 const router = Router();

@@ -268,9 +268,7 @@ export async function getAppointments(
     // already inside it. Anything else falls back to the full authorised set rather
     // than honouring the request.
     where.patientId =
-      patientId && scope.patientIds.includes(patientId)
-        ? patientId
-        : { in: scope.patientIds };
+      patientId && scope.patientIds.includes(patientId) ? patientId : { in: scope.patientIds };
   } else if (patientId) {
     where.patientId = patientId;
   }
@@ -698,10 +696,9 @@ export async function generateAppointmentReceiptPdf(appointmentId: string, actor
   doc
     .fontSize(8)
     .fillColor("#999")
-    .text(
-      "This receipt confirms the appointment booking only. It is not a payment receipt.",
-      { align: "center" },
-    );
+    .text("This receipt confirms the appointment booking only. It is not a payment receipt.", {
+      align: "center",
+    });
 
   doc.end();
   return { doc, filename: `receipt-${appointment.appointmentNo}.pdf` };
@@ -714,7 +711,7 @@ async function getHospitalSettingsForReceipt() {
     .join(", ");
 
   return {
-    hospitalName: settings?.name ?? "MediCore Hospital",
+    hospitalName: settings?.name ?? "HealVista Hospital",
     address,
     currency: settings?.currency ?? "USD",
   };

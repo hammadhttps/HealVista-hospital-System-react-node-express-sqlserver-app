@@ -14,7 +14,7 @@ import type {
   CreateIntentInput,
   PaymentHistoryInput,
   RefundInput,
-} from "@medicore/shared";
+} from "@healvista/shared";
 
 const D = Prisma.Decimal;
 

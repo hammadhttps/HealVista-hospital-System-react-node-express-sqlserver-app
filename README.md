@@ -1,7 +1,8 @@
-# MediCore — HealVista Hospital Management System
+# HealVista — PERN + AI Hospital Management System
 
-A production-oriented Hospital Management System: front desk, clinical records, pharmacy, laboratory,
-billing, and a Gemini + pgvector RAG layer over patient data.
+A production-oriented Hospital Management System built on the **PERN** stack
+(**P**ostgreSQL, **E**xpress, **R**eact, **N**ode) with an **AI** layer: front desk, clinical records,
+pharmacy, laboratory, billing, and a Gemini + pgvector RAG over patient data.
 
 ## Stack
 
@@ -13,6 +14,8 @@ billing, and a Gemini + pgvector RAG layer over patient data.
 | Cache/Queues | Redis (Upstash / Docker)                                                      |
 | AI           | Google Gemini (free tier) + pgvector RAG                                      |
 | Payments     | Stripe + Razorpay                                                             |
+
+**PERN + AI**: PostgreSQL · Express · React · Node · Gemini RAG
 
 ## Getting started
 

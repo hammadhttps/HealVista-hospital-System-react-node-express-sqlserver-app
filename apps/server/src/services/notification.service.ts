@@ -2,7 +2,7 @@ import { prisma } from "../config/db.js";
 import { redis } from "../config/redis.js";
 import { getIO } from "../sockets/index.js";
 import { addNotificationJob } from "../config/bull.js";
-import type { NotificationType } from "@medicore/shared";
+import type { NotificationType } from "@healvista/shared";
 
 interface DispatchInput {
   userId: string;

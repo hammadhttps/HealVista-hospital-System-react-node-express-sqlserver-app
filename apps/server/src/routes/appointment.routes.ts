@@ -9,7 +9,7 @@ import {
   rescheduleSchema,
   checkInSchema,
   generateSlotsSchema,
-} from "@medicore/shared";
+} from "@healvista/shared";
 import * as appointmentController from "../controllers/appointment.controller.js";
 
 const router = Router();

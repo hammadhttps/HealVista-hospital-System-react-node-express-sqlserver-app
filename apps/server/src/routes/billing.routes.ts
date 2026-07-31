@@ -11,7 +11,7 @@ import {
   updateBillSchema,
   updateDiscountSchema,
   updateInsuranceSchema,
-} from "@medicore/shared";
+} from "@healvista/shared";
 import * as billingController from "../controllers/billing.controller.js";
 
 const router = Router();
