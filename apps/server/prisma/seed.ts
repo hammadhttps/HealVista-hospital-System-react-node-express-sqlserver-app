@@ -11,7 +11,11 @@ async function main() {
   // ── Departments ──────────────────────────────────────────────────────
   const departments = [
     { name: "Cardiology", slug: "cardiology", description: "Heart and cardiovascular system" },
-    { name: "Pediatrics", slug: "pediatrics", description: "Medical care for infants, children, and adolescents" },
+    {
+      name: "Pediatrics",
+      slug: "pediatrics",
+      description: "Medical care for infants, children, and adolescents",
+    },
     { name: "Orthopedics", slug: "orthopedics", description: "Musculoskeletal system" },
     { name: "Neurology", slug: "neurology", description: "Nervous system disorders" },
     { name: "Dermatology", slug: "dermatology", description: "Skin, hair, and nails" },
@@ -20,7 +24,11 @@ async function main() {
     { name: "Gynecology", slug: "gynecology", description: "Female reproductive health" },
     { name: "Psychiatry", slug: "psychiatry", description: "Mental health" },
     { name: "Emergency", slug: "emergency", description: "Emergency medicine" },
-    { name: "General Medicine", slug: "general-medicine", description: "Internal medicine and primary care" },
+    {
+      name: "General Medicine",
+      slug: "general-medicine",
+      description: "Internal medicine and primary care",
+    },
     { name: "Radiology", slug: "radiology", description: "Medical imaging and diagnostics" },
   ];
 
@@ -51,7 +59,18 @@ async function main() {
   });
 
   // ── Demo Users ──────────────────────────────────────────────────────
-  const demoUsers: { email: string; role: "PATIENT" | "DOCTOR" | "RECEPTIONIST" | "PHARMACIST" | "LAB_TECHNICIAN" | "ACCOUNTANT" | "ADMIN"; fullName: string }[] = [
+  const demoUsers: {
+    email: string;
+    role:
+      | "PATIENT"
+      | "DOCTOR"
+      | "RECEPTIONIST"
+      | "PHARMACIST"
+      | "LAB_TECHNICIAN"
+      | "ACCOUNTANT"
+      | "ADMIN";
+    fullName: string;
+  }[] = [
     { email: "alex@example.com", role: "PATIENT", fullName: "Alex Johnson" },
     { email: "sarah@medicore.com", role: "DOCTOR", fullName: "Dr. Sarah Chen" },
     { email: "reception@medicore.com", role: "RECEPTIONIST", fullName: "Emma Wilson" },
@@ -141,16 +160,86 @@ async function main() {
 
   // ── Lab Tests Catalog ──────────────────────────────────────────────
   const labTests = [
-    { name: "Complete Blood Count", code: "CBC", category: "Hematology", sampleType: "Blood", price: 35, turnaroundHours: 24 },
-    { name: "Basic Metabolic Panel", code: "BMP", category: "Chemistry", sampleType: "Blood", price: 50, turnaroundHours: 24 },
-    { name: "Comprehensive Metabolic Panel", code: "CMP", category: "Chemistry", sampleType: "Blood", price: 65, turnaroundHours: 24 },
-    { name: "Lipid Panel", code: "LIPID", category: "Chemistry", sampleType: "Blood", price: 45, turnaroundHours: 24 },
-    { name: "Thyroid Stimulating Hormone", code: "TSH", category: "Endocrinology", sampleType: "Blood", price: 55, turnaroundHours: 48 },
-    { name: "Hemoglobin A1C", code: "HBA1C", category: "Endocrinology", sampleType: "Blood", price: 40, turnaroundHours: 24 },
-    { name: "Urinalysis", code: "UA", category: "Urinalysis", sampleType: "Urine", price: 25, turnaroundHours: 24 },
-    { name: "Chest X-Ray", code: "CXR", category: "Radiology", sampleType: "X-Ray", price: 120, turnaroundHours: 2 },
-    { name: "COVID-19 PCR", code: "COVID-PCR", category: "Infectious Disease", sampleType: "Nasal Swab", price: 100, turnaroundHours: 24 },
-    { name: "Liver Function Test", code: "LFT", category: "Chemistry", sampleType: "Blood", price: 45, turnaroundHours: 24 },
+    {
+      name: "Complete Blood Count",
+      code: "CBC",
+      category: "Hematology",
+      sampleType: "Blood",
+      price: 35,
+      turnaroundHours: 24,
+    },
+    {
+      name: "Basic Metabolic Panel",
+      code: "BMP",
+      category: "Chemistry",
+      sampleType: "Blood",
+      price: 50,
+      turnaroundHours: 24,
+    },
+    {
+      name: "Comprehensive Metabolic Panel",
+      code: "CMP",
+      category: "Chemistry",
+      sampleType: "Blood",
+      price: 65,
+      turnaroundHours: 24,
+    },
+    {
+      name: "Lipid Panel",
+      code: "LIPID",
+      category: "Chemistry",
+      sampleType: "Blood",
+      price: 45,
+      turnaroundHours: 24,
+    },
+    {
+      name: "Thyroid Stimulating Hormone",
+      code: "TSH",
+      category: "Endocrinology",
+      sampleType: "Blood",
+      price: 55,
+      turnaroundHours: 48,
+    },
+    {
+      name: "Hemoglobin A1C",
+      code: "HBA1C",
+      category: "Endocrinology",
+      sampleType: "Blood",
+      price: 40,
+      turnaroundHours: 24,
+    },
+    {
+      name: "Urinalysis",
+      code: "UA",
+      category: "Urinalysis",
+      sampleType: "Urine",
+      price: 25,
+      turnaroundHours: 24,
+    },
+    {
+      name: "Chest X-Ray",
+      code: "CXR",
+      category: "Radiology",
+      sampleType: "X-Ray",
+      price: 120,
+      turnaroundHours: 2,
+    },
+    {
+      name: "COVID-19 PCR",
+      code: "COVID-PCR",
+      category: "Infectious Disease",
+      sampleType: "Nasal Swab",
+      price: 100,
+      turnaroundHours: 24,
+    },
+    {
+      name: "Liver Function Test",
+      code: "LFT",
+      category: "Chemistry",
+      sampleType: "Blood",
+      price: 45,
+      turnaroundHours: 24,
+    },
   ];
 
   for (const test of labTests) {
@@ -163,16 +252,64 @@ async function main() {
 
   // ── Medicines Catalog ──────────────────────────────────────────────
   const medicines = [
-    { name: "Amoxicillin", genericName: "Amoxicillin", unit: "mg", unitPrice: 0.15, category: "Antibiotic" },
-    { name: "Azithromycin", genericName: "Azithromycin", unit: "mg", unitPrice: 0.50, category: "Antibiotic" },
-    { name: "Metformin", genericName: "Metformin HCl", unit: "mg", unitPrice: 0.08, category: "Antidiabetic" },
-    { name: "Atorvastatin", genericName: "Atorvastatin Calcium", unit: "mg", unitPrice: 0.12, category: "Cholesterol" },
-    { name: "Lisinopril", genericName: "Lisinopril", unit: "mg", unitPrice: 0.10, category: "ACE Inhibitor" },
+    {
+      name: "Amoxicillin",
+      genericName: "Amoxicillin",
+      unit: "mg",
+      unitPrice: 0.15,
+      category: "Antibiotic",
+    },
+    {
+      name: "Azithromycin",
+      genericName: "Azithromycin",
+      unit: "mg",
+      unitPrice: 0.5,
+      category: "Antibiotic",
+    },
+    {
+      name: "Metformin",
+      genericName: "Metformin HCl",
+      unit: "mg",
+      unitPrice: 0.08,
+      category: "Antidiabetic",
+    },
+    {
+      name: "Atorvastatin",
+      genericName: "Atorvastatin Calcium",
+      unit: "mg",
+      unitPrice: 0.12,
+      category: "Cholesterol",
+    },
+    {
+      name: "Lisinopril",
+      genericName: "Lisinopril",
+      unit: "mg",
+      unitPrice: 0.1,
+      category: "ACE Inhibitor",
+    },
     { name: "Omeprazole", genericName: "Omeprazole", unit: "mg", unitPrice: 0.15, category: "PPI" },
     { name: "Ibuprofen", genericName: "Ibuprofen", unit: "mg", unitPrice: 0.05, category: "NSAID" },
-    { name: "Paracetamol", genericName: "Acetaminophen", unit: "mg", unitPrice: 0.03, category: "Analgesic" },
-    { name: "Amlodipine", genericName: "Amlodipine Besylate", unit: "mg", unitPrice: 0.11, category: "Calcium Channel Blocker" },
-    { name: "Salbutamol Inhaler", genericName: "Albuterol Sulfate", unit: "mcg", unitPrice: 3.50, category: "Bronchodilator" },
+    {
+      name: "Paracetamol",
+      genericName: "Acetaminophen",
+      unit: "mg",
+      unitPrice: 0.03,
+      category: "Analgesic",
+    },
+    {
+      name: "Amlodipine",
+      genericName: "Amlodipine Besylate",
+      unit: "mg",
+      unitPrice: 0.11,
+      category: "Calcium Channel Blocker",
+    },
+    {
+      name: "Salbutamol Inhaler",
+      genericName: "Albuterol Sulfate",
+      unit: "mcg",
+      unitPrice: 3.5,
+      category: "Bronchodilator",
+    },
   ];
 
   for (const med of medicines) {
@@ -187,7 +324,10 @@ async function main() {
   // Without stock rows, every dispense fails with "no inventory record". Batch
   // numbers are seeded deliberately: batch recall traces a batch through the
   // dispensing ledger, so there has to be one to trace.
-  const stockLevels: Record<string, { quantity: number; reorderLevel: number; batchNumber: string }> = {
+  const stockLevels: Record<
+    string,
+    { quantity: number; reorderLevel: number; batchNumber: string }
+  > = {
     Amoxicillin: { quantity: 500, reorderLevel: 100, batchNumber: "AMX-2026-A" },
     Azithromycin: { quantity: 220, reorderLevel: 50, batchNumber: "AZI-2026-A" },
     Metformin: { quantity: 800, reorderLevel: 150, batchNumber: "MET-2026-A" },
@@ -237,18 +377,78 @@ async function main() {
   // absorbs it. Every row here is deterministic, sourced, and human-entered, which is
   // why prescriptionSafety.service does a table lookup and has no AI in its path.
   const interactions = [
-    { drugA: "amoxicillin", drugB: "warfarin", severity: "MODERATE" as const, description: "May increase bleeding risk; monitor INR" },
-    { drugA: "lisinopril", drugB: "spironolactone", severity: "SEVERE" as const, description: "Risk of hyperkalemia; monitor potassium" },
-    { drugA: "ibuprofen", drugB: "warfarin", severity: "SEVERE" as const, description: "Increased bleeding risk; avoid combination" },
-    { drugA: "metformin", drugB: "iodinated contrast", severity: "MODERATE" as const, description: "Risk of lactic acidosis; withhold metformin before contrast" },
-    { drugA: "omeprazole", drugB: "clopidogrel", severity: "MODERATE" as const, description: "Reduced clopidogrel efficacy via CYP2C19 inhibition" },
-    { drugA: "atorvastatin", drugB: "clarithromycin", severity: "SEVERE" as const, description: "Markedly increased statin exposure; risk of rhabdomyolysis" },
-    { drugA: "lisinopril", drugB: "ibuprofen", severity: "MODERATE" as const, description: "NSAIDs reduce antihypertensive effect and may impair renal function" },
-    { drugA: "azithromycin", drugB: "amiodarone", severity: "SEVERE" as const, description: "Additive QT prolongation; risk of torsades de pointes" },
-    { drugA: "metformin", drugB: "alcohol", severity: "MODERATE" as const, description: "Increased risk of lactic acidosis" },
-    { drugA: "amlodipine", drugB: "simvastatin", severity: "MODERATE" as const, description: "Increased simvastatin exposure; limit simvastatin dose" },
-    { drugA: "warfarin", drugB: "paracetamol", severity: "MILD" as const, description: "Prolonged high-dose use may potentiate anticoagulation; monitor INR" },
-    { drugA: "omeprazole", drugB: "methotrexate", severity: "MODERATE" as const, description: "Delayed methotrexate elimination; risk of toxicity" },
+    {
+      drugA: "amoxicillin",
+      drugB: "warfarin",
+      severity: "MODERATE" as const,
+      description: "May increase bleeding risk; monitor INR",
+    },
+    {
+      drugA: "lisinopril",
+      drugB: "spironolactone",
+      severity: "SEVERE" as const,
+      description: "Risk of hyperkalemia; monitor potassium",
+    },
+    {
+      drugA: "ibuprofen",
+      drugB: "warfarin",
+      severity: "SEVERE" as const,
+      description: "Increased bleeding risk; avoid combination",
+    },
+    {
+      drugA: "metformin",
+      drugB: "iodinated contrast",
+      severity: "MODERATE" as const,
+      description: "Risk of lactic acidosis; withhold metformin before contrast",
+    },
+    {
+      drugA: "omeprazole",
+      drugB: "clopidogrel",
+      severity: "MODERATE" as const,
+      description: "Reduced clopidogrel efficacy via CYP2C19 inhibition",
+    },
+    {
+      drugA: "atorvastatin",
+      drugB: "clarithromycin",
+      severity: "SEVERE" as const,
+      description: "Markedly increased statin exposure; risk of rhabdomyolysis",
+    },
+    {
+      drugA: "lisinopril",
+      drugB: "ibuprofen",
+      severity: "MODERATE" as const,
+      description: "NSAIDs reduce antihypertensive effect and may impair renal function",
+    },
+    {
+      drugA: "azithromycin",
+      drugB: "amiodarone",
+      severity: "SEVERE" as const,
+      description: "Additive QT prolongation; risk of torsades de pointes",
+    },
+    {
+      drugA: "metformin",
+      drugB: "alcohol",
+      severity: "MODERATE" as const,
+      description: "Increased risk of lactic acidosis",
+    },
+    {
+      drugA: "amlodipine",
+      drugB: "simvastatin",
+      severity: "MODERATE" as const,
+      description: "Increased simvastatin exposure; limit simvastatin dose",
+    },
+    {
+      drugA: "warfarin",
+      drugB: "paracetamol",
+      severity: "MILD" as const,
+      description: "Prolonged high-dose use may potentiate anticoagulation; monitor INR",
+    },
+    {
+      drugA: "omeprazole",
+      drugB: "methotrexate",
+      severity: "MODERATE" as const,
+      description: "Delayed methotrexate elimination; risk of toxicity",
+    },
   ];
 
   for (const interaction of interactions) {
@@ -256,7 +456,12 @@ async function main() {
     await prisma.drugInteraction.upsert({
       where: { drugA_drugB: { drugA: a, drugB: b } },
       update: {},
-      create: { drugA: a, drugB: b, severity: interaction.severity, description: interaction.description },
+      create: {
+        drugA: a,
+        drugB: b,
+        severity: interaction.severity,
+        description: interaction.description,
+      },
     });
   }
 
