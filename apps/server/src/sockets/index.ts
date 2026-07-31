@@ -98,6 +98,29 @@ export function setupSocketIO(httpServer: HttpServer) {
     });
   });
 
+  const chatNamespace = io.of("/chat");
+
+  chatNamespace.on("connection", (socket: Socket) => {
+    const user = (socket as any).data.user as JwtPayload;
+    logger.info({ userId: user.userId }, "Socket connected to /chat");
+
+    socket.on("chat:join", ({ threadId }: { threadId: string }) => {
+      socket.join(`chat:${threadId}`);
+    });
+
+    socket.on("chat:typing", ({ threadId }: { threadId: string }) => {
+      socket.to(`chat:${threadId}`).emit("chat:typing", { threadId, userId: user.userId });
+    });
+
+    socket.on("chat:stop_typing", ({ threadId }: { threadId: string }) => {
+      socket.to(`chat:${threadId}`).emit("chat:stop_typing", { threadId, userId: user.userId });
+    });
+
+    socket.on("disconnect", () => {
+      logger.info({ userId: user.userId }, "Socket disconnected from /chat");
+    });
+  });
+
   logger.info("Socket.io initialized");
   return io;
 }

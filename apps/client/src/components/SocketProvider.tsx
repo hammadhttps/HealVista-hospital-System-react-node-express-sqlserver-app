@@ -1,41 +1,72 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuthStore } from "../store/authStore";
 
-const SocketContext = createContext<Socket | null>(null);
+interface SocketContextValue {
+  appointmentSocket: Socket | null;
+  notificationSocket: Socket | null;
+  chatSocket: Socket | null;
+}
+
+const SocketContext = createContext<SocketContextValue>({
+  appointmentSocket: null,
+  notificationSocket: null,
+  chatSocket: null,
+});
 
 export function useSocket() {
   return useContext(SocketContext);
 }
 
 export function SocketProvider({ children }: { children: ReactNode }) {
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const [appointmentSocket, setAppointmentSocket] = useState<Socket | null>(null);
+  const [notificationSocket, setNotificationSocket] = useState<Socket | null>(null);
+  const [chatSocket, setChatSocket] = useState<Socket | null>(null);
   const user = useAuthStore((s) => s.user);
+  const prevUserRef = useRef(user);
 
   useEffect(() => {
+    const prevUser = prevUserRef.current;
+    prevUserRef.current = user;
+
     if (!user) {
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
+      if (appointmentSocket) {
+        appointmentSocket.disconnect();
+        setAppointmentSocket(null);
+      }
+      if (notificationSocket) {
+        notificationSocket.disconnect();
+        setNotificationSocket(null);
+      }
+      if (chatSocket) {
+        chatSocket.disconnect();
+        setChatSocket(null);
       }
       return;
     }
 
     const token = localStorage.getItem("accessToken");
-    const newSocket = io("/appointments", {
-      auth: { token },
-      transports: ["websocket"],
-    });
+    const opts = { auth: { token }, transports: ["websocket"] };
 
-    newSocket.on("connect", () => {});
-    newSocket.on("connect_error", () => {});
+    const aptSocket = io("/appointments", opts);
+    setAppointmentSocket(aptSocket);
 
-    setSocket(newSocket);
+    const notifSocket = io("/notifications", opts);
+    setNotificationSocket(notifSocket);
+
+    const cSocket = io("/chat", opts);
+    setChatSocket(cSocket);
 
     return () => {
-      newSocket.disconnect();
+      aptSocket.disconnect();
+      notifSocket.disconnect();
+      cSocket.disconnect();
     };
   }, [user]);
 
-  return <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>;
+  return (
+    <SocketContext.Provider value={{ appointmentSocket, notificationSocket, chatSocket }}>
+      {children}
+    </SocketContext.Provider>
+  );
 }

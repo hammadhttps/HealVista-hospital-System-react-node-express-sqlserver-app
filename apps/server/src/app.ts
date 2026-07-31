@@ -17,6 +17,8 @@ import doctorRoutes from "./routes/doctor.routes";
 import staffRoutes from "./routes/staff.routes";
 import appointmentRoutes from "./routes/appointment.routes";
 import queueRoutes from "./routes/queue.routes";
+import notificationRoutes from "./routes/notification.routes";
+import chatRoutes from "./routes/chat.routes";
 
 const app = express();
 
@@ -79,6 +81,8 @@ app.use("/api/doctors", doctorRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/queue", queueRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/chat", chatRoutes);
 
 // ─── Error handler (must be last) ──────────────────────────────────
 app.use(errorHandler);
