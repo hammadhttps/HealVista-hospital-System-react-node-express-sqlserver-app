@@ -12,6 +12,7 @@ export const notificationTypeEnum = z.enum([
   "CRITICAL_RESULT",
   "LOW_STOCK_ALERT",
   "BATCH_RECALL",
+  "REFERRAL_CREATED",
   "FOLLOW_UP_REMINDER",
   "CHAT_MESSAGE",
   "GENERAL",

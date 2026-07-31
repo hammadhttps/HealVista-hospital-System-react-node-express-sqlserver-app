@@ -123,13 +123,10 @@ export async function resolveClinicalAccess(
     });
     if (shared) return { allowed: true, reason: "treating_doctor" };
 
-    // A referral grants access to the referring note only — see referral.service.
-    const referral = await prisma.referral.findFirst({
-      where: { toDoctorId: doctorId, patientId },
-      select: { id: true },
-    });
-    if (referral) return { allowed: true, reason: "referred_doctor" };
-
+    // Note the deliberate absence of a referral grant here. A doctor referred in on a
+    // patient may read the referring note — handled by `assertNoteReadAccess` — but
+    // never the full record. "Referred-in" is a note-sized authorisation, not a
+    // record-sized one.
     return { allowed: false };
   }
 
@@ -140,9 +137,7 @@ export async function resolveClinicalAccess(
       where: { isDraft: false, appointment: { patientId } },
       select: { id: true },
     });
-    return prescription
-      ? { allowed: true, reason: "dispensing_pharmacist" }
-      : { allowed: false };
+    return prescription ? { allowed: true, reason: "dispensing_pharmacist" } : { allowed: false };
   }
 
   if (actor.role === "LAB_TECHNICIAN") {
@@ -156,11 +151,43 @@ export async function resolveClinicalAccess(
   return { allowed: false };
 }
 
-/** Throws 403 unless the caller may read this patient's clinical record. */
-export async function assertClinicalAccess(
-  patientId: string,
+/**
+ * Note-scoped read access for one appointment.
+ *
+ * Broader than the general clinical gate in exactly one case: a doctor who was
+ * referred *in* on this appointment may read this visit's note — never the rest of
+ * the record. `referred_doctor` is produced here and nowhere else; every other
+ * caller falls through to the standard `assertClinicalAccess`.
+ */
+export async function assertNoteReadAccess(
+  appointmentId: string,
   actor: Actor,
 ): Promise<AccessResult> {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    select: { patientId: true, doctorId: true },
+  });
+  if (!appointment) throw new AppError("Appointment not found", 404);
+
+  if (actor.role === "DOCTOR") {
+    const doctorId = await getDoctorIdForUser(actor.userId);
+    if (!doctorId) return { allowed: false };
+    if (appointment.doctorId === doctorId) return { allowed: true, reason: "treating_doctor" };
+
+    const referral = await prisma.referral.findFirst({
+      where: { toDoctorId: doctorId, patientId: appointment.patientId, appointmentId },
+      select: { id: true },
+    });
+    if (referral) return { allowed: true, reason: "referred_doctor" };
+
+    return { allowed: false };
+  }
+
+  return assertClinicalAccess(appointment.patientId, actor);
+}
+
+/** Throws 403 unless the caller may read this patient's clinical record. */
+export async function assertClinicalAccess(patientId: string, actor: Actor): Promise<AccessResult> {
   const result = await resolveClinicalAccess(patientId, actor);
   if (!result.allowed) {
     throw new AppError("Not authorised to access this patient's clinical record", 403);

@@ -1,7 +1,7 @@
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
-import { assertClinicalAccess, type Actor } from "./access.service.js";
+import { assertClinicalAccess, assertNoteReadAccess, type Actor } from "./access.service.js";
 
 /**
  * Consultation notes (SOAP).
@@ -194,7 +194,10 @@ export async function getNote(appointmentId: string, actor: Actor) {
     select: { patientId: true },
   });
   if (!appointment) throw new AppError("Appointment not found", 404);
-  await assertClinicalAccess(appointment.patientId, actor);
+  // Note-scoped gate: the treating doctor, the patient/guardian, and a doctor
+  // referred *in* on this appointment. A referred-in doctor must not read the rest
+  // of the record — `assertNoteReadAccess` grants exactly this one note.
+  await assertNoteReadAccess(appointmentId, actor);
 
   const note = await prisma.consultationNote.findUnique({
     where: { appointmentId },
@@ -242,6 +245,13 @@ export async function listPatientNotes(patientId: string, actor: Actor, limit = 
     },
     orderBy: { createdAt: "desc" },
     take: limit,
+  });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "NOTES_LISTED",
+    targetType: "patient",
+    targetId: patientId,
   });
 
   return notes.map((n) => ({ ...n, locked: isLocked(n) }));
@@ -293,10 +303,7 @@ export async function listTemplates(actor: Actor) {
   });
 }
 
-export async function saveTemplate(
-  input: { name: string } & NoteInput,
-  actor: Actor,
-) {
+export async function saveTemplate(input: { name: string } & NoteInput, actor: Actor) {
   const doctor = await requireDoctor(actor);
   if (!input.name?.trim()) throw new AppError("A template needs a name", 400);
 
@@ -339,9 +346,6 @@ export async function assertNoteSignedForCompletion(appointmentId: string) {
     select: { signedAt: true },
   });
   if (!note || !note.signedAt) {
-    throw new AppError(
-      "Sign the consultation note before completing this appointment",
-      409,
-    );
+    throw new AppError("Sign the consultation note before completing this appointment", 409);
   }
 }

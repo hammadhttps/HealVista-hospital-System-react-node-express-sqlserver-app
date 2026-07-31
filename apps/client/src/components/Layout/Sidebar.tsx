@@ -15,6 +15,7 @@ import {
   Wallet,
   ScanLine,
   MessageSquare,
+  ArrowRightLeft,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const roleNav: Record<string, NavItem[]> = {
     { to: "/doctor", label: "Dashboard", icon: Home },
     { to: "/doctor/schedule", label: "My Schedule", icon: CalendarDays },
     { to: "/doctor/queue", label: "Live Queue", icon: ListOrdered },
+    { to: "/referrals", label: "Referrals", icon: ArrowRightLeft },
     { to: "/patients", label: "Patients", icon: User },
   ],
   PATIENT: [
@@ -53,6 +55,7 @@ const roleNav: Record<string, NavItem[]> = {
     { to: "/patient/appointments", label: "My Appointments", icon: Calendar },
     { to: "/doctors", label: "Find a Doctor", icon: User },
     { to: "/patient/favourites", label: "Favourites", icon: Heart },
+    { to: "/patient/referrals", label: "Referrals", icon: ArrowRightLeft },
     { to: "/patient/bills", label: "My Bills", icon: Receipt },
   ],
   RECEPTIONIST: [

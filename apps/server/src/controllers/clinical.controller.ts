@@ -604,6 +604,15 @@ export async function listOutgoingReferrals(req: Request, res: Response, next: N
   }
 }
 
+export async function getReferral(req: Request, res: Response, next: NextFunction) {
+  try {
+    const referral = await referralService.getReferral(req.params.id as string, req.user!);
+    sendSuccess(res, referral);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function listPatientReferrals(req: Request, res: Response, next: NextFunction) {
   try {
     const referrals = await referralService.listForPatient(

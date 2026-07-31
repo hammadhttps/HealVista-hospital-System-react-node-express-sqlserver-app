@@ -84,6 +84,24 @@ export async function createReferral(
     },
   });
 
+  const destinationName = await (async () => {
+    if (input.toDoctorId) {
+      const target = await prisma.doctor.findUnique({
+        where: { id: input.toDoctorId },
+        select: { fullName: true },
+      });
+      return target?.fullName ?? "a colleague";
+    }
+    if (input.toDepartmentId) {
+      const dept = await prisma.department.findUnique({
+        where: { id: input.toDepartmentId },
+        select: { name: true },
+      });
+      return dept?.name ?? "another department";
+    }
+    return null;
+  })();
+
   if (input.toDoctorId) {
     const target = await prisma.doctor.findUnique({
       where: { id: input.toDoctorId },
@@ -105,7 +123,73 @@ export async function createReferral(
     }
   }
 
+  // The patient is the one who will act on the referral — notify them with a
+  // prefilled search so they can find and book the destination. In-app only: no
+  // `data` is passed, so no SMS/email jobs are queued for the patient.
+  if (destinationName) {
+    const patient = await prisma.patient.findUnique({
+      where: { id: input.patientId },
+      select: { userId: true },
+    });
+    if (patient?.userId) {
+      try {
+        await dispatchNotification({
+          userId: patient.userId,
+          type: "REFERRAL_CREATED",
+          title: "You have been referred",
+          message: `Dr. ${fromDoctor.fullName} referred you to ${destinationName}. Book an appointment to continue your care.`,
+          linkUrl: "/doctors",
+          data: { referralId: referral.id },
+        });
+      } catch (err) {
+        console.error("[referral] Failed to notify patient:", err);
+      }
+    }
+  }
+
   return referral;
+}
+
+/** A single referral — names resolved so the referral card renders without extra calls. */
+export async function getReferral(referralId: string, actor: Actor) {
+  const referral = await prisma.referral.findUnique({ where: { id: referralId } });
+  if (!referral) throw new AppError("Referral not found", 404);
+
+  if (actor.role === "DOCTOR") {
+    const doctor = await requireDoctor(actor);
+    if (referral.toDoctorId !== doctor.id && referral.fromDoctorId !== doctor.id) {
+      throw new AppError("Not authorised to view this referral", 403);
+    }
+  } else {
+    // A patient or guardian may view their own referral.
+    await assertClinicalAccess(referral.patientId, actor);
+  }
+
+  const [fromDoctor, toDoctor, toDepartment, patient] = await Promise.all([
+    prisma.doctor.findUnique({ where: { id: referral.fromDoctorId }, select: { fullName: true } }),
+    referral.toDoctorId
+      ? prisma.doctor.findUnique({ where: { id: referral.toDoctorId }, select: { fullName: true } })
+      : null,
+    referral.toDepartmentId
+      ? prisma.department.findUnique({
+          where: { id: referral.toDepartmentId },
+          select: { name: true },
+        })
+      : null,
+    prisma.patient.findUnique({
+      where: { id: referral.patientId },
+      select: { fullName: true, mrn: true },
+    }),
+  ]);
+
+  return {
+    ...referral,
+    fromDoctorName: fromDoctor?.fullName ?? null,
+    toDoctorName: toDoctor?.fullName ?? null,
+    toDepartmentName: toDepartment?.name ?? null,
+    patientName: patient?.fullName ?? null,
+    patientMrn: patient?.mrn ?? null,
+  };
 }
 
 export async function respondToReferral(
@@ -144,27 +228,72 @@ export async function respondToReferral(
 export async function listIncoming(actor: Actor, status?: string) {
   const doctor = await requireDoctor(actor);
 
-  return prisma.referral.findMany({
+  const referrals = await prisma.referral.findMany({
     where: { toDoctorId: doctor.id, ...(status ? { status: status as never } : {}) },
     orderBy: { createdAt: "desc" },
   });
+
+  return withNames(referrals);
 }
 
 /** Referrals the calling doctor has made. */
 export async function listOutgoing(actor: Actor) {
   const doctor = await requireDoctor(actor);
 
-  return prisma.referral.findMany({
+  const referrals = await prisma.referral.findMany({
     where: { fromDoctorId: doctor.id },
     orderBy: { createdAt: "desc" },
   });
+
+  return withNames(referrals);
 }
 
 export async function listForPatient(patientId: string, actor: Actor) {
   await assertClinicalAccess(patientId, actor);
 
-  return prisma.referral.findMany({
+  const referrals = await prisma.referral.findMany({
     where: { patientId },
     orderBy: { createdAt: "desc" },
   });
+
+  return withNames(referrals);
+}
+
+/** Resolves patient/doctor/department names onto referral rows for the card UI. */
+async function withNames(referrals: Awaited<ReturnType<typeof prisma.referral.findMany>>) {
+  if (referrals.length === 0) return [];
+
+  const patientIds = [...new Set(referrals.map((r) => r.patientId))];
+  const doctorIds = [
+    ...new Set(referrals.flatMap((r) => [r.fromDoctorId, r.toDoctorId ?? ""].filter(Boolean))),
+  ];
+  const departmentIds = [...new Set(referrals.map((r) => r.toDepartmentId ?? "").filter(Boolean))];
+
+  const [patients, doctors, departments] = await Promise.all([
+    prisma.patient.findMany({
+      where: { id: { in: patientIds } },
+      select: { id: true, fullName: true, mrn: true },
+    }),
+    prisma.doctor.findMany({
+      where: { id: { in: doctorIds } },
+      select: { id: true, fullName: true },
+    }),
+    prisma.department.findMany({
+      where: { id: { in: departmentIds } },
+      select: { id: true, name: true },
+    }),
+  ]);
+
+  const patientMap = new Map(patients.map((p) => [p.id, p]));
+  const doctorMap = new Map(doctors.map((d) => [d.id, d]));
+  const deptMap = new Map(departments.map((d) => [d.id, d]));
+
+  return referrals.map((r) => ({
+    ...r,
+    patientName: patientMap.get(r.patientId)?.fullName ?? null,
+    patientMrn: patientMap.get(r.patientId)?.mrn ?? null,
+    fromDoctorName: doctorMap.get(r.fromDoctorId)?.fullName ?? null,
+    toDoctorName: r.toDoctorId ? (doctorMap.get(r.toDoctorId)?.fullName ?? null) : null,
+    toDepartmentName: r.toDepartmentId ? (deptMap.get(r.toDepartmentId)?.name ?? null) : null,
+  }));
 }

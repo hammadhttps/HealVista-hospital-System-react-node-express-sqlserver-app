@@ -294,6 +294,7 @@ router.get(
   requireRole("DOCTOR"),
   clinical.listOutgoingReferrals,
 );
+router.get("/referrals/:id", authenticate, requireRole("DOCTOR"), clinical.getReferral);
 router.patch(
   "/referrals/:id/respond",
   authenticate,

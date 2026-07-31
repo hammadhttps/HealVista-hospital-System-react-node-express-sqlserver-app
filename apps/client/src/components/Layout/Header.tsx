@@ -1,5 +1,6 @@
 import { useAuthStore } from "../../store/authStore";
 import { NotificationBell } from "../notifications/NotificationBell";
+import ProfileSwitcher from "./ProfileSwitcher";
 
 export default function Header() {
   const user = useAuthStore((state) => state.user);
@@ -8,6 +9,7 @@ export default function Header() {
     <header className="w-full h-16 bg-white shadow flex items-center justify-between px-8">
       <div className="text-xl font-semibold text-blue-700">Dashboard</div>
       <div className="flex items-center gap-4">
+        {user?.role === "PATIENT" && <ProfileSwitcher />}
         <NotificationBell />
         <div className="text-gray-700 font-medium">
           {user?.email}

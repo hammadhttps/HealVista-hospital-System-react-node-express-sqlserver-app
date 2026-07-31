@@ -31,6 +31,8 @@ import FavouriteDoctors from "./pages/FavouriteDoctors";
 import MyBills from "./pages/MyBills";
 import BillingConsole from "./pages/BillingConsole";
 import PaymentHistory from "./pages/PaymentHistory";
+import Referrals from "./pages/Referrals";
+import MyReferrals from "./pages/MyReferrals";
 import { AdminDashboard, DoctorDashboard, PatientDashboard } from "./pages/Dashboard";
 
 export default function App() {
@@ -118,6 +120,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/referrals"
+                element={
+                  <RoleRoute role="DOCTOR">
+                    <Referrals />
+                  </RoleRoute>
+                }
+              />
+              <Route
                 path="/patient"
                 element={
                   <RoleRoute role="PATIENT">
@@ -146,6 +156,14 @@ export default function App() {
                 element={
                   <RoleRoute role="PATIENT">
                     <MyBills />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/patient/referrals"
+                element={
+                  <RoleRoute role="PATIENT">
+                    <MyReferrals />
                   </RoleRoute>
                 }
               />
