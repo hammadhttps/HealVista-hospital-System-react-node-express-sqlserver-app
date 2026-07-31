@@ -18,10 +18,12 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     const ip = req.ip || req.socket.remoteAddress;
     const result = await authService.login(req.validated, ip);
 
+    const isSecure = req.secure || env.NODE_ENV === "production";
+
     res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+      secure: isSecure,
+      sameSite: isSecure ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/api/auth",
     });
@@ -43,10 +45,12 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
     }
     const result = await authService.refresh(token);
 
+    const isSecure = req.secure || env.NODE_ENV === "production";
+
     res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+      secure: isSecure,
+      sameSite: isSecure ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/api/auth",
     });
