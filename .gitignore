@@ -17,8 +17,10 @@ Thumbs.db
 # Logs
 *.log
 
+# Agent tooling — local only, deliberately not tracked
 .claude
-Claude.md
 .opencode
+CLAUDE.md
 docs
+
 nul
