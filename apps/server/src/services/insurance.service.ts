@@ -2,6 +2,7 @@ import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import type { Actor } from "./bill.service.js";
+import { getDependentPatientIds } from "./access.service.js";
 import type { CreateInsuranceInput, UpdateInsuranceInput } from "@medicore/shared";
 
 const INSURANCE_STAFF_ROLES = ["ACCOUNTANT", "RECEPTIONIST", "ADMIN"];
@@ -16,6 +17,17 @@ async function assertCanAccessPatient(patientId: string, actor: Actor) {
       select: { userId: true },
     });
     if (patient?.userId === actor.userId) return;
+
+    // A guardian manages their dependant's cover — a child's policy is almost always
+    // held and administered by the parent.
+    const self = await prisma.patient.findUnique({
+      where: { userId: actor.userId },
+      select: { id: true },
+    });
+    if (self) {
+      const dependents = await getDependentPatientIds(self.id, "booking");
+      if (dependents.includes(patientId)) return;
+    }
   }
 
   throw new AppError("Not authorised to access this patient's insurance", 403);

@@ -13,6 +13,9 @@ vi.mock("../config/db", () => ({
     },
     patient: { findUnique: vi.fn() },
     doctor: { findUnique: vi.fn() },
+    // Guardian links: ownership checks ask "is this the patient *or* an authorised
+    // guardian?", so every scoped path may consult this.
+    patientRelationship: { findMany: vi.fn() },
     favouriteDoctor: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn(), findMany: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn(),
@@ -40,6 +43,9 @@ vi.mock("./chat.service", () => ({ createThreadForAppointment: vi.fn() }));
 describe("AppointmentService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: the caller is nobody's guardian. Tests that exercise guardian access
+    // override this explicitly, so a widened scope can never pass by accident.
+    vi.mocked(prisma.patientRelationship.findMany).mockResolvedValue([] as never);
   });
 
   describe("bookAppointment", () => {
@@ -192,7 +198,56 @@ describe("AppointmentService", () => {
       await getAppointments({ patientId: "p-other" }, { userId: "u1", role: "PATIENT" });
 
       const where = vi.mocked(prisma.appointment.findMany).mock.calls[0]![0]!.where as any;
-      expect(where.patientId).toBe("p-self");
+      // Scoped to the caller's own record only — no guardian links exist here, and
+      // the requested "p-other" was discarded rather than honoured.
+      expect(where.patientId).toEqual({ in: ["p-self"] });
+    });
+
+    it("widens a PATIENT's scope to dependants they may book for", async () => {
+      vi.mocked(prisma.patient.findUnique).mockResolvedValue({ id: "p-self" } as any);
+      vi.mocked(prisma.patientRelationship.findMany).mockResolvedValue([
+        { dependentPatientId: "p-child" },
+      ] as never);
+      vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
+      vi.mocked(prisma.appointment.count).mockResolvedValue(0 as any);
+
+      const { getAppointments } = await import("./appointment.service.js");
+      await getAppointments({}, { userId: "u1", role: "PATIENT" });
+
+      const where = vi.mocked(prisma.appointment.findMany).mock.calls[0]![0]!.where as any;
+      expect(where.patientId).toEqual({ in: ["p-self", "p-child"] });
+    });
+
+    it("lets a guardian narrow the list to one dependant", async () => {
+      vi.mocked(prisma.patient.findUnique).mockResolvedValue({ id: "p-self" } as any);
+      vi.mocked(prisma.patientRelationship.findMany).mockResolvedValue([
+        { dependentPatientId: "p-child" },
+      ] as never);
+      vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
+      vi.mocked(prisma.appointment.count).mockResolvedValue(0 as any);
+
+      const { getAppointments } = await import("./appointment.service.js");
+      await getAppointments({ patientId: "p-child" }, { userId: "u1", role: "PATIENT" });
+
+      const where = vi.mocked(prisma.appointment.findMany).mock.calls[0]![0]!.where as any;
+      expect(where.patientId).toBe("p-child");
+    });
+
+    it("refuses to narrow to a patient outside the guardian's scope", async () => {
+      // The attack this guards: request ?patientId=<stranger> and have the scope
+      // honour it because a dependant list happens to be non-empty.
+      vi.mocked(prisma.patient.findUnique).mockResolvedValue({ id: "p-self" } as any);
+      vi.mocked(prisma.patientRelationship.findMany).mockResolvedValue([
+        { dependentPatientId: "p-child" },
+      ] as never);
+      vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
+      vi.mocked(prisma.appointment.count).mockResolvedValue(0 as any);
+
+      const { getAppointments } = await import("./appointment.service.js");
+      await getAppointments({ patientId: "p-stranger" }, { userId: "u1", role: "PATIENT" });
+
+      const where = vi.mocked(prisma.appointment.findMany).mock.calls[0]![0]!.where as any;
+      expect(where.patientId).toEqual({ in: ["p-self", "p-child"] });
     });
 
     it("does not scope a RECEPTIONIST's list query", async () => {

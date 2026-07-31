@@ -47,7 +47,11 @@ export async function update(req: Request, res: Response, next: NextFunction) {
 
 export async function createEmergencyContact(req: Request, res: Response, next: NextFunction) {
   try {
-    const contact = await patientService.createEmergencyContact(req.params.id as string, req.body);
+    const contact = await patientService.createEmergencyContact(
+      req.params.id as string,
+      req.body,
+      req.user!,
+    );
     sendSuccess(res, contact, 201);
   } catch (err) {
     next(err);
@@ -56,7 +60,10 @@ export async function createEmergencyContact(req: Request, res: Response, next: 
 
 export async function listEmergencyContacts(req: Request, res: Response, next: NextFunction) {
   try {
-    const contacts = await patientService.listEmergencyContacts(req.params.id as string);
+    const contacts = await patientService.listEmergencyContacts(
+      req.params.id as string,
+      req.user!,
+    );
     sendSuccess(res, contacts);
   } catch (err) {
     next(err);
@@ -68,6 +75,7 @@ export async function removeEmergencyContact(req: Request, res: Response, next: 
     await patientService.removeEmergencyContact(
       req.params.id as string,
       req.params.contactId as string,
+      req.user!,
     );
     sendSuccess(res, null, 200, "Emergency contact deleted");
   } catch (err) {

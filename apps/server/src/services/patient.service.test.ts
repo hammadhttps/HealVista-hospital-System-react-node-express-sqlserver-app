@@ -22,6 +22,9 @@ vi.mock("../config/db", () => ({
       findFirst: vi.fn(),
       delete: vi.fn(),
     },
+    // Guardian links — ownership checks ask "is this the patient *or* an authorised
+    // guardian?".
+    patientRelationship: { findMany: vi.fn() },
   },
 }));
 
@@ -142,13 +145,15 @@ describe("patientService.getPatientById", () => {
 });
 
 describe("patientService.removeEmergencyContact", () => {
+  const receptionist = { userId: "u-recep", role: "RECEPTIONIST" };
+
   it("removes an existing contact", async () => {
     vi.mocked(prisma.emergencyContact.findFirst).mockResolvedValue({
       id: "ec-1",
       patientId: "p-1",
     } as any);
 
-    await patientService.removeEmergencyContact("p-1", "ec-1");
+    await patientService.removeEmergencyContact("p-1", "ec-1", receptionist);
 
     expect(prisma.emergencyContact.delete).toHaveBeenCalledWith({
       where: { id: "ec-1" },
@@ -158,8 +163,42 @@ describe("patientService.removeEmergencyContact", () => {
   it("throws 404 when contact is not found", async () => {
     vi.mocked(prisma.emergencyContact.findFirst).mockResolvedValue(null);
 
-    await expect(patientService.removeEmergencyContact("p-1", "ec-1")).rejects.toMatchObject({
-      statusCode: 404,
+    await expect(
+      patientService.removeEmergencyContact("p-1", "ec-1", receptionist),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+
+  it("refuses a patient deleting someone else's emergency contact", async () => {
+    // These routes carry `authenticate` and nothing else, so this check is the only
+    // thing standing between any logged-in user and a stranger's next-of-kin details.
+    vi.mocked(prisma.patient.findUnique).mockResolvedValue({ id: "p-attacker" } as any);
+    vi.mocked(prisma.patientRelationship.findMany).mockResolvedValue([] as never);
+
+    await expect(
+      patientService.removeEmergencyContact("p-1", "ec-1", {
+        userId: "u-attacker",
+        role: "PATIENT",
+      }),
+    ).rejects.toMatchObject({ statusCode: 403 });
+
+    expect(prisma.emergencyContact.delete).not.toHaveBeenCalled();
+  });
+
+  it("allows a guardian to manage their dependant's emergency contacts", async () => {
+    vi.mocked(prisma.patient.findUnique).mockResolvedValue({ id: "p-parent" } as any);
+    vi.mocked(prisma.patientRelationship.findMany).mockResolvedValue([
+      { dependentPatientId: "p-1" },
+    ] as never);
+    vi.mocked(prisma.emergencyContact.findFirst).mockResolvedValue({
+      id: "ec-1",
+      patientId: "p-1",
+    } as any);
+
+    await patientService.removeEmergencyContact("p-1", "ec-1", {
+      userId: "u-parent",
+      role: "PATIENT",
     });
+
+    expect(prisma.emergencyContact.delete).toHaveBeenCalledWith({ where: { id: "ec-1" } });
   });
 });

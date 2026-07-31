@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
+import { getDependentPatientIds, type Actor } from "./access.service.js";
 import type { PatientRegistrationInput } from "@medicore/shared";
 
 const BCRYPT_ROUNDS = 12;
@@ -121,6 +122,32 @@ export async function updatePatient(
   return updated;
 }
 
+/** Staff who legitimately need emergency contacts — the front desk and clinicians. */
+const EMERGENCY_CONTACT_STAFF = ["RECEPTIONIST", "DOCTOR", "ADMIN", "NURSE"];
+
+/**
+ * Emergency contacts are a relative's name and phone number. They previously had no
+ * ownership check at all, so any authenticated user could read or delete any
+ * patient's — the routes carry `authenticate` alone.
+ */
+async function assertCanManageEmergencyContacts(patientId: string, actor: Actor) {
+  if (EMERGENCY_CONTACT_STAFF.includes(actor.role)) return;
+
+  if (actor.role === "PATIENT") {
+    const self = await prisma.patient.findUnique({
+      where: { userId: actor.userId },
+      select: { id: true },
+    });
+    if (self?.id === patientId) return;
+    if (self) {
+      const dependents = await getDependentPatientIds(self.id, "booking");
+      if (dependents.includes(patientId)) return;
+    }
+  }
+
+  throw new AppError("Not authorised to manage this patient's emergency contacts", 403);
+}
+
 export async function createEmergencyContact(
   patientId: string,
   input: {
@@ -129,16 +156,24 @@ export async function createEmergencyContact(
     phone: string;
     isPrimary?: boolean;
   },
+  actor: Actor,
 ) {
+  await assertCanManageEmergencyContacts(patientId, actor);
   await getPatientById(patientId);
   return prisma.emergencyContact.create({ data: { patientId, ...input } });
 }
 
-export async function listEmergencyContacts(patientId: string) {
+export async function listEmergencyContacts(patientId: string, actor: Actor) {
+  await assertCanManageEmergencyContacts(patientId, actor);
   return prisma.emergencyContact.findMany({ where: { patientId } });
 }
 
-export async function removeEmergencyContact(patientId: string, contactId: string) {
+export async function removeEmergencyContact(
+  patientId: string,
+  contactId: string,
+  actor: Actor,
+) {
+  await assertCanManageEmergencyContacts(patientId, actor);
   const contact = await prisma.emergencyContact.findFirst({
     where: { id: contactId, patientId },
   });

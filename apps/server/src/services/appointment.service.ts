@@ -3,6 +3,7 @@ import { redis } from "../config/redis.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { unlockSlotInRedis } from "./slot.service.js";
+import { getDependentPatientIds } from "./access.service.js";
 import {
   dispatchNotification,
   storeReminderJobId,
@@ -39,7 +40,7 @@ const FRONT_DESK_ROLES = ["RECEPTIONIST", "ADMIN"];
  * so scope is resolved here and applied in the query, never after it.
  */
 async function resolveAppointmentScope(actor: Actor): Promise<{
-  patientId?: string;
+  patientIds?: string[];
   doctorId?: string;
 }> {
   if (FRONT_DESK_ROLES.includes(actor.role)) return {};
@@ -50,7 +51,11 @@ async function resolveAppointmentScope(actor: Actor): Promise<{
       select: { id: true },
     });
     if (!patient) throw new AppError("Patient record not found", 404);
-    return { patientId: patient.id };
+
+    // A patient's own appointments plus those of anyone they are an authorised
+    // guardian for. Booking permission is the relevant one here, not records.
+    const dependents = await getDependentPatientIds(patient.id, "booking");
+    return { patientIds: [patient.id, ...dependents] };
   }
 
   if (actor.role === "DOCTOR") {
@@ -74,6 +79,7 @@ async function assertCanAccessAppointment(appointmentId: string, actor: Actor) {
     where: { id: appointmentId },
     select: {
       id: true,
+      patientId: true,
       patient: { select: { userId: true } },
       doctor: { select: { userId: true } },
     },
@@ -83,6 +89,19 @@ async function assertCanAccessAppointment(appointmentId: string, actor: Actor) {
   if (FRONT_DESK_ROLES.includes(actor.role)) return;
   if (actor.role === "PATIENT" && appointment.patient?.userId === actor.userId) return;
   if (actor.role === "DOCTOR" && appointment.doctor?.userId === actor.userId) return;
+
+  // A guardian reaches their dependant's appointment. Checked after the direct match
+  // so the common case costs no extra query.
+  if (actor.role === "PATIENT") {
+    const self = await prisma.patient.findUnique({
+      where: { userId: actor.userId },
+      select: { id: true },
+    });
+    if (self) {
+      const dependents = await getDependentPatientIds(self.id, "booking");
+      if (dependents.includes(appointment.patientId)) return;
+    }
+  }
 
   throw new AppError("Not authorised to access this appointment", 403);
 }
@@ -244,8 +263,17 @@ export async function getAppointments(
   // narrow the scope but must never widen it.
   const scope = await resolveAppointmentScope(actor);
 
-  if (scope.patientId) where.patientId = scope.patientId;
-  else if (patientId) where.patientId = patientId;
+  if (scope.patientIds) {
+    // A requested patientId may narrow the scope to one dependant, but only if it is
+    // already inside it. Anything else falls back to the full authorised set rather
+    // than honouring the request.
+    where.patientId =
+      patientId && scope.patientIds.includes(patientId)
+        ? patientId
+        : { in: scope.patientIds };
+  } else if (patientId) {
+    where.patientId = patientId;
+  }
 
   if (scope.doctorId) where.doctorId = scope.doctorId;
   else if (doctorId) where.doctorId = doctorId;

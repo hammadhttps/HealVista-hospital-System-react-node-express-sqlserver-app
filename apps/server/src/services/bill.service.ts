@@ -4,6 +4,7 @@ import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import * as settingsService from "./settings.service.js";
+import { getDependentPatientIds } from "./access.service.js";
 import type {
   BillItemInput,
   CreateBillInput,
@@ -96,7 +97,7 @@ export function deriveStatus(total: Decimal, amountPaid: Decimal, current: strin
   return BILL_STATUS.FINALISED;
 }
 
-async function resolveBillScope(actor: Actor): Promise<{ patientId?: string }> {
+async function resolveBillScope(actor: Actor): Promise<{ patientIds?: string[] }> {
   if (BILLING_ROLES.includes(actor.role)) return {};
 
   if (actor.role === "PATIENT") {
@@ -105,7 +106,11 @@ async function resolveBillScope(actor: Actor): Promise<{ patientId?: string }> {
       select: { id: true },
     });
     if (!patient) throw new AppError("Patient record not found", 404);
-    return { patientId: patient.id };
+
+    // A guardian who can book for a dependant is the person who gets billed for that
+    // visit, so booking permission is what grants sight of the bill.
+    const dependents = await getDependentPatientIds(patient.id, "booking");
+    return { patientIds: [patient.id, ...dependents] };
   }
 
   throw new AppError("Not authorised to view bills", 403);
@@ -115,12 +120,24 @@ async function resolveBillScope(actor: Actor): Promise<{ patientId?: string }> {
 export async function assertCanAccessBill(billId: string, actor: Actor) {
   const bill = await prisma.bill.findUnique({
     where: { id: billId },
-    select: { id: true, patient: { select: { userId: true } } },
+    select: { id: true, patientId: true, patient: { select: { userId: true } } },
   });
   if (!bill) throw new AppError("Bill not found", 404);
 
   if (BILLING_ROLES.includes(actor.role)) return;
   if (actor.role === "PATIENT" && bill.patient?.userId === actor.userId) return;
+
+  // A guardian settles their dependant's bill.
+  if (actor.role === "PATIENT") {
+    const self = await prisma.patient.findUnique({
+      where: { userId: actor.userId },
+      select: { id: true },
+    });
+    if (self) {
+      const dependents = await getDependentPatientIds(self.id, "booking");
+      if (dependents.includes(bill.patientId)) return;
+    }
+  }
 
   throw new AppError("Not authorised to access this bill", 403);
 }
@@ -380,7 +397,7 @@ export async function getBills(filters: ListBillsInput, actor: Actor) {
   const where: Prisma.BillWhereInput = { deletedAt: null };
 
   // Scope first: a caller-supplied patientId may narrow, never widen.
-  if (scope.patientId) where.patientId = scope.patientId;
+  if (scope.patientIds) where.patientId = { in: scope.patientIds };
   else if (filters.patientId) where.patientId = filters.patientId;
 
   if (filters.status) where.status = filters.status;
