@@ -67,6 +67,32 @@ export async function getThreads(userId: string) {
   return [];
 }
 
+/**
+ * Whether a user may read a thread. Returns a boolean rather than throwing so the
+ * socket layer can refuse a room join quietly — thread ids are guessable, and an
+ * unauthorised join must not leak another patient's conversation.
+ */
+export async function isThreadParticipant(threadId: string, userId: string): Promise<boolean> {
+  const thread = await prisma.chatThread.findUnique({
+    where: { id: threadId },
+    include: { appointment: { select: { patientId: true, doctorId: true } } },
+  });
+  if (!thread) return false;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, patient: { select: { id: true } }, doctor: { select: { id: true } } },
+  });
+  if (!user) return false;
+
+  return (
+    user.role === "ADMIN" ||
+    user.role === "RECEPTIONIST" ||
+    (user.role === "PATIENT" && user.patient?.id === thread.appointment.patientId) ||
+    (user.role === "DOCTOR" && user.doctor?.id === thread.appointment.doctorId)
+  );
+}
+
 export async function getMessages(threadId: string, userId: string, page: number, limit: number) {
   const thread = await prisma.chatThread.findUnique({
     where: { id: threadId },
