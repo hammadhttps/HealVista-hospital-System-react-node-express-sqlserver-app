@@ -28,7 +28,7 @@ jobs:
       shared: ${{ steps.filter.outputs.shared }}
       prisma: ${{ steps.filter.outputs.prisma }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -53,7 +53,7 @@ jobs:
     name: Lint & typecheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -122,7 +122,7 @@ jobs:
       JWT_REFRESH_SECRET: ci_refresh_secret_at_least_32_characters_long
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -154,7 +154,7 @@ jobs:
     if: needs.changes.outputs.client == 'true'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
@@ -190,7 +190,7 @@ jobs:
     steps:
       # Full history — the migration check below diffs against origin/main, which
       # cannot resolve at the default fetch-depth of 1.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -227,7 +227,7 @@ jobs:
     name: Dependency audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v4
         with:
