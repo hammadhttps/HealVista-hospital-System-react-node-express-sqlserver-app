@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { prisma } from "../config/db";
-import { sendSuccess, sendPaginated } from "../utils/apiResponse";
+import { prisma } from "../config/db.js";
+import { sendSuccess, sendPaginated } from "../utils/apiResponse.js";
 
 export async function listMyNotifications(req: Request, res: Response, next: NextFunction) {
   try {

@@ -1,4 +1,4 @@
-import app from "./app";
+import app from "./app.js";
 const s = (app as any)._router?.stack || [];
 console.log("stack:", s.length);
 s.forEach((l: any, i: number) => {

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { AppError } from "../utils/AppError";
+import { AppError } from "../utils/AppError.js";
 
 const hits = new Map<string, { count: number; resetAt: number }>();
 

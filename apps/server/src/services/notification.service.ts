@@ -1,7 +1,7 @@
-import { prisma } from "../config/db";
-import { redis } from "../config/redis";
-import { getIO } from "../sockets";
-import { addNotificationJob } from "../config/bull";
+import { prisma } from "../config/db.js";
+import { redis } from "../config/redis.js";
+import { getIO } from "../sockets/index.js";
+import { addNotificationJob } from "../config/bull.js";
 import type { NotificationType } from "@medicore/shared";
 
 interface DispatchInput {

@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { authenticate } from "../middlewares/auth.middleware";
-import { requireRole } from "../middlewares/rbac.middleware";
-import * as holidayController from "../controllers/holiday.controller";
+import { authenticate } from "../middlewares/auth.middleware.js";
+import { requireRole } from "../middlewares/rbac.middleware.js";
+import * as holidayController from "../controllers/holiday.controller.js";
 
 const router = Router();
 

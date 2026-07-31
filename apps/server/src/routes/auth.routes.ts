@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { validate } from "../middlewares/validate.middleware";
-import { authenticate } from "../middlewares/auth.middleware";
-import { rateLimit } from "../middlewares/rateLimit.middleware";
-import * as authController from "../controllers/auth.controller";
+import { validate } from "../middlewares/validate.middleware.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
+import { rateLimit } from "../middlewares/rateLimit.middleware.js";
+import * as authController from "../controllers/auth.controller.js";
 import {
   registerSchema,
   loginSchema,

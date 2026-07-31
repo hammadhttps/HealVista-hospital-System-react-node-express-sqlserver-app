@@ -1,5 +1,5 @@
-import { prisma } from "../config/db";
-import { AppError } from "../utils/AppError";
+import { prisma } from "../config/db.js";
+import { AppError } from "../utils/AppError.js";
 import type {
   CreateDepartmentInput,
   UpdateDepartmentInput,

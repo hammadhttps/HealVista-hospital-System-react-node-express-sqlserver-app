@@ -47,14 +47,17 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     const token = localStorage.getItem("accessToken");
     const opts = { auth: { token }, transports: ["websocket"] };
+    const origin: string = import.meta.env.VITE_API_URL
+      ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, "")
+      : "";
 
-    const aptSocket = io("/appointments", opts);
+    const aptSocket = io(`${origin}/appointments`, opts);
     setAppointmentSocket(aptSocket);
 
-    const notifSocket = io("/notifications", opts);
+    const notifSocket = io(`${origin}/notifications`, opts);
     setNotificationSocket(notifSocket);
 
-    const cSocket = io("/chat", opts);
+    const cSocket = io(`${origin}/chat`, opts);
     setChatSocket(cSocket);
 
     return () => {

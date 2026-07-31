@@ -53,9 +53,9 @@ vi.mock("jsonwebtoken", () => ({
   sign: vi.fn(),
 }));
 
-import { prisma } from "../config/db";
+import { prisma } from "../config/db.js";
 import bcrypt from "bcryptjs";
-import app from "../app";
+import app from "../app.js";
 
 beforeEach(() => {
   vi.clearAllMocks();

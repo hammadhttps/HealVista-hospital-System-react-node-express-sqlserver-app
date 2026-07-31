@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { validate } from "../middlewares/validate.middleware";
-import { authenticate } from "../middlewares/auth.middleware";
+import { validate } from "../middlewares/validate.middleware.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
 import { sendMessageSchema } from "@medicore/shared";
-import * as chatController from "../controllers/chat.controller";
+import * as chatController from "../controllers/chat.controller.js";
 
 const router = Router();
 

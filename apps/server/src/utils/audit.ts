@@ -1,4 +1,4 @@
-import { prisma } from "../config/db";
+import { prisma } from "../config/db.js";
 import { Prisma } from "@prisma/client";
 
 export async function writeAuditLog(params: {

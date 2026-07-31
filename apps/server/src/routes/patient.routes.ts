@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { z } from "zod";
-import { validate } from "../middlewares/validate.middleware";
-import { authenticate } from "../middlewares/auth.middleware";
-import { requireRole } from "../middlewares/rbac.middleware";
+import { validate } from "../middlewares/validate.middleware.js";
+import { authenticate } from "../middlewares/auth.middleware.js";
+import { requireRole } from "../middlewares/rbac.middleware.js";
 import {
   patientRegistrationSchema,
   updatePatientSchema,
   emergencyContactSchema,
 } from "@medicore/shared";
-import * as patientController from "../controllers/patient.controller";
+import * as patientController from "../controllers/patient.controller.js";
 
 const router = Router();
 

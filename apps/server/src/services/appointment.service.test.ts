@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { prisma } from "../config/db";
+import { prisma } from "../config/db.js";
 
 vi.mock("../config/db", () => ({
   prisma: {
@@ -45,7 +45,7 @@ describe("AppointmentService", () => {
   describe("bookAppointment", () => {
     it("should throw if slot not found", async () => {
       vi.mocked(prisma.appointmentSlot.findUnique).mockResolvedValue(null);
-      const { bookAppointment } = await import("./appointment.service");
+      const { bookAppointment } = await import("./appointment.service.js");
       await expect(
         bookAppointment({ patientId: "p1", doctorId: "d1", slotId: "s1" }),
       ).rejects.toThrow("Slot not found");
@@ -59,7 +59,7 @@ describe("AppointmentService", () => {
         isBooked: false,
         appointment: null,
       } as any);
-      const { bookAppointment } = await import("./appointment.service");
+      const { bookAppointment } = await import("./appointment.service.js");
       await expect(
         bookAppointment({ patientId: "p1", doctorId: "d1", slotId: "s1" }),
       ).rejects.toThrow("blocked");
@@ -73,7 +73,7 @@ describe("AppointmentService", () => {
         isBooked: true,
         appointment: null,
       } as any);
-      const { bookAppointment } = await import("./appointment.service");
+      const { bookAppointment } = await import("./appointment.service.js");
       await expect(
         bookAppointment({ patientId: "p1", doctorId: "d1", slotId: "s1" }),
       ).rejects.toThrow("already booked");
@@ -103,7 +103,7 @@ describe("AppointmentService", () => {
         slot: { id: "s1", startTime: new Date(), endTime: new Date() },
       } as any);
 
-      const { bookAppointment } = await import("./appointment.service");
+      const { bookAppointment } = await import("./appointment.service.js");
       const result = await bookAppointment({
         patientId: "p1",
         doctorId: "d1",
@@ -139,7 +139,7 @@ describe("AppointmentService", () => {
         return fn(tx);
       });
 
-      const { cancelAppointment } = await import("./appointment.service");
+      const { cancelAppointment } = await import("./appointment.service.js");
       const result = await cancelAppointment("apt-1", "Changed mind", "u1", {
         userId: "u1",
         role: "RECEPTIONIST",
@@ -155,7 +155,7 @@ describe("AppointmentService", () => {
         slot: { id: "s1" },
       } as any);
 
-      const { cancelAppointment } = await import("./appointment.service");
+      const { cancelAppointment } = await import("./appointment.service.js");
       await expect(
         cancelAppointment("apt-1", "reason", "u1", { userId: "u1", role: "RECEPTIONIST" }),
       ).rejects.toThrow("Cannot cancel");
@@ -171,7 +171,7 @@ describe("AppointmentService", () => {
         doctor: { userId: "d-user" },
       } as any);
 
-      const { cancelAppointment } = await import("./appointment.service");
+      const { cancelAppointment } = await import("./appointment.service.js");
       await expect(
         cancelAppointment("apt-1", "reason", "attacker", {
           userId: "attacker",
@@ -187,7 +187,7 @@ describe("AppointmentService", () => {
       vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
       vi.mocked(prisma.appointment.count).mockResolvedValue(0 as any);
 
-      const { getAppointments } = await import("./appointment.service");
+      const { getAppointments } = await import("./appointment.service.js");
       // Asking for someone else's appointments must not widen the scope.
       await getAppointments({ patientId: "p-other" }, { userId: "u1", role: "PATIENT" });
 
@@ -199,7 +199,7 @@ describe("AppointmentService", () => {
       vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
       vi.mocked(prisma.appointment.count).mockResolvedValue(0 as any);
 
-      const { getAppointments } = await import("./appointment.service");
+      const { getAppointments } = await import("./appointment.service.js");
       await getAppointments({}, { userId: "u2", role: "RECEPTIONIST" });
 
       const where = vi.mocked(prisma.appointment.findMany).mock.calls[0]![0]!.where as any;
@@ -214,7 +214,7 @@ describe("AppointmentService", () => {
         doctor: { userId: "d-user" },
       } as any);
 
-      const { getAppointmentById } = await import("./appointment.service");
+      const { getAppointmentById } = await import("./appointment.service.js");
       await expect(
         getAppointmentById("apt-1", { userId: "attacker", role: "PATIENT" }),
       ).rejects.toThrow("Not authorised");
@@ -233,7 +233,7 @@ describe("AppointmentService", () => {
         patient: { id: "p1" },
       } as any);
 
-      const { checkInAppointment } = await import("./appointment.service");
+      const { checkInAppointment } = await import("./appointment.service.js");
       await expect(checkInAppointment("qr-token", "u1")).rejects.toThrow("Too early");
     });
   });

@@ -1,5 +1,5 @@
-import { prisma } from "../config/db";
-import { getCached, setCached } from "../config/redis";
+import { prisma } from "../config/db.js";
+import { getCached, setCached } from "../config/redis.js";
 import type { UpdateSettingsInput } from "@medicore/shared";
 
 const SETTINGS_CACHE_KEY = "hospital:settings";

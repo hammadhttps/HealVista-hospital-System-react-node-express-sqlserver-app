@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import * as queueService from "../services/queue.service";
-import * as appointmentService from "../services/appointment.service";
-import { sendSuccess } from "../utils/apiResponse";
-import { AppError } from "../utils/AppError";
+import * as queueService from "../services/queue.service.js";
+import * as appointmentService from "../services/appointment.service.js";
+import { sendSuccess } from "../utils/apiResponse.js";
+import { AppError } from "../utils/AppError.js";
 
 export async function issueToken(req: Request, res: Response, next: NextFunction) {
   try {

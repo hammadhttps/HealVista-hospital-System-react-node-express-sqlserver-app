@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import * as settingsService from "../services/settings.service";
-import { sendSuccess } from "../utils/apiResponse";
+import * as settingsService from "../services/settings.service.js";
+import { sendSuccess } from "../utils/apiResponse.js";
 
 export async function get(_req: Request, res: Response, next: NextFunction) {
   try {

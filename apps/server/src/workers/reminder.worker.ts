@@ -1,8 +1,8 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis";
-import { prisma } from "../config/db";
-import { dispatchNotification, clearReminderJobIds } from "../services/notification.service";
-import { logger } from "../utils/logger";
+import { redis } from "../config/redis.js";
+import { prisma } from "../config/db.js";
+import { dispatchNotification, clearReminderJobIds } from "../services/notification.service.js";
+import { logger } from "../utils/logger.js";
 
 export function startReminderWorker(): Worker | null {
   if (!redis) {

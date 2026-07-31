@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import * as holidayService from "../services/holiday.service";
-import { sendSuccess } from "../utils/apiResponse";
+import * as holidayService from "../services/holiday.service.js";
+import { sendSuccess } from "../utils/apiResponse.js";
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {

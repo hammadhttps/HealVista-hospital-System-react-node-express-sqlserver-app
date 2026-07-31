@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import bcrypt from "bcryptjs";
-import { prisma } from "../config/db";
-import * as patientService from "./patient.service";
+import { prisma } from "../config/db.js";
+import * as patientService from "./patient.service.js";
 
 vi.mock("../config/db", () => ({
   prisma: {

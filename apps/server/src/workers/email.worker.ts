@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis";
-import { sendEmail } from "../services/email.service";
-import { logger } from "../utils/logger";
+import { redis } from "../config/redis.js";
+import { sendEmail } from "../services/email.service.js";
+import { logger } from "../utils/logger.js";
 
 export function startEmailWorker(): Worker | null {
   if (!redis) {

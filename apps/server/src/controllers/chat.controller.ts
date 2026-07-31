@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import * as chatService from "../services/chat.service";
-import { sendSuccess, sendPaginated } from "../utils/apiResponse";
+import * as chatService from "../services/chat.service.js";
+import { sendSuccess, sendPaginated } from "../utils/apiResponse.js";
 
 export async function getThreads(req: Request, res: Response, next: NextFunction) {
   try {

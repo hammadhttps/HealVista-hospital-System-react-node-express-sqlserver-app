@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import * as patientService from "../services/patient.service";
-import { sendSuccess, sendPaginated } from "../utils/apiResponse";
+import * as patientService from "../services/patient.service.js";
+import { sendSuccess, sendPaginated } from "../utils/apiResponse.js";
 
 export async function register(req: Request, res: Response, next: NextFunction) {
   try {

@@ -1,6 +1,6 @@
-import { prisma } from "../config/db";
-import { AppError } from "../utils/AppError";
-import { writeAuditLog } from "../utils/audit";
+import { prisma } from "../config/db.js";
+import { AppError } from "../utils/AppError.js";
+import { writeAuditLog } from "../utils/audit.js";
 
 export async function list() {
   const profiles = await prisma.staffProfile.findMany({

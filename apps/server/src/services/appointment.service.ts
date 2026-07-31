@@ -1,15 +1,15 @@
-import { prisma } from "../config/db";
-import { redis } from "../config/redis";
-import { AppError } from "../utils/AppError";
-import { writeAuditLog } from "../utils/audit";
-import { unlockSlotInRedis } from "./slot.service";
+import { prisma } from "../config/db.js";
+import { redis } from "../config/redis.js";
+import { AppError } from "../utils/AppError.js";
+import { writeAuditLog } from "../utils/audit.js";
+import { unlockSlotInRedis } from "./slot.service.js";
 import {
   dispatchNotification,
   storeReminderJobId,
   clearReminderJobIds,
-} from "./notification.service";
-import { addReminderJob } from "../config/bull";
-import { createThreadForAppointment } from "./chat.service";
+} from "./notification.service.js";
+import { addReminderJob } from "../config/bull.js";
+import { createThreadForAppointment } from "./chat.service.js";
 import crypto from "crypto";
 import PDFDocument from "pdfkit";
 

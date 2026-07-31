@@ -1,6 +1,6 @@
-import { prisma } from "../config/db";
-import { redis } from "../config/redis";
-import { AppError } from "../utils/AppError";
+import { prisma } from "../config/db.js";
+import { redis } from "../config/redis.js";
+import { AppError } from "../utils/AppError.js";
 
 export async function list(search?: string) {
   const where: any = { deletedAt: null };

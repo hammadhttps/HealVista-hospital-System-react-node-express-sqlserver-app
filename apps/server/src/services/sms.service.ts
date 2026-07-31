@@ -1,4 +1,5 @@
-import { env } from "../config/env";
+import twilio from "twilio";
+import { env } from "../config/env.js";
 
 interface SmsProvider {
   send(to: string, body: string): Promise<boolean>;
@@ -13,7 +14,6 @@ class TwilioProvider implements SmsProvider {
       console.warn("[sms] Twilio not configured");
       return null;
     }
-    const twilio = require("twilio");
     this.client = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
     return this.client;
   }

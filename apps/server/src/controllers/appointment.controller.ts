@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import * as appointmentService from "../services/appointment.service";
-import * as slotService from "../services/slot.service";
-import * as patientService from "../services/patient.service";
-import { sendSuccess, sendPaginated } from "../utils/apiResponse";
+import * as appointmentService from "../services/appointment.service.js";
+import * as slotService from "../services/slot.service.js";
+import * as patientService from "../services/patient.service.js";
+import { sendSuccess, sendPaginated } from "../utils/apiResponse.js";
 
 export async function book(req: Request, res: Response, next: NextFunction) {
   try {

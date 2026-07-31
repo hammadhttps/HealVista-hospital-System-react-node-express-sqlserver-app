@@ -11,8 +11,8 @@ vi.hoisted(() => {
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { prisma } from "../config/db";
-import * as authService from "./auth.service";
+import { prisma } from "../config/db.js";
+import * as authService from "./auth.service.js";
 
 vi.mock("../config/db", () => ({
   prisma: {

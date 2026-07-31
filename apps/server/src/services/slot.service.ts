@@ -1,5 +1,5 @@
-import { prisma } from "../config/db";
-import { AppError } from "../utils/AppError";
+import { prisma } from "../config/db.js";
+import { AppError } from "../utils/AppError.js";
 
 function getDateRange(daysAhead: number = 60) {
   const today = new Date();
@@ -183,7 +183,7 @@ export async function getSlotById(slotId: string) {
 }
 
 export async function lockSlotInRedis(slotId: string, patientUserId: string, ttlMs = 300000) {
-  const { redis } = await import("../config/redis");
+  const { redis } = await import("../config/redis.js");
   if (!redis) return true;
   const key = `slot:${slotId}`;
   const result = await redis.set(key, patientUserId, "PX", ttlMs, "NX");
@@ -191,7 +191,7 @@ export async function lockSlotInRedis(slotId: string, patientUserId: string, ttl
 }
 
 export async function unlockSlotInRedis(slotId: string) {
-  const { redis } = await import("../config/redis");
+  const { redis } = await import("../config/redis.js");
   if (!redis) return;
   await redis.del(`slot:${slotId}`);
 }

@@ -1,10 +1,10 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { prisma } from "../config/db";
-import { env } from "../config/env";
-import { AppError } from "../utils/AppError";
-import { writeAuditLog } from "../utils/audit";
+import { prisma } from "../config/db.js";
+import { env } from "../config/env.js";
+import { AppError } from "../utils/AppError.js";
+import { writeAuditLog } from "../utils/audit.js";
 import type { RegisterInput, LoginInput } from "@medicore/shared";
 
 const BCRYPT_ROUNDS = 12;

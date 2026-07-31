@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { validate } from "../middlewares/validate.middleware";
-import { authenticate, optionalAuth } from "../middlewares/auth.middleware";
-import { requireRole } from "../middlewares/rbac.middleware";
+import { validate } from "../middlewares/validate.middleware.js";
+import { authenticate, optionalAuth } from "../middlewares/auth.middleware.js";
+import { requireRole } from "../middlewares/rbac.middleware.js";
 import {
   doctorUpdateSchema,
   doctorAvailabilitySchema,
@@ -9,7 +9,7 @@ import {
   availabilityExceptionSchema,
   symptomMatchSchema,
 } from "@medicore/shared";
-import * as doctorController from "../controllers/doctor.controller";
+import * as doctorController from "../controllers/doctor.controller.js";
 
 const router = Router();
 

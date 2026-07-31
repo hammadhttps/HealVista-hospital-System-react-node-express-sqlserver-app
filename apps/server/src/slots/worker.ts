@@ -1,6 +1,6 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis";
-import { generateSlotsForAllDoctors } from "../services/slot.service";
+import { redis } from "../config/redis.js";
+import { generateSlotsForAllDoctors } from "../services/slot.service.js";
 
 export function startSlotGenerationWorker() {
   if (!redis) {

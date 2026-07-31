@@ -1,10 +1,11 @@
 import { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import jwt from "jsonwebtoken";
-import { env } from "../config/env";
-import { redis } from "../config/redis";
-import { logger } from "../utils/logger";
-import type { JwtPayload } from "../middlewares/auth.middleware";
+import { env } from "../config/env.js";
+import { allowedOrigins } from "../config/cors.js";
+import { redis } from "../config/redis.js";
+import { logger } from "../utils/logger.js";
+import type { JwtPayload } from "../middlewares/auth.middleware.js";
 
 let io: Server | null = null;
 
@@ -16,7 +17,7 @@ export function getIO(): Server {
 export function setupSocketIO(httpServer: HttpServer) {
   io = new Server(httpServer, {
     cors: {
-      origin: env.CLIENT_URL,
+      origin: allowedOrigins,
       credentials: true,
     },
   });
@@ -63,7 +64,7 @@ export function setupSocketIO(httpServer: HttpServer) {
 
     socket.on("join:appointment", async ({ appointmentId }: { appointmentId: string }) => {
       try {
-        const { prisma } = await import("../config/db");
+        const { prisma } = await import("../config/db.js");
         const appointment = await prisma.appointment.findUnique({
           where: { id: appointmentId },
           select: { patient: { select: { userId: true } }, doctor: { select: { userId: true } } },

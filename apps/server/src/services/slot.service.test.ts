@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { prisma } from "../config/db";
+import { prisma } from "../config/db.js";
 
 vi.mock("../config/db", () => ({
   prisma: {
@@ -21,7 +21,7 @@ describe("SlotService", () => {
   describe("generateSlotsForDoctor", () => {
     it("should throw if doctor not found", async () => {
       vi.mocked(prisma.doctor.findUnique).mockResolvedValue(null);
-      const { generateSlotsForDoctor } = await import("./slot.service");
+      const { generateSlotsForDoctor } = await import("./slot.service.js");
 
       await expect(generateSlotsForDoctor("nonexistent")).rejects.toThrow("Doctor not found");
     });
@@ -35,7 +35,7 @@ describe("SlotService", () => {
       vi.mocked(prisma.availabilityException.findMany).mockResolvedValue([]);
       vi.mocked(prisma.appointmentSlot.findMany).mockResolvedValue([]);
 
-      const { generateSlotsForDoctor } = await import("./slot.service");
+      const { generateSlotsForDoctor } = await import("./slot.service.js");
       const result = await generateSlotsForDoctor("doc-1");
       expect(result.count).toBe(0);
     });
@@ -74,7 +74,7 @@ describe("SlotService", () => {
       vi.mocked(prisma.appointmentSlot.findMany).mockResolvedValue([]);
       vi.mocked(prisma.doctorDepartment.findMany).mockResolvedValue([]);
 
-      const { generateSlotsForDoctor } = await import("./slot.service");
+      const { generateSlotsForDoctor } = await import("./slot.service.js");
       const result = await generateSlotsForDoctor("doc-1", today, today);
       expect(result.count).toBe(0);
     });
@@ -113,7 +113,7 @@ describe("SlotService", () => {
       vi.mocked(prisma.doctorDepartment.findMany).mockResolvedValue([]);
       vi.mocked(prisma.appointmentSlot.createMany).mockResolvedValue({ count: 8 });
 
-      const { generateSlotsForDoctor } = await import("./slot.service");
+      const { generateSlotsForDoctor } = await import("./slot.service.js");
       const firstRun = await generateSlotsForDoctor("doc-2", today, tomorrow);
       expect(firstRun.count).toBeGreaterThan(0);
 

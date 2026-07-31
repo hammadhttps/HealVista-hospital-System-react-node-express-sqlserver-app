@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import * as doctorService from "../services/doctor.service";
-import { sendSuccess, sendPaginated } from "../utils/apiResponse";
-import { AppError } from "../utils/AppError";
+import * as doctorService from "../services/doctor.service.js";
+import { sendSuccess, sendPaginated } from "../utils/apiResponse.js";
+import { AppError } from "../utils/AppError.js";
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {

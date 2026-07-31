@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { authenticate } from "../middlewares/auth.middleware";
-import { requireRole } from "../middlewares/rbac.middleware";
-import * as queueController from "../controllers/queue.controller";
+import { authenticate } from "../middlewares/auth.middleware.js";
+import { requireRole } from "../middlewares/rbac.middleware.js";
+import * as queueController from "../controllers/queue.controller.js";
 
 const router = Router();
 
