@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import crypto from "crypto";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
-import { allowedOrigins } from "./config/cors.js";
+import { isOriginAllowed } from "./config/cors.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { logger } from "./utils/logger.js";
 import authRoutes from "./routes/auth.routes.js";
@@ -30,7 +30,7 @@ app.use(helmet());
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || isOriginAllowed(origin)) {
         callback(null, true);
       } else {
         callback(null, false);
