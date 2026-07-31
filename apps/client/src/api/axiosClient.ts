@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const API_URL: string = import.meta.env.VITE_API_URL || "/api";
+const API_URL: string =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? "https://healvista-hospital-system-react-node.onrender.com/api" : "/api");
 
 const axiosClient = axios.create({
   baseURL: API_URL,

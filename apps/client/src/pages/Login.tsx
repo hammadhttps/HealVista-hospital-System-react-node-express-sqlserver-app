@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogIn, HeartPulse } from "lucide-react";
 import { useLogin } from "../hooks/mutations/useAuthMutations";
+import { getErrorMessage } from "../utils/errors";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -20,16 +21,12 @@ export default function LoginPage() {
         <div className="flex flex-col items-center mb-6">
           <HeartPulse className="w-12 h-12 text-green-600 mb-2" />
           <h1 className="text-3xl font-bold text-green-800">HealVista</h1>
-          <p className="text-green-600 text-sm mt-1">
-            Hospital Management System
-          </p>
+          <p className="text-green-600 text-sm mt-1">Hospital Management System</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Email
-            </label>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
             <input
               type="email"
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent"
@@ -40,9 +37,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">
-              Password
-            </label>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Password</label>
             <input
               type="password"
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent"
@@ -55,7 +50,7 @@ export default function LoginPage() {
 
           {login.isError && (
             <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
-              {(login.error as any)?.response?.data?.error || "Login failed"}
+              {getErrorMessage(login.error, "Login failed")}
             </div>
           )}
 

@@ -47,9 +47,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
     const token = localStorage.getItem("accessToken");
     const opts = { auth: { token }, transports: ["websocket"] };
-    const origin: string = import.meta.env.VITE_API_URL
-      ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, "")
-      : "";
+    const origin: string = (
+      import.meta.env.VITE_API_URL ||
+      (import.meta.env.PROD ? "https://healvista-hospital-system-react-node.onrender.com/api" : "")
+    ).replace(/\/api\/?$/, "");
 
     const aptSocket = io(`${origin}/appointments`, opts);
     setAppointmentSocket(aptSocket);

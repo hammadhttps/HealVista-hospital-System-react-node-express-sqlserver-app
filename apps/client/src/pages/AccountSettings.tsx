@@ -4,6 +4,7 @@ import { authApi } from "../api/auth";
 import { useSessions } from "../hooks/queries/useAuth";
 import { useQueryClient } from "@tanstack/react-query";
 import { authKeys } from "../hooks/queries/useAuth";
+import { getErrorMessage } from "../utils/errors";
 
 export default function AccountSettings() {
   const user = useAuthStore((s) => s.user);
@@ -24,7 +25,7 @@ export default function AccountSettings() {
       setMsg("Password changed.");
       setPasswords({ current: "", newPw: "" });
     } catch (err: any) {
-      setErr(err?.response?.data?.error || "Failed");
+      setErr(getErrorMessage(err, "Failed"));
     }
   };
 
@@ -37,7 +38,7 @@ export default function AccountSettings() {
       setMsg("Email changed. Verify your new email.");
       setEmailForm({ email: "", password: "" });
     } catch (err: any) {
-      setErr(err?.response?.data?.error || "Failed");
+      setErr(getErrorMessage(err, "Failed"));
     }
   };
 

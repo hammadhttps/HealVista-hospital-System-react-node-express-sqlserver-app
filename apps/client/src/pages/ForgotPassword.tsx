@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { HeartPulse, Mail, ArrowLeft } from "lucide-react";
 import { authApi } from "../api/auth";
+import { getErrorMessage } from "../utils/errors";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
@@ -17,7 +18,7 @@ export default function ForgotPassword() {
       await authApi.resendVerification(email);
       setSent(true);
     } catch (err: any) {
-      setError(err?.response?.data?.error || "Failed to send verification");
+      setError(getErrorMessage(err, "Failed to send verification"));
     } finally {
       setLoading(false);
     }

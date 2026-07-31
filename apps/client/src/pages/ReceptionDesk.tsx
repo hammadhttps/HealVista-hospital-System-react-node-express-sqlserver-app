@@ -11,6 +11,7 @@ import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
+import { getErrorMessage } from "../utils/errors";
 
 const statusColor: Record<string, string> = {
   PENDING_PAYMENT: "warning",
@@ -51,7 +52,7 @@ export default function ReceptionDesk() {
         inputRef.current?.focus();
       },
       onError: (err: any) => {
-        toast.error(err?.response?.data?.error ?? "Check-in failed");
+        toast.error(getErrorMessage(err, "Check-in failed"));
         setToken("");
         inputRef.current?.focus();
       },
