@@ -8,16 +8,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/UI/card"
 import { Badge } from "../components/UI/badge";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
+import { FavouriteToggle } from "../components/doctors/FavouriteToggle";
 
 export default function DoctorSearch() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<Record<string, string | number>>({});
+  // Seeded so the page lists doctors on first load rather than showing a false
+  // "no doctors found" empty state before anyone has typed anything.
+  const [filters, setFilters] = useState<Record<string, string | number>>({
+    page: 1,
+    limit: 20,
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["doctors", "search", filters],
     queryFn: () => doctorSearchApi.search(filters),
-    enabled: Object.keys(filters).length > 0,
   });
 
   const doctors = data?.data ?? data ?? [];
@@ -60,8 +65,9 @@ export default function DoctorSearch() {
               className="cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => navigate(`/doctors/${doc.id}`)}
             >
-              <CardHeader>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0">
                 <CardTitle className="text-lg">{doc.fullName}</CardTitle>
+                <FavouriteToggle doctorId={doc.id} />
               </CardHeader>
               <CardContent className="space-y-2">
                 <p className="text-sm text-muted-foreground">{doc.bio}</p>

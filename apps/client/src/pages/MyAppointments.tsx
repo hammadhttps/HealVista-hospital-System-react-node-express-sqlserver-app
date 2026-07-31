@@ -7,6 +7,7 @@ import { Badge } from "../components/UI/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/UI/tabs";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
+import { AppointmentQR } from "../components/appointments/AppointmentQR";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -123,10 +124,8 @@ export default function MyAppointments() {
                             </Button>
                           </>
                         )}
-                        {apt.qrToken && apt.status === "CONFIRMED" && (
-                          <p className="text-xs text-muted-foreground">
-                            QR: {apt.qrToken.slice(0, 8)}...
-                          </p>
+                        {apt.qrToken && (apt.status === "CONFIRMED" || apt.status === "CHECKED_IN") && (
+                          <AppointmentQR qrToken={apt.qrToken} appointmentNo={apt.appointmentNo} />
                         )}
                       </div>
                     </CardContent>

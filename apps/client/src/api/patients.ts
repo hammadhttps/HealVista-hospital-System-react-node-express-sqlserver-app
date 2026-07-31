@@ -10,3 +10,11 @@ export const patientApi = {
   update: (id: string, data: any) =>
     axiosClient.patch(`/patients/${id}`, data).then((r) => r.data.data),
 };
+
+export const favouriteApi = {
+  list: () => axiosClient.get("/patients/me/favourites").then((r) => r.data.data),
+  add: (doctorId: string) =>
+    axiosClient.post("/patients/me/favourites", { doctorId }).then((r) => r.data.data),
+  remove: (doctorId: string) =>
+    axiosClient.delete(`/patients/me/favourites/${doctorId}`).then((r) => r.data.data),
+};

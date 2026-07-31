@@ -21,10 +21,13 @@ export function RoleRoute({
   role,
 }: {
   children: React.ReactNode;
-  role: string;
+  /** A single role, or any of several — e.g. a front-desk page ADMIN may also open. */
+  role: string | string[];
 }) {
   const { user } = useAuthStore();
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== role) return <Navigate to="/" replace />;
+
+  const allowed = Array.isArray(role) ? role : [role];
+  if (!allowed.includes(user.role)) return <Navigate to="/" replace />;
   return <>{children}</>;
 }

@@ -23,6 +23,11 @@ import BookingConfirm from "./pages/BookingConfirm";
 import MyAppointments from "./pages/MyAppointments";
 import DoctorSchedule from "./pages/DoctorSchedule";
 import LiveQueue from "./pages/LiveQueue";
+import NotificationPreferences from "./pages/NotificationPreferences";
+import ChatPage from "./pages/ChatPage";
+import ReceptionDesk from "./pages/ReceptionDesk";
+import QueueDisplay from "./pages/QueueDisplay";
+import FavouriteDoctors from "./pages/FavouriteDoctors";
 import { AdminDashboard, DoctorDashboard, PatientDashboard } from "./pages/Dashboard";
 
 export default function App() {
@@ -125,6 +130,22 @@ export default function App() {
                   </RoleRoute>
                 }
               />
+              <Route
+                path="/patient/favourites"
+                element={
+                  <RoleRoute role="PATIENT">
+                    <FavouriteDoctors />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/reception"
+                element={
+                  <RoleRoute role={["RECEPTIONIST", "ADMIN"]}>
+                    <ReceptionDesk />
+                  </RoleRoute>
+                }
+              />
 
               {/* Shared routes */}
               <Route path="/doctors" element={<DoctorSearch />} />
@@ -133,8 +154,21 @@ export default function App() {
               <Route path="/patients" element={<PatientList />} />
               <Route path="/patients/register" element={<PatientRegistration />} />
               <Route path="/patients/:id" element={<PatientDetail />} />
+              <Route path="/notifications/preferences" element={<NotificationPreferences />} />
+              <Route path="/chat" element={<ChatPage />} />
               <Route path="/settings" element={<AccountSettings />} />
             </Route>
+
+            {/* Waiting-room screen: full-bleed, no AppShell chrome. Still authenticated —
+                it renders patient information, masked but not public. */}
+            <Route
+              path="/queue/display/:doctorId"
+              element={
+                <ProtectedRoute>
+                  <QueueDisplay />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

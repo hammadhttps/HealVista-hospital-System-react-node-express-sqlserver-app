@@ -2,7 +2,19 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../../api/auth";
 import { useAuthStore } from "../../store/authStore";
-import { authKeys } from "../queries/useAuth";
+/**
+ * Post-login landing route per role. Every value must be a real route in App.tsx —
+ * roles without a dedicated dashboard yet land on the shared page they actually use.
+ */
+const LANDING_BY_ROLE: Record<string, string> = {
+  ADMIN: "/admin",
+  DOCTOR: "/doctor",
+  PATIENT: "/patient",
+  RECEPTIONIST: "/reception",
+  PHARMACIST: "/patients",
+  LAB_TECHNICIAN: "/patients",
+  ACCOUNTANT: "/patients",
+};
 
 export function useLogin() {
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -11,12 +23,7 @@ export function useLogin() {
     mutationFn: authApi.login,
     onSuccess: (data) => {
       setAuth(data.user, data.accessToken);
-      const role = data.user.role.toLowerCase();
-      if (role === "admin") navigate("/admin");
-      else if (role === "doctor") navigate("/doctor");
-      else if (role === "patient") navigate("/patient");
-      else if (role === "receptionist") navigate("/reception");
-      else navigate("/");
+      navigate(LANDING_BY_ROLE[data.user.role] ?? "/");
     },
   });
 }

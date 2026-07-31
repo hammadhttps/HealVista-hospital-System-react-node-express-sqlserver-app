@@ -32,9 +32,19 @@ export default function LiveQueue() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Live Queue</h1>
-        <Button onClick={handleCallNext} disabled={callNext.isPending}>
-          {callNext.isPending ? "Calling..." : "Call Next"}
-        </Button>
+        <div className="flex gap-2">
+          {doctorId && (
+            <Button
+              variant="outline"
+              onClick={() => window.open(`/queue/display/${doctorId}`, "_blank", "noopener")}
+            >
+              Waiting-room screen
+            </Button>
+          )}
+          <Button onClick={handleCallNext} disabled={callNext.isPending}>
+            {callNext.isPending ? "Calling..." : "Call Next"}
+          </Button>
+        </div>
       </div>
 
       {isLoading && <Skeleton className="h-64" />}
