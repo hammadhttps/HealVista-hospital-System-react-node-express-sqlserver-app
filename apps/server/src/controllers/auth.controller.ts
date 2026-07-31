@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import * as authService from "../services/auth.service.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 import { AppError } from "../utils/AppError.js";
+import { env } from "../config/env.js";
 
 export async function register(req: Request, res: Response, next: NextFunction) {
   try {
@@ -19,8 +20,8 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 
     res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/api/auth",
     });
@@ -44,8 +45,8 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
 
     res.cookie("refreshToken", result.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: env.NODE_ENV === "production",
+      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       path: "/api/auth",
     });

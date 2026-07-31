@@ -32,7 +32,8 @@ axiosClient.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    const isAuthAttempt = /\/auth\/(login|register)$/.test(original.url || "");
+    if (error.response?.status === 401 && !original._retry && !isAuthAttempt) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
