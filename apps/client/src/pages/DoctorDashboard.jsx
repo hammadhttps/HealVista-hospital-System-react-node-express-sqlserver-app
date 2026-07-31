@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Calendar, Stethoscope, User, ClipboardList, Activity, Pill, Ambulance, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import Layout from '../components/Layout/Layout';
-import DataTable from '../components/UI/DataTable';
+import DataTable from '../components/ui/DataTable';
 import useAuthStore from '../store/useAuthStore';
-// StatusBadge from '../components/UI/StatusBadge';
+// StatusBadge from '../components/ui/StatusBadge';
 
 const appointmentColumns = [
     {

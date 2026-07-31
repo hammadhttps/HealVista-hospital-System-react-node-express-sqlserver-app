@@ -5,10 +5,10 @@ import { toast } from "sonner";
 import { UserPlus, ScanLine } from "lucide-react";
 import { useAppointments } from "../hooks/queries/useAppointments";
 import { useCheckInScan } from "../hooks/mutations/useAppointmentMutations";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/UI/card";
-import { Button } from "../components/UI/button";
-import { Input } from "../components/UI/input";
-import { Badge } from "../components/UI/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 

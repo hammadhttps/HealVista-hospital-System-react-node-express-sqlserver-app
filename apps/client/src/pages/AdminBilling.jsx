@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout/Layout';
-import Table from '../components/UI/Table';
+import Table from '../components/ui/Table';
 
 const columns = [
     { header: 'Bill ID', accessor: 'bill_id' },

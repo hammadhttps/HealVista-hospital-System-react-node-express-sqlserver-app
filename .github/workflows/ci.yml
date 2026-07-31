@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: "20"
 
 jobs:
   # ── Detect what changed so we only run what's relevant ──────────────────────
@@ -82,6 +82,14 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
 
+      # Production build — catches issues like case-sensitive imports on Linux
+      # that typecheck alone does not surface (Vite bundling, esbuild transforms).
+      - name: Production build
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: http://localhost:5000/api
+          VITE_SOCKET_URL: http://localhost:5000
+
   # ── Server tests against real Postgres + Redis ─────────────────────────────
   test-server:
     name: Server tests
@@ -96,7 +104,7 @@ jobs:
           POSTGRES_USER: medicore
           POSTGRES_PASSWORD: medicore
           POSTGRES_DB: medicore_test
-        ports: ['5432:5432']
+        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U medicore"
           --health-interval 5s
@@ -105,7 +113,7 @@ jobs:
 
       redis:
         image: redis:7-alpine
-        ports: ['6379:6379']
+        ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s

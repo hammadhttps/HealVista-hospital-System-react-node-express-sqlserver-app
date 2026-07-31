@@ -9,16 +9,16 @@ import {
 } from "../hooks/mutations/useAppointmentMutations";
 import { useQuery } from "@tanstack/react-query";
 import { doctorSearchApi } from "../api/appointments";
-import { Button } from "../components/UI/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/UI/card";
-import { Input } from "../components/UI/input";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Input } from "../components/ui/input";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "../components/UI/select";
+} from "../components/ui/select";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { toast } from "sonner";

@@ -2,8 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { useBookingStore } from "../store/bookingStore";
 import { useBookAppointment } from "../hooks/mutations/useAppointmentMutations";
 import { useDoctorAvailability } from "../hooks/queries/useAppointments";
-import { Button } from "../components/UI/button";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/UI/card";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { toast } from "sonner";
 
 export default function BookingConfirm() {

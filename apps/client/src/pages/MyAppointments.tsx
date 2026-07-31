@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useMyAppointments } from "../hooks/queries/useAppointments";
 import { useCancelAppointment, useCheckIn } from "../hooks/mutations/useAppointmentMutations";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/UI/card";
-import { Button } from "../components/UI/button";
-import { Badge } from "../components/UI/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/UI/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { AppointmentQR } from "../components/appointments/AppointmentQR";

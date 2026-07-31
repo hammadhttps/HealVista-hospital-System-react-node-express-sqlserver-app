@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useFavouriteDoctors } from "../hooks/queries/usePatients";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/UI/card";
-import { Badge } from "../components/UI/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { FavouriteToggle } from "../components/doctors/FavouriteToggle";

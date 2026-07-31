@@ -7,9 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm-run-all --parallel dev:*",
+    "dev": "npm run build -w packages/shared && npm-run-all --parallel dev:*",
     "dev:client": "npm run dev -w apps/client",
-    "dev:server": "npm run build -w packages/shared && npm run dev -w apps/server",
+    "dev:server": "npm run dev -w apps/server",
     "build": "npm run build -w packages/shared && npm run build -w apps/server && npm run build -w apps/client",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint . --max-warnings 0",

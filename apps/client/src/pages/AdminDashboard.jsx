@@ -4,9 +4,9 @@ import {
     DollarSign, MessageSquare, ClipboardList, Users, AlertCircle
 } from 'lucide-react';
 import Layout from '../components/Layout/Layout';
-import StatCard from '../components/UI/StatCard';
-import DataTable from '../components/UI/DataTable';
-import StatusBadge from '../components/UI/StatusBadge';
+import StatCard from '../components/ui/StatCard';
+import DataTable from '../components/ui/DataTable';
+import StatusBadge from '../components/ui/StatusBadge';
 import AdminFeedback from './AdminFeedback';
 import AdminAmbulances from './AdminAmbulances';
 import AdminBilling from './AdminBilling';
