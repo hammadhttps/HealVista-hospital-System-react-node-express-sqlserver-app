@@ -7,7 +7,11 @@ export const notificationTypeEnum = z.enum([
   "APPOINTMENT_REMINDER",
   "PAYMENT_RECEIPT",
   "LAB_RESULT_READY",
+  // A life-threatening lab value. Deliberately distinct from LAB_RESULT_READY: this
+  // one ignores notification preferences (see notification.service).
+  "CRITICAL_RESULT",
   "LOW_STOCK_ALERT",
+  "BATCH_RECALL",
   "FOLLOW_UP_REMINDER",
   "CHAT_MESSAGE",
   "GENERAL",

@@ -575,6 +575,12 @@ export async function completeConsultation(
     throw new AppError(`Cannot complete consultation from status ${appointment.status}`, 400);
   }
 
+  // A completed consultation with no signed note is an encounter with no record of
+  // what happened in it. Enforced in the service so no other caller can route around
+  // it. Unlike the billing and follow-up steps below, this one blocks.
+  const { assertNoteSignedForCompletion } = await import("./note.service.js");
+  await assertNoteSignedForCompletion(appointmentId);
+
   const completed = await prisma.appointment.update({
     where: { id: appointmentId },
     data: { status: "COMPLETED", consultEndAt: new Date() },

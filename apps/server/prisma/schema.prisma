@@ -289,6 +289,7 @@ model Patient {
   emergencyContacts EmergencyContact[]
   appointments      Appointment[]
   medicalRecords    MedicalRecord[]
+  labOrders         LabOrder[]
   allergies         PatientAllergy[]
   conditions        PatientCondition[]
   vaccinations      Vaccination[]
@@ -343,6 +344,7 @@ model Doctor {
   favourites    FavouritePrescription[]
   noteTemplates NoteTemplate[]
   favouritedBy  FavouriteDoctor[]
+  labOrders     LabOrder[]
 
   @@index([verificationStatus, averageRating])
   @@map("doctors")
@@ -842,7 +844,9 @@ model LabOrder {
   appointmentId     String?
   appointment       Appointment?   @relation(fields: [appointmentId], references: [id])
   patientId         String
+  patient           Patient        @relation(fields: [patientId], references: [id])
   doctorId          String
+  doctor            Doctor         @relation(fields: [doctorId], references: [id])
   status            LabOrderStatus @default(ORDERED)
   sampleCollectedAt DateTime?
   collectedById     String?

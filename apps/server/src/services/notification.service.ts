@@ -20,15 +20,22 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
     where: { userId },
   });
 
+  /**
+   * A critical lab value is a patient-safety alert, not a notification. Preferences
+   * exist so people can mute noise; they must never be able to mute "this potassium
+   * level is life-threatening". Every channel is used regardless of settings.
+   */
+  const overridesPreferences = type === "CRITICAL_RESULT";
+
   const channels: string[] = [];
 
-  if (prefs?.inAppEnabled ?? true) {
+  if (overridesPreferences || (prefs?.inAppEnabled ?? true)) {
     channels.push("in_app");
   }
-  if (prefs?.smsEnabled ?? true) {
+  if (overridesPreferences || (prefs?.smsEnabled ?? true)) {
     channels.push("sms");
   }
-  if (prefs?.emailEnabled ?? true) {
+  if (!overridesPreferences && (prefs?.emailEnabled ?? true)) {
     channels.push("email");
   }
 
@@ -45,13 +52,18 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
     },
   });
 
-  const hasApptReminder = type === "APPOINTMENT_REMINDER" || type === "FOLLOW_UP_REMINDER";
-  const isLab = type === "LAB_RESULT_READY";
-  const isMarketing = type === "GENERAL";
+  // Per-category mutes. These are checked after the row is written so the item is
+  // still there when the user next opens their notification list — muting a category
+  // suppresses the interruption, not the record.
+  if (!overridesPreferences) {
+    const hasApptReminder = type === "APPOINTMENT_REMINDER" || type === "FOLLOW_UP_REMINDER";
+    const isLab = type === "LAB_RESULT_READY";
+    const isMarketing = type === "GENERAL";
 
-  if (hasApptReminder && prefs?.appointmentReminders === false) return;
-  if (isLab && prefs?.labResults === false) return;
-  if (isMarketing && prefs?.marketing === false) return;
+    if (hasApptReminder && prefs?.appointmentReminders === false) return;
+    if (isLab && prefs?.labResults === false) return;
+    if (isMarketing && prefs?.marketing === false) return;
+  }
 
   const socket = getIO().of("/notifications");
   socket.to(`user:${userId}`).emit("notification:new", notification);

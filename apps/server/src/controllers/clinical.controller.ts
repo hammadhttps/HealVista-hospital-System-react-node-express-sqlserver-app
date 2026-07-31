@@ -3,6 +3,7 @@ import * as historyService from "../services/history.service.js";
 import * as vitalsService from "../services/vitals.service.js";
 import * as dependentService from "../services/dependent.service.js";
 import * as prescriptionService from "../services/prescription.service.js";
+import * as noteService from "../services/note.service.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 
 // ─── Medical history ────────────────────────────────────────────────────────
@@ -398,6 +399,103 @@ export async function applyFavourite(req: Request, res: Response, next: NextFunc
 export async function deleteFavourite(req: Request, res: Response, next: NextFunction) {
   try {
     await prescriptionService.deleteFavourite(req.params.id as string, req.user!);
+    sendSuccess(res, { removed: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── Consultation notes ─────────────────────────────────────────────────────
+
+export async function getNote(req: Request, res: Response, next: NextFunction) {
+  try {
+    const note = await noteService.getNote(req.params.appointmentId as string, req.user!);
+    sendSuccess(res, note);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function saveNote(req: Request, res: Response, next: NextFunction) {
+  try {
+    const note = await noteService.upsertNote(
+      req.params.appointmentId as string,
+      req.body,
+      req.user!,
+    );
+    sendSuccess(res, note);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function signNote(req: Request, res: Response, next: NextFunction) {
+  try {
+    const note = await noteService.signNote(req.params.appointmentId as string, req.user!);
+    sendSuccess(res, note);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function addNoteAddendum(req: Request, res: Response, next: NextFunction) {
+  try {
+    const addendum = await noteService.addAddendum(
+      req.params.appointmentId as string,
+      req.body.content,
+      req.user!,
+    );
+    sendSuccess(res, addendum, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getPreviousNote(req: Request, res: Response, next: NextFunction) {
+  try {
+    const note = await noteService.getPreviousNote(
+      req.params.appointmentId as string,
+      req.user!,
+    );
+    sendSuccess(res, note);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listPatientNotes(req: Request, res: Response, next: NextFunction) {
+  try {
+    const notes = await noteService.listPatientNotes(
+      req.params.patientId as string,
+      req.user!,
+    );
+    sendSuccess(res, notes);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listNoteTemplates(req: Request, res: Response, next: NextFunction) {
+  try {
+    const templates = await noteService.listTemplates(req.user!);
+    sendSuccess(res, templates);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function saveNoteTemplate(req: Request, res: Response, next: NextFunction) {
+  try {
+    const template = await noteService.saveTemplate(req.body, req.user!);
+    sendSuccess(res, template, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteNoteTemplate(req: Request, res: Response, next: NextFunction) {
+  try {
+    await noteService.deleteTemplate(req.params.id as string, req.user!);
     sendSuccess(res, { removed: true });
   } catch (err) {
     next(err);

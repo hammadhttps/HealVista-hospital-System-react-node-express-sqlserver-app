@@ -104,4 +104,44 @@ router.delete(
   clinical.deleteFavourite,
 );
 
+// ─── Consultation notes ─────────────────────────────────────────────────────
+// Writes are treating-doctor-only; that check lives in note.service, which knows
+// which doctor owns the appointment. `requireRole('DOCTOR')` here only keeps
+// obviously-wrong roles out early.
+router.get("/appointments/:appointmentId/note", authenticate, clinical.getNote);
+router.get(
+  "/appointments/:appointmentId/note/previous",
+  authenticate,
+  requireRole("DOCTOR", "ADMIN"),
+  clinical.getPreviousNote,
+);
+router.put(
+  "/appointments/:appointmentId/note",
+  authenticate,
+  requireRole("DOCTOR"),
+  clinical.saveNote,
+);
+router.post(
+  "/appointments/:appointmentId/note/sign",
+  authenticate,
+  requireRole("DOCTOR"),
+  clinical.signNote,
+);
+router.post(
+  "/appointments/:appointmentId/note/addenda",
+  authenticate,
+  requireRole("DOCTOR"),
+  clinical.addNoteAddendum,
+);
+router.get("/patients/:patientId/notes", authenticate, clinical.listPatientNotes);
+
+router.get("/note-templates", authenticate, requireRole("DOCTOR"), clinical.listNoteTemplates);
+router.post("/note-templates", authenticate, requireRole("DOCTOR"), clinical.saveNoteTemplate);
+router.delete(
+  "/note-templates/:id",
+  authenticate,
+  requireRole("DOCTOR"),
+  clinical.deleteNoteTemplate,
+);
+
 export default router;
