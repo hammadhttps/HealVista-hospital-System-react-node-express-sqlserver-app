@@ -16,8 +16,13 @@ import {
 
 const router = Router();
 
-router.post("/register", validate(registerSchema), authController.register);
-router.post("/login", rateLimit(5, 15 * 60 * 1000), validate(loginSchema), authController.login);
+router.post(
+  "/register",
+  rateLimit(20, 60 * 60 * 1000),
+  validate(registerSchema),
+  authController.register,
+);
+router.post("/login", rateLimit(10, 15 * 60 * 1000), validate(loginSchema), authController.login);
 router.post("/refresh", authController.refresh);
 router.post("/verify-email", validate(verifyEmailSchema), authController.verifyEmail);
 router.post("/resend-verify", validate(resendVerifySchema), authController.resendVerification);
