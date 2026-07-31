@@ -3,7 +3,15 @@ import { redis } from "../config/redis";
 import { AppError } from "../utils/AppError";
 import { writeAuditLog } from "../utils/audit";
 import { unlockSlotInRedis } from "./slot.service";
+import {
+  dispatchNotification,
+  storeReminderJobId,
+  clearReminderJobIds,
+} from "./notification.service";
+import { addReminderJob } from "../config/bull";
+import { createThreadForAppointment } from "./chat.service";
 import crypto from "crypto";
+import PDFDocument from "pdfkit";
 
 function generateAppointmentNo(): string {
   const ts = Date.now().toString(36).toUpperCase();
@@ -13,6 +21,70 @@ function generateAppointmentNo(): string {
 
 function generateQrToken(): string {
   return crypto.randomBytes(24).toString("hex");
+}
+
+/** The caller identity every scoped read/write needs. Mirrors `JwtPayload`. */
+export interface Actor {
+  userId: string;
+  role: string;
+}
+
+/** Front-desk and admin roles see the whole schedule; clinical/patient roles do not. */
+const FRONT_DESK_ROLES = ["RECEPTIONIST", "ADMIN"];
+
+/**
+ * Resolves the appointment filter a caller is allowed to use.
+ *
+ * `requireRole()` proves the caller is *a* doctor, not *this* appointment's doctor —
+ * so scope is resolved here and applied in the query, never after it.
+ */
+async function resolveAppointmentScope(actor: Actor): Promise<{
+  patientId?: string;
+  doctorId?: string;
+}> {
+  if (FRONT_DESK_ROLES.includes(actor.role)) return {};
+
+  if (actor.role === "PATIENT") {
+    const patient = await prisma.patient.findUnique({
+      where: { userId: actor.userId },
+      select: { id: true },
+    });
+    if (!patient) throw new AppError("Patient record not found", 404);
+    return { patientId: patient.id };
+  }
+
+  if (actor.role === "DOCTOR") {
+    const doctor = await prisma.doctor.findUnique({
+      where: { userId: actor.userId },
+      select: { id: true },
+    });
+    if (!doctor) throw new AppError("Doctor record not found", 404);
+    return { doctorId: doctor.id };
+  }
+
+  throw new AppError("Not authorised to view appointments", 403);
+}
+
+/**
+ * Loads an appointment and asserts the caller may see it.
+ * Throws 403 rather than 404 only when the record exists but is someone else's.
+ */
+async function assertCanAccessAppointment(appointmentId: string, actor: Actor) {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    select: {
+      id: true,
+      patient: { select: { userId: true } },
+      doctor: { select: { userId: true } },
+    },
+  });
+  if (!appointment) throw new AppError("Appointment not found", 404);
+
+  if (FRONT_DESK_ROLES.includes(actor.role)) return;
+  if (actor.role === "PATIENT" && appointment.patient?.userId === actor.userId) return;
+  if (actor.role === "DOCTOR" && appointment.doctor?.userId === actor.userId) return;
+
+  throw new AppError("Not authorised to access this appointment", 403);
 }
 
 function getMinCheckInWindow(slotStart: Date): Date {
@@ -63,8 +135,8 @@ export async function bookAppointment(data: {
         createdById: data.createdById ?? null,
       },
       include: {
-        patient: { select: { fullName: true, mrn: true } },
-        doctor: { select: { fullName: true } },
+        patient: { select: { id: true, fullName: true, mrn: true, userId: true } },
+        doctor: { select: { id: true, fullName: true, userId: true } },
         slot: true,
       },
     });
@@ -88,6 +160,52 @@ export async function bookAppointment(data: {
       await redis.del(`slots:${data.doctorId}:*`);
     }
 
+    if (appointment.status === "CONFIRMED") {
+      try {
+        await dispatchNotification({
+          userId: appointment.patient.userId,
+          type: "APPOINTMENT_CONFIRMED",
+          title: "Appointment Confirmed",
+          message: `Your appointment with Dr. ${appointment.doctor.fullName} on ${slot.startTime.toLocaleDateString()} at ${slot.startTime.toLocaleTimeString()} is confirmed.`,
+          linkUrl: `/patient/appointments/${appointment.id}`,
+          data: {
+            doctorName: appointment.doctor.fullName,
+            date: slot.startTime.toISOString().split("T")[0],
+            time: slot.startTime.toTimeString().slice(0, 5),
+            appointmentNo: appointment.appointmentNo,
+          },
+        });
+
+        await createThreadForAppointment(appointment.id);
+
+        const now = Date.now();
+        const slotTime = slot.startTime.getTime();
+        const twentyFourHoursBefore = slotTime - 24 * 60 * 60 * 1000;
+        const oneHourBefore = slotTime - 60 * 60 * 1000;
+
+        const jobIds: string[] = [];
+        if (twentyFourHoursBefore > now) {
+          const id = await addReminderJob(twentyFourHoursBefore - now, {
+            appointmentId: appointment.id,
+            type: "24h",
+          });
+          if (id) jobIds.push(id);
+        }
+        if (oneHourBefore > now) {
+          const id = await addReminderJob(oneHourBefore - now, {
+            appointmentId: appointment.id,
+            type: "1h",
+          });
+          if (id) jobIds.push(id);
+        }
+        if (jobIds.length > 0) {
+          await storeReminderJobId(appointment.id, jobIds);
+        }
+      } catch (err) {
+        console.error("[appointment] Failed to dispatch notifications:", err);
+      }
+    }
+
     return appointment;
   } catch (err: any) {
     if (err.code === "P2002") {
@@ -97,16 +215,19 @@ export async function bookAppointment(data: {
   }
 }
 
-export async function getAppointments(filters: {
-  patientId?: string;
-  doctorId?: string;
-  status?: string;
-  fromDate?: string;
-  toDate?: string;
-  departmentId?: string;
-  page?: number;
-  limit?: number;
-}) {
+export async function getAppointments(
+  filters: {
+    patientId?: string;
+    doctorId?: string;
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+    departmentId?: string;
+    page?: number;
+    limit?: number;
+  },
+  actor: Actor,
+) {
   const where: any = { deletedAt: null };
   const {
     patientId,
@@ -119,8 +240,15 @@ export async function getAppointments(filters: {
     limit = 20,
   } = filters;
 
-  if (patientId) where.patientId = patientId;
-  if (doctorId) where.doctorId = doctorId;
+  // Scope first, then apply the caller's own filters — a requested filter can
+  // narrow the scope but must never widen it.
+  const scope = await resolveAppointmentScope(actor);
+
+  if (scope.patientId) where.patientId = scope.patientId;
+  else if (patientId) where.patientId = patientId;
+
+  if (scope.doctorId) where.doctorId = scope.doctorId;
+  else if (doctorId) where.doctorId = doctorId;
   if (status) where.status = status;
   if (departmentId) where.departmentId = departmentId;
   if (fromDate || toDate) {
@@ -147,7 +275,12 @@ export async function getAppointments(filters: {
   return { appointments, total, page, limit };
 }
 
-export async function getAppointmentById(appointmentId: string) {
+export async function getAppointmentById(appointmentId: string, actor: Actor) {
+  await assertCanAccessAppointment(appointmentId, actor);
+  return loadAppointmentById(appointmentId);
+}
+
+async function loadAppointmentById(appointmentId: string) {
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
     include: {
@@ -164,10 +297,17 @@ export async function cancelAppointment(
   appointmentId: string,
   reason: string,
   cancelledByUserId: string,
+  actor: Actor,
 ) {
+  await assertCanAccessAppointment(appointmentId, actor);
+
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
-    include: { slot: true },
+    include: {
+      slot: true,
+      patient: { select: { userId: true, fullName: true } },
+      doctor: { select: { fullName: true } },
+    },
   });
   if (!appointment) throw new AppError("Appointment not found", 404);
   if (["CANCELLED", "COMPLETED", "NO_SHOW"].includes(appointment.status)) {
@@ -205,6 +345,24 @@ export async function cancelAppointment(
     await redis.del(`slots:${appointment.doctorId}:*`);
   }
 
+  try {
+    await clearReminderJobIds(appointmentId);
+    await dispatchNotification({
+      userId: appointment.patient.userId,
+      type: "APPOINTMENT_CANCELLED",
+      title: "Appointment Cancelled",
+      message: `Your appointment with Dr. ${appointment.doctor.fullName} has been cancelled.`,
+      linkUrl: `/patient/appointments`,
+      data: {
+        doctorName: appointment.doctor.fullName,
+        date: appointment.slot.startTime.toISOString().split("T")[0],
+        reason,
+      },
+    });
+  } catch (err) {
+    console.error("[appointment] Failed to dispatch cancellation notification:", err);
+  }
+
   return cancelled;
 }
 
@@ -213,10 +371,17 @@ export async function rescheduleAppointment(
   newSlotId: string,
   reason: string | null | undefined,
   userId: string,
+  actor: Actor,
 ) {
+  await assertCanAccessAppointment(appointmentId, actor);
+
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
-    include: { slot: true },
+    include: {
+      slot: true,
+      patient: { select: { userId: true, fullName: true } },
+      doctor: { select: { fullName: true } },
+    },
   });
   if (!appointment) throw new AppError("Appointment not found", 404);
   if (["CANCELLED", "COMPLETED", "NO_SHOW"].includes(appointment.status)) {
@@ -281,6 +446,48 @@ export async function rescheduleAppointment(
     await unlockSlotInRedis(appointment.slotId);
     if (redis) {
       await redis.del(`slots:${appointment.doctorId}:*`);
+    }
+
+    try {
+      await clearReminderJobIds(appointmentId);
+      const newSlot = await prisma.appointmentSlot.findUnique({ where: { id: newSlotId } });
+      if (newSlot) {
+        const slotTime = newSlot.startTime.getTime();
+        const jobIds: string[] = [];
+        const twentyFourHoursBefore = slotTime - 24 * 60 * 60 * 1000;
+        const oneHourBefore = slotTime - 60 * 60 * 1000;
+
+        if (twentyFourHoursBefore > now.getTime()) {
+          const id = await addReminderJob(twentyFourHoursBefore - now.getTime(), {
+            appointmentId,
+            type: "24h",
+          });
+          if (id) jobIds.push(id);
+        }
+        if (oneHourBefore > now.getTime()) {
+          const id = await addReminderJob(oneHourBefore - now.getTime(), {
+            appointmentId,
+            type: "1h",
+          });
+          if (id) jobIds.push(id);
+        }
+        if (jobIds.length > 0) await storeReminderJobId(appointmentId, jobIds);
+
+        await dispatchNotification({
+          userId: appointment.patient.userId,
+          type: "APPOINTMENT_RESCHEDULED",
+          title: "Appointment Rescheduled",
+          message: `Your appointment with Dr. ${appointment.doctor.fullName} has been moved to ${newSlot.startTime.toLocaleDateString()} at ${newSlot.startTime.toLocaleTimeString()}.`,
+          linkUrl: `/patient/appointments/${appointmentId}`,
+          data: {
+            doctorName: appointment.doctor.fullName,
+            newDate: newSlot.startTime.toISOString().split("T")[0],
+            newTime: newSlot.startTime.toTimeString().slice(0, 5),
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[appointment] Failed to dispatch reschedule notification:", err);
     }
 
     return rescheduled;
@@ -370,7 +577,9 @@ export async function completeConsultation(appointmentId: string, doctorUserId: 
   });
 }
 
-export async function getAppointmentReceipt(appointmentId: string) {
+export async function getAppointmentReceipt(appointmentId: string, actor: Actor) {
+  await assertCanAccessAppointment(appointmentId, actor);
+
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
     include: {
@@ -381,4 +590,70 @@ export async function getAppointmentReceipt(appointmentId: string) {
   });
   if (!appointment) throw new AppError("Appointment not found", 404);
   return appointment;
+}
+
+/**
+ * Renders the appointment receipt as a PDF.
+ * Returns a stream so the controller never buffers the whole document in memory.
+ */
+export async function generateAppointmentReceiptPdf(appointmentId: string, actor: Actor) {
+  const appointment = await getAppointmentReceipt(appointmentId, actor);
+  const settings = await getHospitalSettingsForReceipt();
+
+  const doc = new PDFDocument({ size: "A4", margin: 50 });
+
+  doc.fontSize(20).text(settings.hospitalName, { align: "center" });
+  if (settings.address) {
+    doc.fontSize(9).fillColor("#666").text(settings.address, { align: "center" });
+  }
+  doc.moveDown(1.5).fillColor("#000");
+
+  doc.fontSize(14).text("Appointment Receipt", { align: "center" });
+  doc.moveDown(1);
+
+  const line = (label: string, value: string) => {
+    doc.fontSize(10).fillColor("#666").text(label, { continued: true });
+    doc.fillColor("#000").text(`  ${value}`);
+    doc.moveDown(0.4);
+  };
+
+  line("Appointment No", appointment.appointmentNo);
+  line("Status", appointment.status);
+  line("Patient", `${appointment.patient.fullName} (MRN ${appointment.patient.mrn})`);
+  line("Doctor", appointment.doctor.fullName);
+  if (appointment.slot) {
+    line("Scheduled", appointment.slot.startTime.toISOString().replace("T", " ").slice(0, 16));
+  }
+  if (appointment.checkedInAt) {
+    line("Checked in", appointment.checkedInAt.toISOString().replace("T", " ").slice(0, 16));
+  }
+
+  doc.moveDown(0.6);
+  const fee = Number(appointment.doctor.consultationFee ?? 0);
+  line("Consultation fee", `${settings.currency} ${fee.toFixed(2)}`);
+
+  doc.moveDown(2);
+  doc
+    .fontSize(8)
+    .fillColor("#999")
+    .text(
+      "This receipt confirms the appointment booking only. It is not a payment receipt.",
+      { align: "center" },
+    );
+
+  doc.end();
+  return { doc, filename: `receipt-${appointment.appointmentNo}.pdf` };
+}
+
+async function getHospitalSettingsForReceipt() {
+  const settings = await prisma.hospitalSettings.findUnique({ where: { id: "singleton" } });
+  const address = [settings?.addressLine1, settings?.city, settings?.country]
+    .filter(Boolean)
+    .join(", ");
+
+  return {
+    hospitalName: settings?.name ?? "MediCore Hospital",
+    address,
+    currency: settings?.currency ?? "USD",
+  };
 }

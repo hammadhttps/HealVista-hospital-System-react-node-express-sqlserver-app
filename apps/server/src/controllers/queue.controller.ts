@@ -69,11 +69,16 @@ export async function getPosition(req: Request, res: Response, next: NextFunctio
 export async function todayAppointments(req: Request, res: Response, next: NextFunction) {
   try {
     const today = new Date().toISOString().split("T")[0];
-    const result = await appointmentService.getAppointments({
-      doctorId: req.user!.role === "DOCTOR" ? undefined : (req.query.doctorId as string),
-      fromDate: today,
-      toDate: today,
-    });
+    // A DOCTOR caller is scoped to their own appointments by the service, so the
+    // requested doctorId only applies to front-desk roles.
+    const result = await appointmentService.getAppointments(
+      {
+        doctorId: req.query.doctorId as string,
+        fromDate: today,
+        toDate: today,
+      },
+      req.user!,
+    );
     sendSuccess(res, result.appointments);
   } catch (err) {
     next(err);

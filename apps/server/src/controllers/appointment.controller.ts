@@ -40,15 +40,18 @@ export async function bookWalkIn(req: Request, res: Response, next: NextFunction
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await appointmentService.getAppointments({
-      doctorId: req.query.doctorId as string,
-      status: req.query.status as string,
-      fromDate: req.query.fromDate as string,
-      toDate: req.query.toDate as string,
-      departmentId: req.query.departmentId as string,
-      page: req.query.page ? Number(req.query.page) : 1,
-      limit: req.query.limit ? Number(req.query.limit) : 20,
-    });
+    const result = await appointmentService.getAppointments(
+      {
+        doctorId: req.query.doctorId as string,
+        status: req.query.status as string,
+        fromDate: req.query.fromDate as string,
+        toDate: req.query.toDate as string,
+        departmentId: req.query.departmentId as string,
+        page: req.query.page ? Number(req.query.page) : 1,
+        limit: req.query.limit ? Number(req.query.limit) : 20,
+      },
+      req.user!,
+    );
     sendPaginated(res, result.appointments, result.total, result.page, result.limit);
   } catch (err) {
     next(err);
@@ -58,14 +61,17 @@ export async function list(req: Request, res: Response, next: NextFunction) {
 export async function listMine(req: Request, res: Response, next: NextFunction) {
   try {
     const patient = await patientService.getPatientByUserId(req.user!.userId);
-    const result = await appointmentService.getAppointments({
-      patientId: patient.id,
-      status: req.query.status as string,
-      fromDate: req.query.fromDate as string,
-      toDate: req.query.toDate as string,
-      page: req.query.page ? Number(req.query.page) : 1,
-      limit: req.query.limit ? Number(req.query.limit) : 20,
-    });
+    const result = await appointmentService.getAppointments(
+      {
+        patientId: patient.id,
+        status: req.query.status as string,
+        fromDate: req.query.fromDate as string,
+        toDate: req.query.toDate as string,
+        page: req.query.page ? Number(req.query.page) : 1,
+        limit: req.query.limit ? Number(req.query.limit) : 20,
+      },
+      req.user!,
+    );
     sendPaginated(res, result.appointments, result.total, result.page, result.limit);
   } catch (err) {
     next(err);
@@ -74,7 +80,10 @@ export async function listMine(req: Request, res: Response, next: NextFunction) 
 
 export async function getById(req: Request, res: Response, next: NextFunction) {
   try {
-    const appointment = await appointmentService.getAppointmentById(req.params.id as string);
+    const appointment = await appointmentService.getAppointmentById(
+      req.params.id as string,
+      req.user!,
+    );
     sendSuccess(res, appointment);
   } catch (err) {
     next(err);
@@ -87,6 +96,7 @@ export async function cancel(req: Request, res: Response, next: NextFunction) {
       req.params.id as string,
       req.body.reason,
       req.user!.userId,
+      req.user!,
     );
     sendSuccess(res, appointment);
   } catch (err) {
@@ -101,6 +111,7 @@ export async function reschedule(req: Request, res: Response, next: NextFunction
       req.body.newSlotId,
       req.body.reason,
       req.user!.userId,
+      req.user!,
     );
     sendSuccess(res, appointment);
   } catch (err) {
@@ -158,7 +169,23 @@ export async function completeConsultation(req: Request, res: Response, next: Ne
 
 export async function getReceipt(req: Request, res: Response, next: NextFunction) {
   try {
-    const receipt = await appointmentService.getAppointmentReceipt(req.params.id as string);
+    // `?format=pdf` streams a printable receipt; the default stays JSON so the
+    // existing client call keeps working.
+    if (req.query.format === "pdf") {
+      const { doc, filename } = await appointmentService.generateAppointmentReceiptPdf(
+        req.params.id as string,
+        req.user!,
+      );
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
+      doc.pipe(res);
+      return;
+    }
+
+    const receipt = await appointmentService.getAppointmentReceipt(
+      req.params.id as string,
+      req.user!,
+    );
     sendSuccess(res, receipt);
   } catch (err) {
     next(err);

@@ -20,8 +20,22 @@ vi.mock("../config/db", () => ({
 }));
 
 vi.mock("../config/redis", () => ({ redis: null, getCached: vi.fn(), setCached: vi.fn() }));
+vi.mock("../config/bull", () => ({
+  addReminderJob: vi.fn(),
+  addNotificationJob: vi.fn(),
+  emailQueue: null,
+  smsQueue: null,
+  reminderQueue: null,
+}));
 vi.mock("../utils/audit", () => ({ writeAuditLog: vi.fn() }));
 vi.mock("./slot.service", () => ({ unlockSlotInRedis: vi.fn() }));
+vi.mock("./notification.service", () => ({
+  dispatchNotification: vi.fn(),
+  storeReminderJobId: vi.fn(),
+  clearReminderJobIds: vi.fn(),
+  getReminderJobIds: vi.fn(),
+}));
+vi.mock("./chat.service", () => ({ createThreadForAppointment: vi.fn() }));
 
 describe("AppointmentService", () => {
   beforeEach(() => {
@@ -126,7 +140,10 @@ describe("AppointmentService", () => {
       });
 
       const { cancelAppointment } = await import("./appointment.service");
-      const result = await cancelAppointment("apt-1", "Changed mind", "u1");
+      const result = await cancelAppointment("apt-1", "Changed mind", "u1", {
+        userId: "u1",
+        role: "RECEPTIONIST",
+      });
       expect(result).toBeDefined();
     });
 
@@ -139,7 +156,68 @@ describe("AppointmentService", () => {
       } as any);
 
       const { cancelAppointment } = await import("./appointment.service");
-      await expect(cancelAppointment("apt-1", "reason", "u1")).rejects.toThrow("Cannot cancel");
+      await expect(
+        cancelAppointment("apt-1", "reason", "u1", { userId: "u1", role: "RECEPTIONIST" }),
+      ).rejects.toThrow("Cannot cancel");
+    });
+
+    it("should refuse to cancel another patient's appointment", async () => {
+      vi.mocked(prisma.appointment.findUnique).mockResolvedValue({
+        id: "apt-1",
+        slotId: "s1",
+        status: "CONFIRMED",
+        slot: { id: "s1" },
+        patient: { userId: "someone-else" },
+        doctor: { userId: "d-user" },
+      } as any);
+
+      const { cancelAppointment } = await import("./appointment.service");
+      await expect(
+        cancelAppointment("apt-1", "reason", "attacker", {
+          userId: "attacker",
+          role: "PATIENT",
+        }),
+      ).rejects.toThrow("Not authorised");
+    });
+  });
+
+  describe("appointment authorisation", () => {
+    it("scopes a PATIENT's list query to their own patient record", async () => {
+      vi.mocked(prisma.patient.findUnique).mockResolvedValue({ id: "p-self" } as any);
+      vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
+      vi.mocked(prisma.appointment.count).mockResolvedValue(0 as any);
+
+      const { getAppointments } = await import("./appointment.service");
+      // Asking for someone else's appointments must not widen the scope.
+      await getAppointments({ patientId: "p-other" }, { userId: "u1", role: "PATIENT" });
+
+      const where = vi.mocked(prisma.appointment.findMany).mock.calls[0]![0]!.where as any;
+      expect(where.patientId).toBe("p-self");
+    });
+
+    it("does not scope a RECEPTIONIST's list query", async () => {
+      vi.mocked(prisma.appointment.findMany).mockResolvedValue([] as any);
+      vi.mocked(prisma.appointment.count).mockResolvedValue(0 as any);
+
+      const { getAppointments } = await import("./appointment.service");
+      await getAppointments({}, { userId: "u2", role: "RECEPTIONIST" });
+
+      const where = vi.mocked(prisma.appointment.findMany).mock.calls[0]![0]!.where as any;
+      expect(where.patientId).toBeUndefined();
+      expect(where.doctorId).toBeUndefined();
+    });
+
+    it("refuses to return another patient's appointment by id", async () => {
+      vi.mocked(prisma.appointment.findUnique).mockResolvedValue({
+        id: "apt-1",
+        patient: { userId: "owner" },
+        doctor: { userId: "d-user" },
+      } as any);
+
+      const { getAppointmentById } = await import("./appointment.service");
+      await expect(
+        getAppointmentById("apt-1", { userId: "attacker", role: "PATIENT" }),
+      ).rejects.toThrow("Not authorised");
     });
   });
 

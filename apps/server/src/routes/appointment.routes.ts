@@ -30,7 +30,7 @@ router.post(
 );
 router.get("/", authenticate, appointmentController.list);
 router.get("/mine", authenticate, requireRole("PATIENT"), appointmentController.listMine);
-router.get(
+router.post(
   "/admin/generate-slots",
   authenticate,
   requireRole("ADMIN"),
