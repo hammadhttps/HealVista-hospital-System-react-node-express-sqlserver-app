@@ -1,7 +1,7 @@
 import { prisma } from "../config/db.js";
 import { redis } from "../config/redis.js";
 import { getIO } from "../sockets/index.js";
-import { addNotificationJob } from "../config/bull.js";
+import { addNotificationJob, addReminderJob } from "../config/bull.js";
 import type { NotificationType } from "@healvista/shared";
 
 interface DispatchInput {
@@ -116,4 +116,26 @@ export async function clearReminderJobIds(appointmentId: string): Promise<void> 
   if (!redis) return;
   const key = `reminder:appointment:${appointmentId}`;
   await redis.del(key);
+}
+
+/**
+ * Schedules the "time to book a follow-up" nudge for an appointment.
+ *
+ * Callers are the prescription path (`followUpAfterDays`) and appointment completion
+ * (`followUpInDays`). Deduplicated to one nudge per appointment — a doctor who both
+ * prescribes with a follow-up and completes the visit with a follow-up interval must
+ * not trigger two reminders.
+ */
+export async function scheduleFollowUpReminder(appointmentId: string, days: number): Promise<void> {
+  if (!redis || !days || days <= 0) return;
+  const key = `reminder:followup:appointment:${appointmentId}`;
+  const existing = await redis.smembers(key);
+  if (existing.length > 0) return;
+
+  const delayMs = days * 24 * 60 * 60 * 1000;
+  const id = await addReminderJob(delayMs, { appointmentId, type: "follow-up" });
+  if (id) {
+    await redis.sadd(key, id);
+    await redis.expire(key, 86400 * 90);
+  }
 }

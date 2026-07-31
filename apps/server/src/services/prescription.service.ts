@@ -4,6 +4,7 @@ import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { assertClinicalAccess, type Actor } from "./access.service.js";
 import { checkPrescriptionSafety, type SafetyWarning } from "./prescriptionSafety.service.js";
+import { scheduleFollowUpReminder } from "./notification.service.js";
 import * as settingsService from "./settings.service.js";
 
 export interface PrescriptionItemInput {
@@ -132,6 +133,16 @@ export async function createPrescription(
     },
   });
 
+  // `followUpAfterDays` on an issued prescription schedules the "time to book again"
+  // nudge. Best-effort — a queue outage must never fail an issued prescription.
+  if (!input.isDraft && input.followUpAfterDays && input.followUpAfterDays > 0) {
+    try {
+      await scheduleFollowUpReminder(input.appointmentId, input.followUpAfterDays);
+    } catch (err) {
+      console.error("[prescription] Failed to schedule follow-up reminder:", err);
+    }
+  }
+
   return { prescription, warnings: report.warnings };
 }
 
@@ -185,6 +196,15 @@ export async function issueDraft(prescriptionId: string, acknowledged: string[],
       warningsAcknowledged: acknowledged,
     },
   });
+
+  // A draft that carries a follow-up interval schedules the nudge when issued.
+  if (prescription.followUpAfterDays && prescription.followUpAfterDays > 0) {
+    try {
+      await scheduleFollowUpReminder(prescription.appointmentId, prescription.followUpAfterDays);
+    } catch (err) {
+      console.error("[prescription] Failed to schedule follow-up reminder:", err);
+    }
+  }
 
   return issued;
 }
@@ -321,10 +341,12 @@ export async function generatePrescriptionPdf(prescriptionId: string, actor: Act
 
   prescription.items.forEach((item, index) => {
     doc.font("Helvetica-Bold").text(`${index + 1}. ${item.medicineName}`);
-    doc.font("Helvetica").text(
-      `    ${item.dosage} · ${item.frequency} · ${item.durationDays} day(s)` +
-        (item.quantityPrescribed ? ` · qty ${item.quantityPrescribed}` : ""),
-    );
+    doc
+      .font("Helvetica")
+      .text(
+        `    ${item.dosage} · ${item.frequency} · ${item.durationDays} day(s)` +
+          (item.quantityPrescribed ? ` · qty ${item.quantityPrescribed}` : ""),
+      );
     if (item.instructions) doc.text(`    ${item.instructions}`);
     doc.moveDown(0.4);
   });

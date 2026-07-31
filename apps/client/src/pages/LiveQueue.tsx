@@ -65,13 +65,22 @@ export default function LiveQueue() {
                 <div className="flex items-center gap-2">
                   <Badge variant={statusColor[token.status] as any}>{token.status}</Badge>
                   {token.appointment?.id && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      render={<Link to={`/consultation/${token.appointment.id}`} />}
-                    >
-                      Consult
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        render={<Link to={`/consultation/${token.appointment.id}`} />}
+                      >
+                        Consult
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        render={<Link to={`/prescriptions/${token.appointment.id}`} />}
+                      >
+                        Prescribe
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardContent>

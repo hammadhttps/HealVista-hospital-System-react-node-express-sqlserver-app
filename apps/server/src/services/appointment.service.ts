@@ -8,6 +8,7 @@ import {
   dispatchNotification,
   storeReminderJobId,
   clearReminderJobIds,
+  scheduleFollowUpReminder,
 } from "./notification.service.js";
 import { addReminderJob } from "../config/bull.js";
 import { createThreadForAppointment } from "./chat.service.js";
@@ -624,11 +625,11 @@ export async function completeConsultation(
 
   // A doctor-set follow-up interval schedules a "time to book again" nudge. The
   // delay is enqueued rather than stored, so a failure here must not undo a
-  // completed consultation.
+  // completed consultation. Deduplicated with the prescription path so a doctor who
+  // sets follow-up on both the prescription and the completion gets one reminder.
   if (followUpInDays && followUpInDays > 0) {
     try {
-      const delayMs = followUpInDays * 24 * 60 * 60 * 1000;
-      await addReminderJob(delayMs, { appointmentId, type: "follow-up" });
+      await scheduleFollowUpReminder(appointmentId, followUpInDays);
     } catch (err) {
       console.error("[appointment] Failed to schedule follow-up reminder:", err);
     }
