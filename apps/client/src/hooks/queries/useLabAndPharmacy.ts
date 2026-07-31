@@ -24,8 +24,9 @@ export const pharmacyKeys = {
 };
 
 export const recordKeys = {
-  forPatient: (patientId: string, category?: string) =>
-    ["records", patientId, category] as const,
+  forPatient: (patientId: string, category?: string) => ["records", patientId, category] as const,
+  mine: (category?: string, patientId?: string) =>
+    ["records", "mine", category, patientId] as const,
   vault: (patientId?: string) => ["records", "vault", patientId] as const,
 };
 
@@ -121,5 +122,13 @@ export function usePatientRecords(patientId: string, category?: string) {
     queryKey: recordKeys.forPatient(patientId, category),
     queryFn: () => recordApi.listForPatient(patientId, category),
     enabled: !!patientId,
+  });
+}
+
+export function useMyRecords(category?: string, patientId?: string, enabled = true) {
+  return useQuery({
+    queryKey: recordKeys.mine(category, patientId),
+    queryFn: () => recordApi.listMine(category, patientId),
+    enabled,
   });
 }

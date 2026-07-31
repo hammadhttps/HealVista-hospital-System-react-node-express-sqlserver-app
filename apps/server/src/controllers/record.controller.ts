@@ -33,6 +33,19 @@ export async function listRecords(req: Request, res: Response, next: NextFunctio
   }
 }
 
+export async function listMyRecords(req: Request, res: Response, next: NextFunction) {
+  try {
+    const records = await recordService.listMyRecords(
+      req.user!,
+      req.query.category as string | undefined,
+      req.query.patientId as string | undefined,
+    );
+    sendSuccess(res, records);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getRecordUrl(req: Request, res: Response, next: NextFunction) {
   try {
     const url = await recordService.getRecordUrl(req.params.id as string, req.user!);
@@ -53,11 +66,13 @@ export async function removeRecord(req: Request, res: Response, next: NextFuncti
 
 export async function exportHealthVault(req: Request, res: Response, next: NextFunction) {
   try {
-    const vault = await recordService.exportHealthVault(
+    const { doc, filename } = await recordService.exportHealthVault(
       req.user!,
       req.query.patientId as string | undefined,
     );
-    sendSuccess(res, vault);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    doc.pipe(res);
   } catch (err) {
     next(err);
   }

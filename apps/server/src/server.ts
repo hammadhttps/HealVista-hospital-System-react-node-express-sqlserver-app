@@ -6,6 +6,7 @@ import { startSlotGenerationWorker } from "./slots/worker.js";
 import { startEmailWorker } from "./workers/email.worker.js";
 import { startSmsWorker } from "./workers/sms.worker.js";
 import { startReminderWorker } from "./workers/reminder.worker.js";
+import { startRecordWorker } from "./workers/record.worker.js";
 
 const server = app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, `Server listening on port ${env.PORT}`);
@@ -18,6 +19,7 @@ if (env.NODE_ENV !== "test") {
   startEmailWorker();
   startSmsWorker();
   startReminderWorker();
+  startRecordWorker();
 }
 
 process.on("SIGTERM", () => {

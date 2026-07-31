@@ -9,10 +9,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import AllergyBanner from "../components/clinical/AllergyBanner";
 import HistoryPanel from "../components/clinical/HistoryPanel";
 import VitalsPanel from "../components/clinical/VitalsPanel";
+import RecordsPanel from "../components/records/RecordsPanel";
 
 const TABS = [
   { value: "history", label: "History" },
   { value: "vitals", label: "Vitals" },
+  { value: "records", label: "Records" },
 ];
 
 function ageFrom(dob?: string | null): number | null {
@@ -91,6 +93,11 @@ export default function PatientDetail() {
         </TabsContent>
         <TabsContent value="vitals" className="pt-4">
           <VitalsPanel patientId={id!} />
+        </TabsContent>
+        <TabsContent value="records" className="pt-4">
+          {/* Deletion is server-enforced via write access; showing the button just
+              avoids offering an action that would fail. */}
+          <RecordsPanel patientId={id!} canDelete />
         </TabsContent>
       </Tabs>
     </div>

@@ -117,7 +117,9 @@ export function useUploadRecord(patientId: string) {
       category?: string;
     }) => {
       const fileType = (file.name.split(".").pop() ?? "").toLowerCase();
-      const signature = await recordApi.uploadSignature(patientId, fileType);
+      // fileSize is validated server-side against the shared schema's 10 MB cap
+      // before a signature is issued.
+      const signature = await recordApi.uploadSignature(patientId, fileType, file.size);
 
       const form = new FormData();
       form.append("file", file);
@@ -143,8 +145,11 @@ export function useUploadRecord(patientId: string) {
         category,
       });
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["records", patientId] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["records", patientId] });
+      // The acting-patient ("mine") view shares the same records.
+      queryClient.invalidateQueries({ queryKey: ["records", "mine"] });
+    },
   });
 }
 
@@ -152,8 +157,10 @@ export function useDeleteRecord(patientId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: recordApi.remove,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: recordKeys.forPatient(patientId) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: recordKeys.forPatient(patientId) });
+      queryClient.invalidateQueries({ queryKey: ["records", "mine"] });
+    },
   });
 }
 

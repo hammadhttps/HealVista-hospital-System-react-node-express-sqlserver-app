@@ -46,8 +46,10 @@ export const pharmacyApi = {
 };
 
 export const recordApi = {
-  uploadSignature: (patientId: string, fileType: string) =>
-    api.post("/records/upload-signature", { patientId, fileType }).then((r) => r.data.data),
+  uploadSignature: (patientId: string, fileType: string, fileSize: number) =>
+    api
+      .post("/records/upload-signature", { patientId, fileType, fileSize })
+      .then((r) => r.data.data),
 
   register: (data: {
     patientId: string;
@@ -60,6 +62,10 @@ export const recordApi = {
   listForPatient: (patientId: string, category?: string) =>
     api.get(`/records/patient/${patientId}`, { params: { category } }).then((r) => r.data.data),
 
+  /** The caller's own records — `patientId` only when a guardian is acting for a dependant. */
+  listMine: (category?: string, patientId?: string) =>
+    api.get("/records/mine", { params: { category, patientId } }).then((r) => r.data.data),
+
   /**
    * Fetches a short-lived signed URL for one document. Deliberately per-document and
    * on demand — the list carries no URLs, so nothing hands out live links to files
@@ -69,6 +75,12 @@ export const recordApi = {
 
   remove: (id: string) => api.delete(`/records/${id}`).then((r) => r.data.data),
 
-  exportVault: (patientId?: string) =>
-    api.get("/records/vault/export", { params: { patientId } }).then((r) => r.data.data),
+  /** Downloads the merged-PDF Health Vault export as a Blob. */
+  exportVault: async (patientId?: string): Promise<Blob> => {
+    const res = await api.get("/records/vault/export", {
+      params: { patientId },
+      responseType: "blob",
+    });
+    return res.data as Blob;
+  },
 };

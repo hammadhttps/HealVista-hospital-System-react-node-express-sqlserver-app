@@ -31,6 +31,10 @@ export const reminderQueue = redis
     })
   : null;
 
+export const recordQueue = redis
+  ? new Queue("record-extraction", { ...connection, defaultJobOptions })
+  : null;
+
 interface NotificationJobData {
   type: "email" | "sms";
   to: string;
@@ -56,6 +60,11 @@ export async function addReminderJob(
   if (!reminderQueue) return undefined;
   const job = await reminderQueue.add(`${data.type}-reminder`, data, { delay: delayMs });
   return job?.id;
+}
+
+export async function addRecordExtractionJob(recordId: string): Promise<void> {
+  if (!recordQueue) return;
+  await recordQueue.add("extract-text", { recordId });
 }
 
 export async function setupSlotGenerationJob() {

@@ -1,9 +1,12 @@
 import crypto from "crypto";
+import PDFDocument from "pdfkit";
 import cloudinary from "../config/cloudinary.js";
 import { env } from "../config/env.js";
 import { prisma } from "../config/db.js";
+import { addRecordExtractionJob } from "../config/bull.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
+import * as settingsService from "./settings.service.js";
 import {
   assertClinicalAccess,
   assertClinicalWriteAccess,
@@ -43,7 +46,9 @@ const ALLOWED_CATEGORIES = [
 
 export type RecordCategory = (typeof ALLOWED_CATEGORIES)[number];
 
-const ALLOWED_FILE_TYPES = ["pdf", "jpg", "jpeg", "png", "webp", "heic"];
+// Tight to the shared schema's whitelist (pdf/png/jpeg). `jpg` is accepted as the
+// common alias of `jpeg`. Everything else — including webp and heic — is rejected.
+const ALLOWED_FILE_TYPES = ["pdf", "png", "jpeg", "jpg"];
 
 /**
  * Issues a signed, scoped upload authorisation.
@@ -159,6 +164,16 @@ export async function registerRecord(
     metadata: { patientId: input.patientId, category: record.category },
   });
 
+  // Kick off text extraction for the search/RAG pipeline (Phase 5). Best-effort —
+  // a queue outage or a scan failure must never fail the upload that just succeeded.
+  if (record.fileType === "pdf") {
+    try {
+      await addRecordExtractionJob(record.id);
+    } catch (err) {
+      console.error("[record] Failed to enqueue text extraction:", err);
+    }
+  }
+
   return record;
 }
 
@@ -206,6 +221,18 @@ export async function listRecords(patientId: string, actor: Actor, category?: st
   }));
 }
 
+/**
+ * The caller's *own* records — or, when a guardian is acting for a dependant, that
+ * dependant's. Patient-only: staff have no "mine" and use the per-patient routes.
+ */
+export async function listMyRecords(actor: Actor, category?: string, requestedPatientId?: string) {
+  if (actor.role !== "PATIENT") {
+    throw new AppError("Only patients can list their own records", 403);
+  }
+  const patientId = await resolveActingPatientId(actor, requestedPatientId);
+  return listRecords(patientId, actor, category);
+}
+
 /** Returns a signed URL for one record. This is the audited "someone opened it" event. */
 export async function getRecordUrl(recordId: string, actor: Actor) {
   const record = await prisma.medicalRecord.findUnique({ where: { id: recordId } });
@@ -249,16 +276,14 @@ export async function removeRecord(recordId: string, actor: Actor) {
 }
 
 /**
- * Health vault export — everything the hospital holds on a patient, in one document.
+ * Health vault export — everything the hospital holds on a patient, merged into one PDF.
  *
- * Deliberately a *data* export rather than a bundle of files: file contents stay
+ * Deliberately a *data* export rather than a bundle of files: document contents stay
  * behind signed URLs that expire. What the patient gets is the record of their care,
- * plus the identifiers needed to request each document individually.
+ * plus the list of each attached document so they can request the originals
+ * individually through the records UI.
  */
-export async function exportHealthVault(
-  actor: Actor,
-  requestedPatientId?: string,
-) {
+export async function exportHealthVault(actor: Actor, requestedPatientId?: string) {
   // A guardian may export a dependant's vault; nobody else may export anyone's.
   const patientId =
     actor.role === "PATIENT"
@@ -268,47 +293,57 @@ export async function exportHealthVault(
   if (!patientId) throw new AppError("A patient must be specified", 400);
   await assertClinicalAccess(patientId, actor);
 
-  const [patient, allergies, conditions, vaccinations, surgeries, prescriptions, labOrders, notes, records, vitals] =
-    await Promise.all([
-      prisma.patient.findUnique({
-        where: { id: patientId },
-        select: {
-          mrn: true,
-          fullName: true,
-          dateOfBirth: true,
-          gender: true,
-          bloodGroup: true,
-        },
-      }),
-      prisma.patientAllergy.findMany({ where: { patientId } }),
-      prisma.patientCondition.findMany({ where: { patientId } }),
-      prisma.vaccination.findMany({ where: { patientId } }),
-      prisma.surgicalHistory.findMany({ where: { patientId } }),
-      prisma.prescription.findMany({
-        where: { deletedAt: null, isDraft: false, appointment: { patientId } },
-        include: { items: true },
-      }),
-      // Only verified results. An export is a document the patient keeps and shows to
-      // other clinicians — an unverified value in it outlives every safeguard we put
-      // around the screen it came from.
-      prisma.labOrder.findMany({
-        where: { patientId, status: "VERIFIED" },
-        include: { items: { include: { labTest: { select: { name: true, code: true } } } } },
-      }),
-      prisma.consultationNote.findMany({
-        where: { signedAt: { not: null }, appointment: { patientId, deletedAt: null } },
-        include: { addenda: true },
-      }),
-      prisma.medicalRecord.findMany({
-        where: { patientId, deletedAt: null },
-        select: { id: true, title: true, category: true, fileType: true, uploadedAt: true },
-      }),
-      prisma.vitalReading.findMany({
-        where: { patientId },
-        orderBy: { recordedAt: "desc" },
-        take: 500,
-      }),
-    ]);
+  const [
+    patient,
+    allergies,
+    conditions,
+    vaccinations,
+    surgeries,
+    prescriptions,
+    labOrders,
+    notes,
+    records,
+    vitals,
+  ] = await Promise.all([
+    prisma.patient.findUnique({
+      where: { id: patientId },
+      select: {
+        mrn: true,
+        fullName: true,
+        dateOfBirth: true,
+        gender: true,
+        bloodGroup: true,
+      },
+    }),
+    prisma.patientAllergy.findMany({ where: { patientId } }),
+    prisma.patientCondition.findMany({ where: { patientId } }),
+    prisma.vaccination.findMany({ where: { patientId } }),
+    prisma.surgicalHistory.findMany({ where: { patientId } }),
+    prisma.prescription.findMany({
+      where: { deletedAt: null, isDraft: false, appointment: { patientId } },
+      include: { items: true },
+    }),
+    // Only verified results. An export is a document the patient keeps and shows to
+    // other clinicians — an unverified value in it outlives every safeguard we put
+    // around the screen it came from.
+    prisma.labOrder.findMany({
+      where: { patientId, status: "VERIFIED" },
+      include: { items: { include: { labTest: { select: { name: true, code: true } } } } },
+    }),
+    prisma.consultationNote.findMany({
+      where: { signedAt: { not: null }, appointment: { patientId, deletedAt: null } },
+      include: { addenda: true },
+    }),
+    prisma.medicalRecord.findMany({
+      where: { patientId, deletedAt: null },
+      select: { id: true, title: true, category: true, fileType: true, uploadedAt: true },
+    }),
+    prisma.vitalReading.findMany({
+      where: { patientId },
+      orderBy: { recordedAt: "desc" },
+      take: 500,
+    }),
+  ]);
 
   if (!patient) throw new AppError("Patient not found", 404);
 
@@ -320,18 +355,110 @@ export async function exportHealthVault(
     metadata: { records: records.length, prescriptions: prescriptions.length },
   });
 
-  return {
-    exportedAt: new Date().toISOString(),
-    patient,
-    allergies,
-    conditions,
-    vaccinations,
-    surgeries,
-    vitals,
-    consultationNotes: notes,
-    prescriptions,
-    labOrders,
-    // Identifiers only — each still needs an authorised, audited request to open.
-    documents: records,
-  };
+  const settings = (await settingsService.get()) as { name: string };
+  const doc = new PDFDocument({ size: "A4", margin: 50 });
+
+  doc.fontSize(20).text(settings.name, { align: "center" });
+  doc.moveDown(0.3);
+  doc.fontSize(13).text("Health Vault Export", { align: "center" });
+  doc.moveDown(1.2);
+
+  doc.fontSize(10);
+  doc.text(`Patient:  ${patient.fullName}`);
+  doc.text(`MRN:      ${patient.mrn}`);
+  if (patient.dateOfBirth) doc.text(`DOB:      ${patient.dateOfBirth.toISOString().slice(0, 10)}`);
+  if (patient.gender) doc.text(`Gender:   ${patient.gender}`);
+  if (patient.bloodGroup) doc.text(`Blood:    ${patient.bloodGroup}`);
+  doc.text(`Exported: ${new Date().toISOString()}`);
+  doc.moveDown(1);
+
+  section(doc, "Allergies", allergies.length);
+  for (const a of allergies) {
+    doc.text(`• ${a.allergen} — ${a.severity}${a.reaction ? ` (${a.reaction})` : ""}`);
+  }
+
+  section(doc, "Conditions", conditions.length);
+  for (const c of conditions) {
+    doc.text(
+      `• ${c.condition}${c.diagnosedAt ? ` — diagnosed ${c.diagnosedAt.toISOString().slice(0, 10)}` : ""}${c.isActive === false ? " [resolved]" : ""}`,
+    );
+  }
+
+  section(doc, "Vaccinations", vaccinations.length);
+  for (const v of vaccinations) {
+    doc.text(`• ${v.vaccineName} — ${v.administeredAt.toISOString().slice(0, 10)}`);
+  }
+
+  section(doc, "Surgeries", surgeries.length);
+  for (const s of surgeries) {
+    doc.text(
+      `• ${s.procedure}${s.performedAt ? ` — ${s.performedAt.toISOString().slice(0, 10)}` : ""}`,
+    );
+  }
+
+  section(doc, "Vitals", vitals.length);
+  const vitalsByType = new Map<string, { value: number; recordedAt: Date }[]>();
+  for (const v of vitals) {
+    const list = vitalsByType.get(v.type) ?? [];
+    list.push({ value: Number(v.value), recordedAt: v.recordedAt });
+    vitalsByType.set(v.type, list);
+  }
+  for (const [type, readings] of vitalsByType) {
+    doc.text(
+      `• ${type}: ${readings.map((r) => `${Number(r.value)} (${r.recordedAt.toISOString().slice(0, 10)})`).join(", ")}`,
+    );
+  }
+
+  section(doc, "Prescriptions", prescriptions.length);
+  for (const p of prescriptions) {
+    doc.font("Helvetica-Bold").text(`• Issued ${p.createdAt.toISOString().slice(0, 10)}`);
+    doc.font("Helvetica");
+    p.items.forEach((item) =>
+      doc.text(
+        `    ${item.medicineName} — ${item.dosage} ${item.frequency} for ${item.durationDays} day(s)`,
+      ),
+    );
+  }
+
+  section(doc, "Laboratory (verified results)", labOrders.length);
+  for (const order of labOrders) {
+    doc
+      .font("Helvetica-Bold")
+      .text(`• Order ${order.id.slice(0, 8)} — ${order.orderedAt.toISOString().slice(0, 10)}`);
+    doc.font("Helvetica");
+    order.items.forEach((item) => {
+      doc.text(
+        `    ${item.labTest.code} ${item.labTest.name}: ${item.resultValue ?? "—"} ${item.unit ?? ""}${item.flag ? ` [${item.flag}]` : ""}`,
+      );
+    });
+  }
+
+  section(doc, "Consultation notes", notes.length);
+  for (const n of notes) {
+    doc.font("Helvetica-Bold").text(`• ${n.signedAt!.toISOString().slice(0, 10)}`);
+    doc.font("Helvetica");
+    if (n.assessment) doc.text(`    Assessment: ${n.assessment}`);
+    if (n.plan) doc.text(`    Plan: ${n.plan}`);
+    for (const addendum of n.addenda) {
+      doc.text(`    [Addendum] ${addendum.content}`);
+    }
+  }
+
+  section(doc, "Documents on file", records.length);
+  for (const r of records) {
+    doc.text(
+      `• ${r.title} (${r.category ?? "other"}, ${r.fileType}) — uploaded ${r.uploadedAt.toISOString().slice(0, 10)}`,
+    );
+  }
+
+  doc.end();
+  return { doc, filename: `health-vault-${patient.mrn}.pdf` };
+}
+
+/** A section heading that only appears when the section has content. */
+function section(doc: PDFKit.PDFDocument, title: string, count: number) {
+  if (count === 0) return;
+  doc.moveDown(0.6);
+  doc.font("Helvetica-Bold").fontSize(12).text(title);
+  doc.font("Helvetica").fontSize(10);
 }
