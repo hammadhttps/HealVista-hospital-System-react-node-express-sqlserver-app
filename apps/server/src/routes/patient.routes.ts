@@ -22,13 +22,13 @@ router.post(
 router.get(
   "/",
   authenticate,
-  requireRole("RECEPTIONIST", "DOCTOR", "ADMIN"),
+  requireRole("RECEPTIONIST", "DOCTOR", "ADMIN", "PHARMACIST", "LAB_TECHNICIAN", "ACCOUNTANT"),
   patientController.list,
 );
 router.get(
   "/:id",
   authenticate,
-  requireRole("RECEPTIONIST", "DOCTOR", "ADMIN"),
+  requireRole("RECEPTIONIST", "DOCTOR", "ADMIN", "PHARMACIST", "LAB_TECHNICIAN", "ACCOUNTANT"),
   patientController.getById,
 );
 router.patch(

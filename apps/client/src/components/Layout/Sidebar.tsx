@@ -17,7 +17,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../../store/authStore";
+import { authApi } from "../../api/auth";
 
 interface NavItem {
   to: string;
@@ -74,6 +76,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 export default function Sidebar() {
   const role = useAuthStore((s) => s.user?.role);
   const logout = useAuthStore((s) => s.logout);
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const links = role ? (roleNav[role] ?? []) : [];
@@ -101,8 +104,10 @@ export default function Sidebar() {
       </div>
 
       <button
-        onClick={() => {
+        onClick={async () => {
+          await authApi.logout().catch(() => {});
           logout();
+          queryClient.clear();
           navigate("/login");
         }}
         className="flex items-center gap-3 px-4 py-2 m-4 rounded-lg text-red-600 hover:bg-red-100 font-medium"

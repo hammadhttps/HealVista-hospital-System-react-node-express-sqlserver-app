@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "../store/authStore";
 
 const API_URL: string =
   import.meta.env.VITE_API_URL ||
@@ -45,7 +46,7 @@ axiosClient.interceptors.response.use(
       try {
         const { data } = await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
         const newToken = data.data.accessToken;
-        localStorage.setItem("accessToken", newToken);
+        useAuthStore.getState().setAccessToken(newToken);
         processQueue(null, newToken);
         original.headers.Authorization = `Bearer ${newToken}`;
         return axiosClient(original);
