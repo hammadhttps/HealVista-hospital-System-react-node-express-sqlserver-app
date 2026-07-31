@@ -144,4 +144,28 @@ router.delete(
   clinical.deleteNoteTemplate,
 );
 
+// ─── Referrals ──────────────────────────────────────────────────────────────
+// A referral to a doctor also grants that doctor access to the record, so creating
+// one is doctor-only and referral.service checks the referrer already has access.
+router.post("/referrals", authenticate, requireRole("DOCTOR"), clinical.createReferral);
+router.get(
+  "/referrals/incoming",
+  authenticate,
+  requireRole("DOCTOR"),
+  clinical.listIncomingReferrals,
+);
+router.get(
+  "/referrals/outgoing",
+  authenticate,
+  requireRole("DOCTOR"),
+  clinical.listOutgoingReferrals,
+);
+router.patch(
+  "/referrals/:id/respond",
+  authenticate,
+  requireRole("DOCTOR"),
+  clinical.respondToReferral,
+);
+router.get("/patients/:patientId/referrals", authenticate, clinical.listPatientReferrals);
+
 export default router;

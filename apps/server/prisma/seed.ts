@@ -183,13 +183,72 @@ async function main() {
     });
   }
 
+  // ── Inventory ──────────────────────────────────────────────────────
+  // Without stock rows, every dispense fails with "no inventory record". Batch
+  // numbers are seeded deliberately: batch recall traces a batch through the
+  // dispensing ledger, so there has to be one to trace.
+  const stockLevels: Record<string, { quantity: number; reorderLevel: number; batchNumber: string }> = {
+    Amoxicillin: { quantity: 500, reorderLevel: 100, batchNumber: "AMX-2026-A" },
+    Azithromycin: { quantity: 220, reorderLevel: 50, batchNumber: "AZI-2026-A" },
+    Metformin: { quantity: 800, reorderLevel: 150, batchNumber: "MET-2026-A" },
+    Atorvastatin: { quantity: 640, reorderLevel: 120, batchNumber: "ATV-2026-A" },
+    Lisinopril: { quantity: 410, reorderLevel: 100, batchNumber: "LIS-2026-A" },
+    Omeprazole: { quantity: 300, reorderLevel: 80, batchNumber: "OMP-2026-A" },
+    Ibuprofen: { quantity: 950, reorderLevel: 200, batchNumber: "IBU-2026-A" },
+    Paracetamol: { quantity: 1200, reorderLevel: 250, batchNumber: "PCM-2026-A" },
+    // Deliberately below its reorder level so the low-stock alert has something to
+    // fire on without anyone having to run stock down by hand first.
+    Amlodipine: { quantity: 40, reorderLevel: 90, batchNumber: "AML-2026-A" },
+    "Salbutamol Inhaler": { quantity: 75, reorderLevel: 25, batchNumber: "SAL-2026-A" },
+  };
+
+  const expiry = new Date();
+  expiry.setFullYear(expiry.getFullYear() + 1);
+
+  for (const [name, stock] of Object.entries(stockLevels)) {
+    const medicine = await prisma.medicine.findUnique({ where: { name } });
+    if (!medicine) continue;
+    await prisma.inventory.upsert({
+      where: { medicineId: medicine.id },
+      update: {},
+      create: {
+        medicineId: medicine.id,
+        quantity: stock.quantity,
+        reorderLevel: stock.reorderLevel,
+        batchNumber: stock.batchNumber,
+        expiryDate: expiry,
+      },
+    });
+  }
+
   // ── Drug Interactions ──────────────────────────────────────────────
+  //
+  // PROVENANCE — read this before extending the table.
+  //
+  // These pairs are well-established, widely-documented interactions drawn from
+  // standard prescribing references (BNF / FDA labelling). They are a **teaching and
+  // demonstration set, not a clinical drug database.** A real deployment must replace
+  // this table wholesale with a licensed, maintained interaction dataset
+  // (First Databank, Multum, BNF, or equivalent) under that vendor's update schedule.
+  //
+  // What must never happen is this table being populated by a language model. An
+  // absent row reads as "no interaction found", so a hallucinated or omitted entry is
+  // indistinguishable from a clean check — the failure is silent and the patient
+  // absorbs it. Every row here is deterministic, sourced, and human-entered, which is
+  // why prescriptionSafety.service does a table lookup and has no AI in its path.
   const interactions = [
-    { drugA: "amoxicillin", drugB: "warfarin", severity: "MODERATE" as const, description: "May increase bleeding risk" },
-    { drugA: "lisinopril", drugB: "spironolactone", severity: "SEVERE" as const, description: "Risk of hyperkalemia" },
-    { drugA: "ibuprofen", drugB: "warfarin", severity: "SEVERE" as const, description: "Increased bleeding risk" },
+    { drugA: "amoxicillin", drugB: "warfarin", severity: "MODERATE" as const, description: "May increase bleeding risk; monitor INR" },
+    { drugA: "lisinopril", drugB: "spironolactone", severity: "SEVERE" as const, description: "Risk of hyperkalemia; monitor potassium" },
+    { drugA: "ibuprofen", drugB: "warfarin", severity: "SEVERE" as const, description: "Increased bleeding risk; avoid combination" },
     { drugA: "metformin", drugB: "iodinated contrast", severity: "MODERATE" as const, description: "Risk of lactic acidosis; withhold metformin before contrast" },
-    { drugA: "omeprazole", drugB: "clopidogrel", severity: "MODERATE" as const, description: "Reduced clopidogrel efficacy" },
+    { drugA: "omeprazole", drugB: "clopidogrel", severity: "MODERATE" as const, description: "Reduced clopidogrel efficacy via CYP2C19 inhibition" },
+    { drugA: "atorvastatin", drugB: "clarithromycin", severity: "SEVERE" as const, description: "Markedly increased statin exposure; risk of rhabdomyolysis" },
+    { drugA: "lisinopril", drugB: "ibuprofen", severity: "MODERATE" as const, description: "NSAIDs reduce antihypertensive effect and may impair renal function" },
+    { drugA: "azithromycin", drugB: "amiodarone", severity: "SEVERE" as const, description: "Additive QT prolongation; risk of torsades de pointes" },
+    { drugA: "metformin", drugB: "alcohol", severity: "MODERATE" as const, description: "Increased risk of lactic acidosis" },
+    { drugA: "amlodipine", drugB: "simvastatin", severity: "MODERATE" as const, description: "Increased simvastatin exposure; limit simvastatin dose" },
+    { drugA: "warfarin", drugB: "paracetamol", severity: "MILD" as const, description: "Prolonged high-dose use may potentiate anticoagulation; monitor INR" },
+    { drugA: "omeprazole", drugB: "methotrexate", severity: "MODERATE" as const, description: "Delayed methotrexate elimination; risk of toxicity" },
   ];
 
   for (const interaction of interactions) {
@@ -201,7 +260,12 @@ async function main() {
     });
   }
 
-  console.log("Seed complete — demo users, departments, lab tests, medicines, drug interactions.");
+  console.log(
+    "Seed complete — demo users, departments, lab tests, medicines, inventory, drug interactions.",
+  );
+  console.log(
+    "Drug interactions are a demonstration set, not a clinical database — see the provenance note in seed.ts.",
+  );
   console.log("All demo accounts password: demo1234");
 }
 

@@ -4,6 +4,7 @@ import * as vitalsService from "../services/vitals.service.js";
 import * as dependentService from "../services/dependent.service.js";
 import * as prescriptionService from "../services/prescription.service.js";
 import * as noteService from "../services/note.service.js";
+import * as referralService from "../services/referral.service.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 
 // ─── Medical history ────────────────────────────────────────────────────────
@@ -497,6 +498,63 @@ export async function deleteNoteTemplate(req: Request, res: Response, next: Next
   try {
     await noteService.deleteTemplate(req.params.id as string, req.user!);
     sendSuccess(res, { removed: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── Referrals ──────────────────────────────────────────────────────────────
+
+export async function createReferral(req: Request, res: Response, next: NextFunction) {
+  try {
+    const referral = await referralService.createReferral(req.body, req.user!);
+    sendSuccess(res, referral, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function respondToReferral(req: Request, res: Response, next: NextFunction) {
+  try {
+    const referral = await referralService.respondToReferral(
+      req.params.id as string,
+      req.body.status,
+      req.user!,
+    );
+    sendSuccess(res, referral);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listIncomingReferrals(req: Request, res: Response, next: NextFunction) {
+  try {
+    const referrals = await referralService.listIncoming(
+      req.user!,
+      req.query.status as string | undefined,
+    );
+    sendSuccess(res, referrals);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listOutgoingReferrals(req: Request, res: Response, next: NextFunction) {
+  try {
+    const referrals = await referralService.listOutgoing(req.user!);
+    sendSuccess(res, referrals);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listPatientReferrals(req: Request, res: Response, next: NextFunction) {
+  try {
+    const referrals = await referralService.listForPatient(
+      req.params.patientId as string,
+      req.user!,
+    );
+    sendSuccess(res, referrals);
   } catch (err) {
     next(err);
   }
