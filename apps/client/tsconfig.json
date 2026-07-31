@@ -4,7 +4,10 @@
     "jsx": "react-jsx",
     "outDir": "dist",
     "allowJs": true,
-    "forceConsistentCasingInFileNames": false,
+    // Windows and macOS resolve paths case-insensitively; Linux (CI, Vercel, Render)
+    // does not. With this off, `../UI/dialog` typechecked here and failed the Vercel
+    // build. Leave it on.
+    "forceConsistentCasingInFileNames": true,
     "paths": {
       "@/*": ["./src/*"]
     }

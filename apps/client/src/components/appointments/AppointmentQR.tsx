@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../UI/dialog";
-import { Button } from "../UI/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
+import { Button } from "../ui/button";
 import { Skeleton } from "../primitives/Skeleton";
 
 interface AppointmentQRProps {
@@ -43,9 +43,7 @@ export function AppointmentQR({ qrToken, appointmentNo, size = "sm" }: Appointme
       <DialogTrigger render={<Button size={size} variant="outline" />}>Show QR</DialogTrigger>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>
-            Check-in code{appointmentNo ? ` · #${appointmentNo}` : ""}
-          </DialogTitle>
+          <DialogTitle>Check-in code{appointmentNo ? ` · #${appointmentNo}` : ""}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col items-center gap-4 py-2">
