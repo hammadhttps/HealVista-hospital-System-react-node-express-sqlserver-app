@@ -68,7 +68,12 @@ export function usePatientLabOrders(patientId: string) {
 
 // ─── Pharmacy ───────────────────────────────────────────────────────────────
 
-export function useMedicines(params?: { search?: string; lowStockOnly?: boolean }) {
+export function useMedicines(params?: {
+  search?: string;
+  lowStockOnly?: boolean;
+  page?: number;
+  pageSize?: number;
+}) {
   return useQuery({
     queryKey: pharmacyKeys.medicines(params),
     queryFn: () => pharmacyApi.searchMedicines(params),

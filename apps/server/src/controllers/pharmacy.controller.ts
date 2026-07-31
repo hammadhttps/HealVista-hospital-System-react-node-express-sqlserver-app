@@ -4,9 +4,12 @@ import { sendSuccess } from "../utils/apiResponse.js";
 
 export async function searchMedicines(req: Request, res: Response, next: NextFunction) {
   try {
+    const q = (req as any).validated ?? {};
     const medicines = await pharmacyService.searchMedicines({
-      search: req.query.search as string,
-      lowStockOnly: req.query.lowStockOnly === "true",
+      search: q.search,
+      lowStockOnly: q.lowStockOnly,
+      page: q.page,
+      pageSize: q.pageSize,
     });
     sendSuccess(res, medicines);
   } catch (err) {

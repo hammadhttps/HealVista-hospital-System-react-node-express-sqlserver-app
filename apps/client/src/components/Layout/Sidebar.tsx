@@ -17,6 +17,7 @@ import {
   MessageSquare,
   ArrowRightLeft,
   FileText,
+  Pill,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -68,7 +69,10 @@ const roleNav: Record<string, NavItem[]> = {
     { to: "/billing", label: "Billing", icon: Receipt },
     { to: "/billing/payments", label: "Payments", icon: Wallet },
   ],
-  PHARMACIST: [{ to: "/patients", label: "Patients", icon: User }],
+  PHARMACIST: [
+    { to: "/pharmacy", label: "Pharmacy", icon: Pill },
+    { to: "/patients", label: "Patients", icon: User },
+  ],
   LAB_TECHNICIAN: [{ to: "/patients", label: "Patients", icon: User }],
   ACCOUNTANT: [
     { to: "/billing", label: "Billing", icon: Receipt },

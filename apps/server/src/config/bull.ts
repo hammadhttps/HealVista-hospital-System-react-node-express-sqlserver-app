@@ -35,6 +35,10 @@ export const recordQueue = redis
   ? new Queue("record-extraction", { ...connection, defaultJobOptions })
   : null;
 
+export const pharmacySweepQueue = redis
+  ? new Queue("pharmacy-sweep", { ...connection, defaultJobOptions })
+  : null;
+
 interface NotificationJobData {
   type: "email" | "sms";
   to: string;
@@ -81,6 +85,29 @@ export async function setupSlotGenerationJob() {
       "nightly-slot-generation",
       { pattern: "0 2 * * *" },
       { name: "generate-slots", data: {} },
+    );
+  }
+}
+
+/**
+ * The hourly stock sweep: low-stock and expiring-stock alerts, each deduplicated to
+ * one per item per day. Registered as a BullMQ scheduler so Redis owns the cadence
+ * even when the API process restarts.
+ */
+export async function setupPharmacySweepJob() {
+  if (!pharmacySweepQueue || !redis) {
+    console.warn("[bull] Redis not available, skipping pharmacy sweep schedule");
+    return;
+  }
+
+  const schedulers = await pharmacySweepQueue.getJobSchedulers();
+  const existing = schedulers.find((s: { name: string }) => s.name === "hourly-pharmacy-sweep");
+
+  if (!existing) {
+    await pharmacySweepQueue.upsertJobScheduler(
+      "hourly-pharmacy-sweep",
+      { pattern: "0 * * * *" },
+      { name: "stock-sweep", data: {} },
     );
   }
 }

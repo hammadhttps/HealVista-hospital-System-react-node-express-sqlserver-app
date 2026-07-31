@@ -7,6 +7,8 @@ import { startEmailWorker } from "./workers/email.worker.js";
 import { startSmsWorker } from "./workers/sms.worker.js";
 import { startReminderWorker } from "./workers/reminder.worker.js";
 import { startRecordWorker } from "./workers/record.worker.js";
+import { startPharmacyWorker } from "./workers/pharmacy.worker.js";
+import { setupSlotGenerationJob, setupPharmacySweepJob } from "./config/bull.js";
 
 const server = app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, `Server listening on port ${env.PORT}`);
@@ -20,6 +22,12 @@ if (env.NODE_ENV !== "test") {
   startSmsWorker();
   startReminderWorker();
   startRecordWorker();
+  startPharmacyWorker();
+
+  // BullMQ job schedulers own the cadence in Redis, so the API process can restart
+  // without losing a schedule. Both are idempotent — upsert only when absent.
+  void setupSlotGenerationJob();
+  void setupPharmacySweepJob();
 }
 
 process.on("SIGTERM", () => {

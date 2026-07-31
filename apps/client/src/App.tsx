@@ -36,6 +36,7 @@ import MyReferrals from "./pages/MyReferrals";
 import MyRecords from "./pages/MyRecords";
 import SOAPNoteEditor from "./pages/SOAPNoteEditor";
 import PrescriptionEditor from "./pages/PrescriptionEditor";
+import Pharmacy from "./pages/Pharmacy";
 import { AdminDashboard, DoctorDashboard, PatientDashboard } from "./pages/Dashboard";
 
 export default function App() {
@@ -199,6 +200,14 @@ export default function App() {
                 element={
                   <RoleRoute role={["RECEPTIONIST", "ADMIN"]}>
                     <ReceptionDesk />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/pharmacy"
+                element={
+                  <RoleRoute role={["PHARMACIST", "ADMIN"]}>
+                    <Pharmacy />
                   </RoleRoute>
                 }
               />

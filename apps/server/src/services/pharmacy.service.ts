@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../config/db.js";
+import { redis } from "../config/redis.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { dispatchNotification } from "./notification.service.js";
@@ -65,28 +66,49 @@ async function requirePharmacist(actor: Actor) {
 
 // ─── Catalogue and stock ────────────────────────────────────────────────────
 
-export async function searchMedicines(query: { search?: string; lowStockOnly?: boolean }) {
-  const medicines = await prisma.medicine.findMany({
-    where: {
-      deletedAt: null,
-      ...(query.search
-        ? {
-            OR: [
-              { name: { contains: query.search, mode: "insensitive" as const } },
-              { genericName: { contains: query.search, mode: "insensitive" as const } },
-            ],
-          }
-        : {}),
-    },
-    include: { inventory: true },
-    orderBy: { name: "asc" },
-    take: 100,
-  });
+export async function searchMedicines(query: {
+  search?: string;
+  lowStockOnly?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  const page = query.page ?? 1;
+  const pageSize = query.pageSize ?? 20;
+  const lowStockOnly = query.lowStockOnly === "true";
 
-  if (!query.lowStockOnly) return medicines;
-  return medicines.filter(
-    (m) => m.inventory && m.inventory.quantity <= m.inventory.reorderLevel,
-  );
+  // The low-stock view has its own raw-SQL path because Prisma cannot compare two
+  // columns in a `where`. It paginates in JS — a shelf at its reorder level is a
+  // handful of rows, never a large result set.
+  if (lowStockOnly) {
+    const all = await listLowStock();
+    const items = all.slice((page - 1) * pageSize, page * pageSize);
+    return { items, total: all.length, page, pageSize };
+  }
+
+  const where: Prisma.MedicineWhereInput = {
+    deletedAt: null,
+    ...(query.search
+      ? {
+          OR: [
+            { name: { contains: query.search, mode: "insensitive" as const } },
+            { genericName: { contains: query.search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.medicine.findMany({
+      where,
+      include: { inventory: true },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.medicine.count({ where }),
+  ]);
+
+  return { items, total, page, pageSize };
 }
 
 /**
@@ -206,11 +228,7 @@ export interface DispenseLine {
  * transaction. A partial failure that took stock down without recording what it went
  * to would be both an accounting hole and an un-recallable batch.
  */
-export async function dispense(
-  prescriptionId: string,
-  lines: DispenseLine[],
-  actor: Actor,
-) {
+export async function dispense(prescriptionId: string, lines: DispenseLine[], actor: Actor) {
   const pharmacist = await requirePharmacist(actor);
 
   if (lines.length === 0) throw new AppError("Nothing to dispense", 400);
@@ -359,32 +377,112 @@ export async function listDispenseQueue(actor: Actor) {
 
 // ─── Low stock ──────────────────────────────────────────────────────────────
 
+/** Redis key guarding "one alert per item per day". */
+function dailyAlertKey(scope: string, id: string): string {
+  const day = new Date().toISOString().slice(0, 10);
+  return `alert:${scope}:${id}:${day}`;
+}
+
+/** Claims the daily alert slot for an item. Returns false if one already fired today. */
+async function claimDailyAlert(scope: string, id: string): Promise<boolean> {
+  if (!redis) return true;
+  try {
+    const claimed = await redis.set(dailyAlertKey(scope, id), "1", "EX", 86400 * 2, "NX");
+    return claimed === "OK";
+  } catch {
+    // Redis down must not block an alert that is trying to be fired.
+    return true;
+  }
+}
+
+/** Notifies every pharmacist about one low item, at most once per day per item. */
+async function dispatchLowStockAlert(medicineId: string) {
+  const inventory = await prisma.inventory.findUnique({
+    where: { medicineId },
+    include: { medicine: { select: { name: true } } },
+  });
+  if (!inventory || inventory.quantity > inventory.reorderLevel) return 0;
+  if (!(await claimDailyAlert("lowstock", medicineId))) return 0;
+
+  const pharmacists = await prisma.pharmacist.findMany({ select: { userId: true } });
+  for (const p of pharmacists) {
+    await dispatchNotification({
+      userId: p.userId,
+      type: "LOW_STOCK_ALERT",
+      title: "Low stock",
+      message: `${inventory.medicine.name} is down to ${inventory.quantity} (reorder level ${inventory.reorderLevel}).`,
+      linkUrl: `/pharmacy/inventory`,
+      data: { medicineId, quantity: String(inventory.quantity) },
+    });
+  }
+  return pharmacists.length;
+}
+
 /**
  * Alerts pharmacists when a medicine drops to its reorder level. Best-effort: a
  * notification failure must never undo the stock movement that triggered it.
+ * Deduplicated to one alert per item per day (the hourly sweep shares the same key).
  */
 export async function checkLowStock(medicineId: string) {
   try {
-    const inventory = await prisma.inventory.findUnique({
-      where: { medicineId },
-      include: { medicine: { select: { name: true } } },
-    });
-    if (!inventory || inventory.quantity > inventory.reorderLevel) return;
-
-    const pharmacists = await prisma.pharmacist.findMany({ select: { userId: true } });
-    for (const p of pharmacists) {
-      await dispatchNotification({
-        userId: p.userId,
-        type: "LOW_STOCK_ALERT",
-        title: "Low stock",
-        message: `${inventory.medicine.name} is down to ${inventory.quantity} (reorder level ${inventory.reorderLevel}).`,
-        linkUrl: `/pharmacy/inventory`,
-        data: { medicineId, quantity: String(inventory.quantity) },
-      });
-    }
+    await dispatchLowStockAlert(medicineId);
   } catch (err) {
     console.error("[pharmacy] Low-stock alert failed:", err);
   }
+}
+
+/**
+ * Hourly sweep: every item at or below its reorder level, regardless of which
+ * operation pushed it there. Deduplicated to one alert per item per day, so a
+ * medicine sitting low for a week nags once, not 168 times.
+ */
+export async function scanLowStock(): Promise<number> {
+  const low = await listLowStock();
+  let dispatched = 0;
+  for (const item of low) {
+    try {
+      dispatched += await dispatchLowStockAlert(item.medicineId);
+    } catch (err) {
+      // One broken notification must not stop the rest of the sweep.
+      console.error(`[pharmacy] Sweep alert failed for ${item.medicineId}:`, err);
+    }
+  }
+  return dispatched;
+}
+
+/**
+ * Hourly sweep companion: items expiring within the horizon, one alert per item per
+ * day. A batch sitting in the fridge for a fortnight warns daily, not hourly.
+ */
+export async function scanExpiring(withinDays = 90): Promise<number> {
+  const expiring = await listExpiring(withinDays);
+  const pharmacists = await prisma.pharmacist.findMany({ select: { userId: true } });
+  if (pharmacists.length === 0) return 0;
+
+  let dispatched = 0;
+  for (const item of expiring) {
+    if (!(await claimDailyAlert("expiry", item.id))) continue;
+    const daysLeft = Math.max(
+      0,
+      Math.ceil((item.expiryDate!.getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
+    );
+    for (const p of pharmacists) {
+      await dispatchNotification({
+        userId: p.userId,
+        type: "EXPIRY_ALERT",
+        title: "Stock expiring soon",
+        message: `${item.medicine.name} expires in ${daysLeft} days (batch ${item.batchNumber ?? "unknown"}).`,
+        linkUrl: `/pharmacy/inventory`,
+        data: {
+          inventoryId: item.id,
+          medicine: item.medicine.name,
+          daysLeft: String(daysLeft),
+        },
+      });
+    }
+    dispatched += pharmacists.length;
+  }
+  return dispatched;
 }
 
 // ─── Batch recall ───────────────────────────────────────────────────────────
@@ -407,9 +505,7 @@ export async function findPatientsForBatch(medicineId: string, batchNumber: stri
     select: { prescriptionId: true, createdAt: true },
   });
 
-  const prescriptionIds = [
-    ...new Set(transactions.map((t) => t.prescriptionId!).filter(Boolean)),
-  ];
+  const prescriptionIds = [...new Set(transactions.map((t) => t.prescriptionId!).filter(Boolean))];
   if (prescriptionIds.length === 0) return [];
 
   const prescriptions = await prisma.prescription.findMany({

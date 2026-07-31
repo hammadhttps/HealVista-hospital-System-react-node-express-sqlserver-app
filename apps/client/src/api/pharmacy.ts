@@ -1,8 +1,12 @@
 import api from "./axiosClient";
 
 export const pharmacyApi = {
-  searchMedicines: (params?: { search?: string; lowStockOnly?: boolean }) =>
-    api.get("/pharmacy/medicines", { params }).then((r) => r.data.data),
+  searchMedicines: (params?: {
+    search?: string;
+    lowStockOnly?: boolean;
+    page?: number;
+    pageSize?: number;
+  }) => api.get("/pharmacy/medicines", { params }).then((r) => r.data.data),
 
   findByBarcode: (barcode: string) =>
     api.get(`/pharmacy/medicines/barcode/${encodeURIComponent(barcode)}`).then((r) => r.data.data),

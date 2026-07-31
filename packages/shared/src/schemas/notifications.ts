@@ -11,6 +11,7 @@ export const notificationTypeEnum = z.enum([
   // one ignores notification preferences (see notification.service).
   "CRITICAL_RESULT",
   "LOW_STOCK_ALERT",
+  "EXPIRY_ALERT",
   "BATCH_RECALL",
   "REFERRAL_CREATED",
   "FOLLOW_UP_REMINDER",

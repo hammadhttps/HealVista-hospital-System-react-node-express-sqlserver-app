@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { requireRole } from "../middlewares/rbac.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
+import {
+  adjustStockSchema,
+  dispenseSchema,
+  medicinesQuerySchema,
+  recallSchema,
+} from "@healvista/shared";
 import * as pharmacy from "../controllers/pharmacy.controller.js";
 
 /**
@@ -16,17 +23,24 @@ const router = Router();
 const pharmacyStaff = requireRole("PHARMACIST", "ADMIN");
 
 // ─── Stock ──────────────────────────────────────────────────────────────────
-router.get("/medicines", authenticate, pharmacyStaff, pharmacy.searchMedicines);
+router.get(
+  "/medicines",
+  authenticate,
+  pharmacyStaff,
+  validate(medicinesQuerySchema, "query"),
+  pharmacy.searchMedicines,
+);
 router.get("/medicines/barcode/:barcode", authenticate, pharmacyStaff, pharmacy.findByBarcode);
 router.get("/inventory/low-stock", authenticate, pharmacyStaff, pharmacy.listLowStock);
 router.get("/inventory/expiring", authenticate, pharmacyStaff, pharmacy.listExpiring);
-router.post("/inventory/adjust", authenticate, pharmacyStaff, pharmacy.adjustStock);
-router.get(
-  "/inventory/:medicineId/history",
+router.post(
+  "/inventory/adjust",
   authenticate,
   pharmacyStaff,
-  pharmacy.getStockHistory,
+  validate(adjustStockSchema),
+  pharmacy.adjustStock,
 );
+router.get("/inventory/:medicineId/history", authenticate, pharmacyStaff, pharmacy.getStockHistory);
 
 // ─── Dispensing ─────────────────────────────────────────────────────────────
 router.get("/queue", authenticate, requireRole("PHARMACIST"), pharmacy.listDispenseQueue);
@@ -34,6 +48,7 @@ router.post(
   "/prescriptions/:prescriptionId/dispense",
   authenticate,
   requireRole("PHARMACIST"),
+  validate(dispenseSchema),
   pharmacy.dispense,
 );
 
@@ -46,7 +61,13 @@ router.get(
   pharmacyStaff,
   pharmacy.previewRecall,
 );
-router.post("/recalls", authenticate, requireRole("PHARMACIST"), pharmacy.recallBatch);
+router.post(
+  "/recalls",
+  authenticate,
+  requireRole("PHARMACIST"),
+  validate(recallSchema),
+  pharmacy.recallBatch,
+);
 router.get("/recalls", authenticate, pharmacyStaff, pharmacy.listRecalls);
 
 export default router;
