@@ -33,6 +33,33 @@ export function startReminderWorker(): Worker | null {
         return;
       }
 
+      // A follow-up fires *after* the visit, so it expects COMPLETED — the opposite
+      // of the pre-visit reminders, which are pointless once the visit is over.
+      if (type === "follow-up") {
+        if (appointment.status !== "COMPLETED") {
+          logger.info(
+            { appointmentId, status: appointment.status },
+            "[reminder-worker] Skipping follow-up - visit did not complete",
+          );
+          return;
+        }
+
+        await dispatchNotification({
+          userId: appointment.patient.user.id,
+          type: "FOLLOW_UP_REMINDER",
+          title: "Time to book your follow-up",
+          message: `Dr. ${appointment.doctor.user.email} asked you to book a follow-up visit. Tap to choose a time.`,
+          linkUrl: `/doctors/${appointment.doctorId}`,
+          data: {
+            doctorName: appointment.doctor.user.email,
+            appointmentNo: appointment.appointmentNo,
+          },
+        });
+
+        logger.info({ appointmentId }, "[reminder-worker] Follow-up reminder dispatched");
+        return;
+      }
+
       if (appointment.status !== "CONFIRMED" && appointment.status !== "CHECKED_IN") {
         logger.info(
           { appointmentId, status: appointment.status },

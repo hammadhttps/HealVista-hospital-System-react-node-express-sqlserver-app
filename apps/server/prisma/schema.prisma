@@ -134,14 +134,14 @@ model User {
   labTechnician LabTechnician?
   accountant    Accountant?
 
-  sessions      UserSession[]
-  refreshTokens RefreshToken[]
-  oauthAccounts OAuthAccount[]
-  passwordHistory PasswordHistory[]
-  notifications Notification[]
+  sessions               UserSession[]
+  refreshTokens          RefreshToken[]
+  oauthAccounts          OAuthAccount[]
+  passwordHistory        PasswordHistory[]
+  notifications          Notification[]
   notificationPreference NotificationPreference?
-  auditLogs     AuditLog[]
-  chatMessages  ChatMessage[]
+  auditLogs              AuditLog[]
+  chatMessages           ChatMessage[]
 
   @@index([role, isActive])
   @@map("users")
@@ -221,8 +221,8 @@ model Department {
   headDoctorId String?
   isActive     Boolean @default(true)
 
-  doctors      DoctorDepartment[]
-  blogs        KbArticle[]
+  doctors DoctorDepartment[]
+  blogs   KbArticle[]
 
   @@map("departments")
 }
@@ -269,22 +269,22 @@ model Holiday {
 }
 
 model Patient {
-  id               String    @id @default(uuid())
-  userId           String    @unique
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mrn              String    @unique
-  fullName         String
-  dateOfBirth      DateTime?
-  gender           String?
-  bloodGroup       String?
-  maritalStatus    String?
-  occupation       String?
-  addressLine1     String?
-  city             String?
-  isOrganDonor     Boolean   @default(false)
-  registeredById   String?
-  createdAt        DateTime  @default(now())
-  deletedAt        DateTime?
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mrn            String    @unique
+  fullName       String
+  dateOfBirth    DateTime?
+  gender         String?
+  bloodGroup     String?
+  maritalStatus  String?
+  occupation     String?
+  addressLine1   String?
+  city           String?
+  isOrganDonor   Boolean   @default(false)
+  registeredById String?
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
 
   emergencyContacts EmergencyContact[]
   appointments      Appointment[]
@@ -335,14 +335,14 @@ model Doctor {
   averageRating      Decimal            @default(0) @db.Decimal(3, 2)
   deletedAt          DateTime?
 
-  departments  DoctorDepartment[]
-  availability DoctorAvailability[]
-  exceptions   AvailabilityException[]
-  slots        AppointmentSlot[]
-  appointments Appointment[]
-  favourites   FavouritePrescription[]
+  departments   DoctorDepartment[]
+  availability  DoctorAvailability[]
+  exceptions    AvailabilityException[]
+  slots         AppointmentSlot[]
+  appointments  Appointment[]
+  favourites    FavouritePrescription[]
   noteTemplates NoteTemplate[]
-  favouritedBy FavouriteDoctor[]
+  favouritedBy  FavouriteDoctor[]
 
   @@index([verificationStatus, averageRating])
   @@map("doctors")
@@ -359,11 +359,11 @@ model Receptionist {
 }
 
 model Pharmacist {
-  id         String  @id @default(uuid())
-  userId     String  @unique
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName   String
-  licenseNo  String?
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName  String
+  licenseNo String?
 
   @@map("pharmacists")
 }
@@ -378,12 +378,12 @@ model Accountant {
 }
 
 model LabTechnician {
-  id         String  @id @default(uuid())
-  userId     String  @unique
-  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fullName   String
-  licenseNo  String?
-  canVerify  Boolean @default(false)
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName  String
+  licenseNo String?
+  canVerify Boolean @default(false)
 
   @@map("lab_technicians")
 }
@@ -401,14 +401,14 @@ model StaffProfile {
 }
 
 model PatientRelationship {
-  id                  String   @id @default(uuid())
+  id                  String  @id @default(uuid())
   guardianPatientId   String
-  guardian            Patient  @relation("Guardian", fields: [guardianPatientId], references: [id], onDelete: Cascade)
+  guardian            Patient @relation("Guardian", fields: [guardianPatientId], references: [id], onDelete: Cascade)
   dependentPatientId  String
-  dependent           Patient  @relation("Dependent", fields: [dependentPatientId], references: [id], onDelete: Cascade)
+  dependent           Patient @relation("Dependent", fields: [dependentPatientId], references: [id], onDelete: Cascade)
   relationship        String
-  canBookAppointments Boolean  @default(true)
-  canViewRecords      Boolean  @default(true)
+  canBookAppointments Boolean @default(true)
+  canViewRecords      Boolean @default(true)
 
   @@unique([guardianPatientId, dependentPatientId])
   @@map("patient_relationships")
@@ -470,39 +470,39 @@ model AppointmentSlot {
 }
 
 model Appointment {
-  id             String            @id @default(uuid())
-  appointmentNo  String            @unique
-  patientId      String
-  doctorId       String
-  slotId         String            @unique
-  departmentId   String?
-  status         AppointmentStatus @default(PENDING_PAYMENT)
-  source         AppointmentSource @default(ONLINE)
-  reasonNote     String?
-  qrToken        String            @unique
-  checkedInAt    DateTime?
-  consultStartAt DateTime?
-  consultEndAt   DateTime?
-  cancelledAt    DateTime?
-  cancelReason   String?
+  id                String            @id @default(uuid())
+  appointmentNo     String            @unique
+  patientId         String
+  doctorId          String
+  slotId            String            @unique
+  departmentId      String?
+  status            AppointmentStatus @default(PENDING_PAYMENT)
+  source            AppointmentSource @default(ONLINE)
+  reasonNote        String?
+  qrToken           String            @unique
+  checkedInAt       DateTime?
+  consultStartAt    DateTime?
+  consultEndAt      DateTime?
+  cancelledAt       DateTime?
+  cancelReason      String?
   rescheduledFromId String?
-  followUpOfId   String?
-  createdById    String?
-  createdAt      DateTime          @default(now())
-  deletedAt      DateTime?
+  followUpOfId      String?
+  createdById       String?
+  createdAt         DateTime          @default(now())
+  deletedAt         DateTime?
 
-  patient        Patient          @relation(fields: [patientId], references: [id])
-  doctor         Doctor           @relation(fields: [doctorId], references: [id])
-  slot           AppointmentSlot  @relation(fields: [slotId], references: [id])
-  rescheduledFrom Appointment?    @relation("Reschedule", fields: [rescheduledFromId], references: [id])
-  reschedules    Appointment[]    @relation("Reschedule")
-  followUpOf     Appointment?     @relation("FollowUp", fields: [followUpOfId], references: [id])
-  followUps      Appointment[]    @relation("FollowUp")
-  note           ConsultationNote?
-  prescription   Prescription?
-  chatThread     ChatThread?
-  labOrders      LabOrder[]
-  bill           Bill?
+  patient         Patient           @relation(fields: [patientId], references: [id])
+  doctor          Doctor            @relation(fields: [doctorId], references: [id])
+  slot            AppointmentSlot   @relation(fields: [slotId], references: [id])
+  rescheduledFrom Appointment?      @relation("Reschedule", fields: [rescheduledFromId], references: [id])
+  reschedules     Appointment[]     @relation("Reschedule")
+  followUpOf      Appointment?      @relation("FollowUp", fields: [followUpOfId], references: [id])
+  followUps       Appointment[]     @relation("FollowUp")
+  note            ConsultationNote?
+  prescription    Prescription?
+  chatThread      ChatThread?
+  labOrders       LabOrder[]
+  bill            Bill?
 
   @@index([patientId, status])
   @@index([doctorId, status])
@@ -510,15 +510,15 @@ model Appointment {
 }
 
 model QueueToken {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   doctorId      String
   patientId     String?
   appointmentId String?
-  date          DateTime @db.Date
+  date          DateTime  @db.Date
   tokenNumber   Int
-  status        String   @default("waiting")
+  status        String    @default("waiting")
   calledAt      DateTime?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
 
   @@unique([doctorId, date, tokenNumber])
   @@index([doctorId, date, status])
@@ -526,23 +526,23 @@ model QueueToken {
 }
 
 model ConsultationNote {
-  id             String    @id @default(uuid())
-  appointmentId  String    @unique
+  id             String      @id @default(uuid())
+  appointmentId  String      @unique
   appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
   authorUserId   String
   subjective     String
   objective      String
   assessment     String
   plan           String
-  diagnosisCodes String[]  @default([])
-  isDraft        Boolean   @default(true)
-  aiAssisted     Boolean   @default(false)
+  diagnosisCodes String[]    @default([])
+  isDraft        Boolean     @default(true)
+  aiAssisted     Boolean     @default(false)
   signedAt       DateTime?
   lockedAt       DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  addenda        NoteAddendum[]
+  addenda NoteAddendum[]
 
   @@map("consultation_notes")
 }
@@ -574,18 +574,18 @@ model NoteTemplate {
 }
 
 model MedicalRecord {
-  id          String    @id @default(uuid())
-  patientId   String
-  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  fileUrl     String
-  fileType    String
-  title       String
-  category    String?
+  id            String    @id @default(uuid())
+  patientId     String
+  patient       Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  fileUrl       String
+  fileType      String
+  title         String
+  category      String?
   extractedText String?
-  aiSummary   Json?
-  uploadedById String?
-  uploadedAt  DateTime  @default(now())
-  deletedAt   DateTime?
+  aiSummary     Json?
+  uploadedById  String?
+  uploadedAt    DateTime  @default(now())
+  deletedAt     DateTime?
 
   @@index([patientId, uploadedAt])
   @@map("medical_records")
@@ -619,24 +619,24 @@ model PatientCondition {
 }
 
 model Vaccination {
-  id            String    @id @default(uuid())
-  patientId     String
-  patient       Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  vaccineName   String
-  doseNumber    Int?
+  id             String    @id @default(uuid())
+  patientId      String
+  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  vaccineName    String
+  doseNumber     Int?
   administeredAt DateTime
   administeredBy String?
-  batchNumber   String?
-  nextDueAt     DateTime?
+  batchNumber    String?
+  nextDueAt      DateTime?
 
   @@index([patientId, administeredAt])
   @@map("vaccinations")
 }
 
 model SurgicalHistory {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   patientId   String
-  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient     Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
   procedure   String
   performedAt DateTime?
   hospital    String?
@@ -688,45 +688,45 @@ model VitalReading {
 }
 
 model Prescription {
-  id             String         @id @default(uuid())
-  appointmentId  String         @unique
-  appointment    Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  notes          String?
-  pdfUrl         String?
-  isDraft        Boolean        @default(true)
-  dispenseStatus DispenseStatus @default(PENDING)
+  id                String         @id @default(uuid())
+  appointmentId     String         @unique
+  appointment       Appointment    @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  notes             String?
+  pdfUrl            String?
+  isDraft           Boolean        @default(true)
+  dispenseStatus    DispenseStatus @default(PENDING)
   followUpAfterDays Int?
-  createdAt      DateTime       @default(now())
-  deletedAt      DateTime?
+  createdAt         DateTime       @default(now())
+  deletedAt         DateTime?
 
-  items          PrescriptionItem[]
+  items PrescriptionItem[]
 
   @@map("prescriptions")
 }
 
 model PrescriptionItem {
-  id             String       @id @default(uuid())
-  prescriptionId String
-  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
-  medicineId     String?
-  medicineName   String
-  dosage         String
-  frequency      String
-  durationDays   Int
-  instructions   String?
-  quantityDispensed Int       @default(0)
-  quantityPrescribed Int      @default(1)
+  id                 String       @id @default(uuid())
+  prescriptionId     String
+  prescription       Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicineId         String?
+  medicineName       String
+  dosage             String
+  frequency          String
+  durationDays       Int
+  instructions       String?
+  quantityDispensed  Int          @default(0)
+  quantityPrescribed Int          @default(1)
 
   @@map("prescription_items")
 }
 
 model FavouritePrescription {
-  id        String   @id @default(uuid())
-  doctorId  String
-  doctor    Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  name      String
-  items     Json
-  useCount  Int      @default(0)
+  id       String @id @default(uuid())
+  doctorId String
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  name     String
+  items    Json
+  useCount Int    @default(0)
 
   @@unique([doctorId, name])
   @@map("favourite_prescriptions")
@@ -745,32 +745,32 @@ model DrugInteraction {
 }
 
 model Referral {
-  id            String         @id @default(uuid())
-  patientId     String
-  fromDoctorId  String
-  toDoctorId    String?
+  id             String         @id @default(uuid())
+  patientId      String
+  fromDoctorId   String
+  toDoctorId     String?
   toDepartmentId String?
-  appointmentId String?
-  reason        String
-  notes         String?
-  status        ReferralStatus @default(PENDING)
-  createdAt     DateTime       @default(now())
+  appointmentId  String?
+  reason         String
+  notes          String?
+  status         ReferralStatus @default(PENDING)
+  createdAt      DateTime       @default(now())
 
   @@index([patientId, status])
   @@map("referrals")
 }
 
 model Medicine {
-  id          String     @id @default(uuid())
-  name        String     @unique
-  genericName String?
-  barcode     String?    @unique
-  category    String?
-  unit        String
+  id           String     @id @default(uuid())
+  name         String     @unique
+  genericName  String?
+  barcode      String?    @unique
+  category     String?
+  unit         String
   manufacturer String?
-  unitPrice   Decimal    @db.Decimal(10, 2)
-  inventory   Inventory?
-  deletedAt   DateTime?
+  unitPrice    Decimal    @db.Decimal(10, 2)
+  inventory    Inventory?
+  deletedAt    DateTime?
 
   @@index([name])
   @@map("medicines")
@@ -809,12 +809,12 @@ model InventoryTransaction {
 }
 
 model BatchRecall {
-  id            String   @id @default(uuid())
-  medicineId    String
-  batchNumber   String
-  reason        String
-  recalledAt    DateTime @default(now())
-  patientsNotified Int   @default(0)
+  id               String   @id @default(uuid())
+  medicineId       String
+  batchNumber      String
+  reason           String
+  recalledAt       DateTime @default(now())
+  patientsNotified Int      @default(0)
 
   @@index([medicineId, batchNumber])
   @@map("batch_recalls")
@@ -831,32 +831,32 @@ model LabTest {
   referenceRange  String?
   isActive        Boolean @default(true)
 
-  orderItems      LabOrderItem[]
+  orderItems LabOrderItem[]
 
   @@map("lab_tests")
 }
 
 model LabOrder {
-  id             String         @id @default(uuid())
-  orderNumber    String         @unique
-  appointmentId  String?
-  appointment    Appointment?   @relation(fields: [appointmentId], references: [id])
-  patientId      String
-  doctorId       String
-  status         LabOrderStatus @default(ORDERED)
+  id                String         @id @default(uuid())
+  orderNumber       String         @unique
+  appointmentId     String?
+  appointment       Appointment?   @relation(fields: [appointmentId], references: [id])
+  patientId         String
+  doctorId          String
+  status            LabOrderStatus @default(ORDERED)
   sampleCollectedAt DateTime?
-  collectedById  String?
-  completedAt    DateTime?
-  verifiedAt     DateTime?
-  verifiedById   String?
-  reportFileUrl  String?
-  isRetest       Boolean        @default(false)
-  retestOfId     String?
-  retestReason   String?
-  notes          String?
-  orderedAt      DateTime       @default(now())
+  collectedById     String?
+  completedAt       DateTime?
+  verifiedAt        DateTime?
+  verifiedById      String?
+  reportFileUrl     String?
+  isRetest          Boolean        @default(false)
+  retestOfId        String?
+  retestReason      String?
+  notes             String?
+  orderedAt         DateTime       @default(now())
 
-  items          LabOrderItem[]
+  items LabOrderItem[]
 
   @@index([patientId, orderedAt])
   @@index([status])
@@ -878,28 +878,32 @@ model LabOrderItem {
 }
 
 model Bill {
-  id            String    @id @default(uuid())
-  billNumber    String    @unique
-  patientId     String
-  patient       Patient   @relation(fields: [patientId], references: [id])
-  appointmentId String?   @unique
-  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
-  subtotal      Decimal   @db.Decimal(10, 2)
-  discountAmount Decimal  @default(0) @db.Decimal(10, 2)
-  taxAmount     Decimal   @default(0) @db.Decimal(10, 2)
-  insuranceCovered Decimal @default(0) @db.Decimal(10, 2)
-  total         Decimal   @db.Decimal(10, 2)
-  amountPaid    Decimal   @default(0) @db.Decimal(10, 2)
-  balance       Decimal   @db.Decimal(10, 2)
-  status        String    @default("draft")
-  discountId    String?
-  finalisedAt   DateTime?
-  pdfUrl        String?
-  createdAt     DateTime  @default(now())
-  deletedAt     DateTime?
+  id               String       @id @default(uuid())
+  billNumber       String       @unique
+  patientId        String
+  patient          Patient      @relation(fields: [patientId], references: [id])
+  appointmentId    String?      @unique
+  appointment      Appointment? @relation(fields: [appointmentId], references: [id])
+  subtotal         Decimal      @db.Decimal(10, 2)
+  discountAmount   Decimal      @default(0) @db.Decimal(10, 2)
+  taxAmount        Decimal      @default(0) @db.Decimal(10, 2)
+  insuranceCovered Decimal      @default(0) @db.Decimal(10, 2)
+  total            Decimal      @db.Decimal(10, 2)
+  amountPaid       Decimal      @default(0) @db.Decimal(10, 2)
+  balance          Decimal      @db.Decimal(10, 2)
+  status           String       @default("draft")
+  discountId       String?
+  discount         Discount?    @relation(fields: [discountId], references: [id])
+  finalisedAt      DateTime?
+  pdfUrl           String?
+  createdAt        DateTime     @default(now())
+  // @default(now()) as well as @updatedAt — without a DB-level default, adding this
+  // NOT NULL column to a table that already has rows fails the migration.
+  updatedAt        DateTime     @default(now()) @updatedAt
+  deletedAt        DateTime?
 
-  items         BillItem[]
-  payments      Payment[]
+  items    BillItem[]
+  payments Payment[]
 
   @@index([patientId, status])
   @@map("bills")
@@ -921,35 +925,57 @@ model BillItem {
 }
 
 model Payment {
-  id            String        @id @default(uuid())
-  billId        String
-  bill          Bill          @relation(fields: [billId], references: [id])
-  amount        Decimal       @db.Decimal(10, 2)
-  method        PaymentMethod
-  status        PaymentStatus @default(PENDING)
-  provider      String?
-  providerRef   String?
-  receivedById  String?
-  reference     String?
-  receiptUrl    String?
-  createdAt     DateTime      @default(now())
+  id             String        @id @default(uuid())
+  billId         String
+  bill           Bill          @relation(fields: [billId], references: [id])
+  amount         Decimal       @db.Decimal(10, 2)
+  method         PaymentMethod
+  status         PaymentStatus @default(PENDING)
+  provider       String?
+  providerRef    String?
+  receivedById   String?
+  reference      String?
+  receiptUrl     String?
+  refundedAmount Decimal       @default(0) @db.Decimal(10, 2)
+  refundedAt     DateTime?
+  refundRef      String?
+  createdAt      DateTime      @default(now())
 
+  // A provider reference identifies one payment. NULLs are distinct in Postgres,
+  // so cash rows (provider and providerRef both null) never collide here.
+  @@unique([provider, providerRef])
   @@index([billId, status])
   @@map("payments")
 }
 
 model Discount {
-  id           String   @id @default(uuid())
-  name         String   @unique
-  code         String?  @unique
-  type         String
-  value        Decimal  @db.Decimal(10, 2)
-  category     String?
-  validFrom    DateTime?
-  validUntil   DateTime?
-  isActive     Boolean  @default(true)
+  id         String    @id @default(uuid())
+  name       String    @unique
+  code       String?   @unique
+  type       String
+  value      Decimal   @db.Decimal(10, 2)
+  category   String?
+  validFrom  DateTime?
+  validUntil DateTime?
+  isActive   Boolean   @default(true)
+
+  bills Bill[]
 
   @@map("discounts")
+}
+
+/// Webhook de-duplication. Providers retry aggressively, so the handler records the
+/// provider's own event id and refuses to process the same one twice. The unique
+/// constraint is the guarantee — not a prior SELECT, which races under concurrent retries.
+model WebhookEvent {
+  id          String   @id @default(uuid())
+  provider    String
+  eventId     String
+  eventType   String?
+  processedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@map("webhook_events")
 }
 
 model PatientInsurance {
@@ -983,15 +1009,15 @@ model Notification {
 }
 
 model NotificationPreference {
-  id            String  @id @default(uuid())
-  userId        String  @unique
-  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailEnabled  Boolean @default(true)
-  smsEnabled    Boolean @default(true)
-  inAppEnabled  Boolean @default(true)
+  id                   String  @id @default(uuid())
+  userId               String  @unique
+  user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled         Boolean @default(true)
+  smsEnabled           Boolean @default(true)
+  inAppEnabled         Boolean @default(true)
   appointmentReminders Boolean @default(true)
-  labResults    Boolean @default(true)
-  marketing     Boolean @default(false)
+  labResults           Boolean @default(true)
+  marketing            Boolean @default(false)
 
   @@map("notification_preferences")
 }

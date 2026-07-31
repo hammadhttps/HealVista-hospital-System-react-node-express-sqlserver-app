@@ -19,6 +19,9 @@ import appointmentRoutes from "./routes/appointment.routes.js";
 import queueRoutes from "./routes/queue.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
+import billingRoutes, { discountRouter, insuranceRouter } from "./routes/billing.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
+import * as paymentController from "./controllers/payment.controller.js";
 
 const app = express();
 
@@ -38,6 +41,21 @@ app.use(
     },
     credentials: true,
   }),
+);
+
+// ─── Payment webhooks ──────────────────────────────────────────────
+// These MUST be mounted before express.json(). Signature verification hashes the
+// exact bytes the provider sent; parsing to JSON and re-serialising changes them
+// and every signature check fails.
+app.post(
+  "/api/payments/webhook/stripe",
+  express.raw({ type: "application/json" }),
+  paymentController.stripeWebhook,
+);
+app.post(
+  "/api/payments/webhook/razorpay",
+  express.raw({ type: "application/json" }),
+  paymentController.razorpayWebhook,
 );
 
 // Body parsing
@@ -94,6 +112,10 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/bills", billingRoutes);
+app.use("/api/discounts", discountRouter);
+app.use("/api/insurance", insuranceRouter);
+app.use("/api/payments", paymentRoutes);
 
 // ─── Error handler (must be last) ──────────────────────────────────
 app.use(errorHandler);

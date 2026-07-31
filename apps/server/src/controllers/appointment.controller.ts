@@ -160,6 +160,7 @@ export async function completeConsultation(req: Request, res: Response, next: Ne
     const appointment = await appointmentService.completeConsultation(
       req.params.id as string,
       req.user!.userId,
+      req.body?.followUpInDays ? Number(req.body.followUpInDays) : undefined,
     );
     sendSuccess(res, appointment);
   } catch (err) {

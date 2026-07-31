@@ -558,7 +558,11 @@ export async function startConsultation(appointmentId: string, doctorUserId: str
   });
 }
 
-export async function completeConsultation(appointmentId: string, doctorUserId: string) {
+export async function completeConsultation(
+  appointmentId: string,
+  doctorUserId: string,
+  followUpInDays?: number,
+) {
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
     include: { doctor: true },
@@ -571,10 +575,34 @@ export async function completeConsultation(appointmentId: string, doctorUserId: 
     throw new AppError(`Cannot complete consultation from status ${appointment.status}`, 400);
   }
 
-  return prisma.appointment.update({
+  const completed = await prisma.appointment.update({
     where: { id: appointmentId },
     data: { status: "COMPLETED", consultEndAt: new Date() },
   });
+
+  // Open a draft bill seeded with the consultation fee. Billing failures must never
+  // block a doctor from closing a consultation, so this is best-effort — reception
+  // can always raise the bill by hand.
+  try {
+    const { createBillForAppointment } = await import("./bill.service.js");
+    await createBillForAppointment(appointmentId, doctorUserId);
+  } catch (err) {
+    console.error("[appointment] Failed to open bill for completed consultation:", err);
+  }
+
+  // A doctor-set follow-up interval schedules a "time to book again" nudge. The
+  // delay is enqueued rather than stored, so a failure here must not undo a
+  // completed consultation.
+  if (followUpInDays && followUpInDays > 0) {
+    try {
+      const delayMs = followUpInDays * 24 * 60 * 60 * 1000;
+      await addReminderJob(delayMs, { appointmentId, type: "follow-up" });
+    } catch (err) {
+      console.error("[appointment] Failed to schedule follow-up reminder:", err);
+    }
+  }
+
+  return completed;
 }
 
 export async function getAppointmentReceipt(appointmentId: string, actor: Actor) {

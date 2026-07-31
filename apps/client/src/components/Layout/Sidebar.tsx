@@ -11,6 +11,8 @@ import {
   CalendarOff,
   Bell,
   Heart,
+  Receipt,
+  Wallet,
   ScanLine,
   MessageSquare,
   LogOut,
@@ -37,6 +39,8 @@ const roleNav: Record<string, NavItem[]> = {
     { to: "/admin/settings", label: "Hospital Settings", icon: Settings },
     { to: "/patients", label: "Patients", icon: User },
     { to: "/doctors", label: "Doctors", icon: User },
+    { to: "/billing", label: "Billing", icon: Receipt },
+    { to: "/billing/payments", label: "Payments", icon: Wallet },
   ],
   DOCTOR: [
     { to: "/doctor", label: "Dashboard", icon: Home },
@@ -49,16 +53,23 @@ const roleNav: Record<string, NavItem[]> = {
     { to: "/patient/appointments", label: "My Appointments", icon: Calendar },
     { to: "/doctors", label: "Find a Doctor", icon: User },
     { to: "/patient/favourites", label: "Favourites", icon: Heart },
+    { to: "/patient/bills", label: "My Bills", icon: Receipt },
   ],
   RECEPTIONIST: [
     { to: "/reception", label: "Front Desk", icon: ScanLine },
     { to: "/patients/register", label: "Register Patient", icon: UserPlus },
     { to: "/patients", label: "Patients", icon: User },
     { to: "/doctors", label: "Doctors", icon: User },
+    { to: "/billing", label: "Billing", icon: Receipt },
+    { to: "/billing/payments", label: "Payments", icon: Wallet },
   ],
   PHARMACIST: [{ to: "/patients", label: "Patients", icon: User }],
   LAB_TECHNICIAN: [{ to: "/patients", label: "Patients", icon: User }],
-  ACCOUNTANT: [{ to: "/patients", label: "Patients", icon: User }],
+  ACCOUNTANT: [
+    { to: "/billing", label: "Billing", icon: Receipt },
+    { to: "/billing/payments", label: "Payments", icon: Wallet },
+    { to: "/patients", label: "Patients", icon: User },
+  ],
 };
 
 /** Available to every authenticated role. */

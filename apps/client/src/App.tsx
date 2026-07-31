@@ -28,6 +28,9 @@ import ChatPage from "./pages/ChatPage";
 import ReceptionDesk from "./pages/ReceptionDesk";
 import QueueDisplay from "./pages/QueueDisplay";
 import FavouriteDoctors from "./pages/FavouriteDoctors";
+import MyBills from "./pages/MyBills";
+import BillingConsole from "./pages/BillingConsole";
+import PaymentHistory from "./pages/PaymentHistory";
 import { AdminDashboard, DoctorDashboard, PatientDashboard } from "./pages/Dashboard";
 
 export default function App() {
@@ -139,10 +142,34 @@ export default function App() {
                 }
               />
               <Route
+                path="/patient/bills"
+                element={
+                  <RoleRoute role="PATIENT">
+                    <MyBills />
+                  </RoleRoute>
+                }
+              />
+              <Route
                 path="/reception"
                 element={
                   <RoleRoute role={["RECEPTIONIST", "ADMIN"]}>
                     <ReceptionDesk />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/billing"
+                element={
+                  <RoleRoute role={["ACCOUNTANT", "RECEPTIONIST", "ADMIN"]}>
+                    <BillingConsole />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/billing/payments"
+                element={
+                  <RoleRoute role={["ACCOUNTANT", "RECEPTIONIST", "ADMIN"]}>
+                    <PaymentHistory />
                   </RoleRoute>
                 }
               />

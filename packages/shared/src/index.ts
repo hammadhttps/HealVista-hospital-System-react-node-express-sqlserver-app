@@ -6,3 +6,4 @@ export * from "./schemas/settings.js";
 export * from "./schemas/availability.js";
 export * from "./schemas/notifications.js";
 export * from "./schemas/chat.js";
+export * from "./schemas/billing.js";
