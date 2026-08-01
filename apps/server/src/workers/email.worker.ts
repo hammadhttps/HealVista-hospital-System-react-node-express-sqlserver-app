@@ -1,10 +1,10 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis.js";
+import { bullConnection } from "../config/redis.js";
 import { sendEmail } from "../services/email.service.js";
 import { logger } from "../utils/logger.js";
 
 export function startEmailWorker(): Worker | null {
-  if (!redis) {
+  if (!bullConnection) {
     logger.warn("[email-worker] Redis not available, worker disabled");
     return null;
   }
@@ -18,7 +18,7 @@ export function startEmailWorker(): Worker | null {
       if (!sent) throw new Error(`Failed to send email to ${to}`);
       return { sent: true };
     },
-    { connection: redis },
+    { connection: bullConnection },
   );
 
   worker.on("completed", (job) => {

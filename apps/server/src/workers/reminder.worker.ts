@@ -1,11 +1,11 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis.js";
+import { bullConnection } from "../config/redis.js";
 import { prisma } from "../config/db.js";
 import { dispatchNotification, clearReminderJobIds } from "../services/notification.service.js";
 import { logger } from "../utils/logger.js";
 
 export function startReminderWorker(): Worker | null {
-  if (!redis) {
+  if (!bullConnection) {
     logger.warn("[reminder-worker] Redis not available, worker disabled");
     return null;
   }
@@ -89,7 +89,7 @@ export function startReminderWorker(): Worker | null {
 
       logger.info({ appointmentId, type }, "[reminder-worker] Reminder dispatched");
     },
-    { connection: redis },
+    { connection: bullConnection },
   );
 
   worker.on("completed", (job) => {

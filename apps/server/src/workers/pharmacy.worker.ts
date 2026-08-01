@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis.js";
+import { bullConnection } from "../config/redis.js";
 import { scanLowStock, scanExpiring } from "../services/pharmacy.service.js";
 import { logger } from "../utils/logger.js";
 
@@ -12,7 +12,7 @@ import { logger } from "../utils/logger.js";
  * double-announce it when the sweep runs minutes later.
  */
 export function startPharmacyWorker(): Worker | null {
-  if (!redis) {
+  if (!bullConnection) {
     logger.warn("[pharmacy-worker] Redis not available, worker disabled");
     return null;
   }
@@ -27,7 +27,7 @@ export function startPharmacyWorker(): Worker | null {
       );
       return { lowStock, expiring };
     },
-    { connection: redis },
+    { connection: bullConnection },
   );
 
   worker.on("completed", (job) => {

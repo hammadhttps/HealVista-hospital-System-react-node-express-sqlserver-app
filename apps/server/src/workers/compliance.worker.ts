@@ -1,6 +1,6 @@
 import { Worker } from "bullmq";
 import PDFDocument from "pdfkit";
-import { redis } from "../config/redis.js";
+import { bullConnection } from "../config/redis.js";
 import { complianceQueue } from "../config/bull.js";
 import { prisma } from "../config/db.js";
 import cloudinary from "../config/cloudinary.js";
@@ -25,7 +25,7 @@ import { buildExportPayload } from "../services/dataExport.service.js";
 const EXPORT_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 export function startComplianceWorker(): Worker | null {
-  if (!redis) {
+  if (!bullConnection) {
     logger.warn("[compliance-worker] Redis not available, worker disabled");
     return null;
   }
@@ -39,7 +39,7 @@ export function startComplianceWorker(): Worker | null {
         await runAnonymise(job.data.userId as string);
       }
     },
-    { connection: redis },
+    { connection: bullConnection },
   );
 
   worker.on("completed", (job) => {

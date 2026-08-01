@@ -3,7 +3,8 @@ import { Server, Socket, Namespace } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { allowedOrigins } from "../config/cors.js";
-import { redis } from "../config/redis.js";
+import { createAdapter } from "@socket.io/redis-adapter";
+import { redis, createSocketAdapterConnection } from "../config/redis.js";
 import { logger } from "../utils/logger.js";
 import type { JwtPayload } from "../middlewares/auth.middleware.js";
 
@@ -65,13 +66,60 @@ function safeHandler<T>(namespace: string, event: string, fn: (payload: T) => Pr
   };
 }
 
+/**
+ * Broadcast across every server instance, not just this one.
+ *
+ * Socket.io's default in-memory adapter only knows the sockets connected to
+ * *this* process. The moment the API runs more than one instance, a message sent
+ * by a patient on instance A never reaches the doctor connected to instance B —
+ * it looks exactly like "chat is flaky", and only under load. The Redis adapter
+ * puts every emit on a pub/sub channel so all instances fan it out.
+ *
+ * Must be attached before any `io.of()` call: namespaces inherit the adapter that
+ * is set when they are created.
+ *
+ * Caveat worth knowing: this fixes *broadcast*, not *routing*. HTTP long-polling
+ * sends each poll as a separate request, so a multi-instance deployment still
+ * needs sticky sessions for the polling handshake. Render does not offer them, so
+ * this API must stay at one instance, or move clients to websocket-only once it
+ * scales out.
+ */
+function attachRedisAdapter(server: Server): void {
+  const pubClient = createSocketAdapterConnection();
+  if (!pubClient) {
+    logger.warn("REDIS_URL not set — socket.io using the in-memory adapter (single instance only)");
+    return;
+  }
+  const subClient = pubClient.duplicate();
+
+  for (const [role, client] of [
+    ["pub", pubClient],
+    ["sub", subClient],
+  ] as const) {
+    // Without a handler an ioredis error event is an unhandled 'error' and takes
+    // the process down. A broken adapter must degrade to single-instance
+    // behaviour, not an outage.
+    client.on("error", (err) => logger.error({ err, role }, "Socket.io Redis adapter error"));
+  }
+
+  server.adapter(createAdapter(pubClient, subClient));
+  logger.info("Socket.io using the Redis adapter");
+}
+
 export function setupSocketIO(httpServer: HttpServer) {
   io = new Server(httpServer, {
     cors: {
       origin: allowedOrigins,
       credentials: true,
     },
+    // Render's proxy idles a connection out at 100s; ping well inside that so the
+    // client learns the socket is dead from a missed pong rather than from a
+    // silent hang that looks like "the app stopped updating".
+    pingInterval: 25000,
+    pingTimeout: 20000,
   });
+
+  attachRedisAdapter(io);
 
   const appointmentNamespace = io.of("/appointments");
   const notificationNamespace = io.of("/notifications");

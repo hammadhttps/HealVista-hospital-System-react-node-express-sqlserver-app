@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis.js";
+import { bullConnection } from "../config/redis.js";
 import { summarizeRecord } from "../ai/directPrompts.service.js";
 import { logger } from "../utils/logger.js";
 
@@ -13,7 +13,7 @@ import { logger } from "../utils/logger.js";
  * re-enqueues are harmless.
  */
 export function startSummariesWorker(): Worker | null {
-  if (!redis) {
+  if (!bullConnection) {
     logger.warn("[summaries-worker] Redis not available, worker disabled");
     return null;
   }
@@ -24,7 +24,7 @@ export function startSummariesWorker(): Worker | null {
       const { recordId } = job.data as { recordId: string };
       await summarizeRecord(recordId);
     },
-    { connection: redis },
+    { connection: bullConnection },
   );
 
   worker.on("completed", (job) => {

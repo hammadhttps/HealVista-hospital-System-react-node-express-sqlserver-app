@@ -1,8 +1,8 @@
 import { Queue, Worker } from "bullmq";
-import { redis } from "./redis.js";
+import { bullConnection } from "./redis.js";
 
-const connection = redis
-  ? { connection: redis }
+const connection = bullConnection
+  ? { connection: bullConnection }
   : { connection: { host: "localhost", port: 6379 } };
 
 const defaultJobOptions = {
@@ -12,15 +12,19 @@ const defaultJobOptions = {
   removeOnFail: { age: 604800 },
 };
 
-export const slotGenerationQueue = redis
+export const slotGenerationQueue = bullConnection
   ? new Queue("slot-generation", { ...connection, defaultJobOptions })
   : null;
 
-export const emailQueue = redis ? new Queue("emails", { ...connection, defaultJobOptions }) : null;
+export const emailQueue = bullConnection
+  ? new Queue("emails", { ...connection, defaultJobOptions })
+  : null;
 
-export const smsQueue = redis ? new Queue("sms", { ...connection, defaultJobOptions }) : null;
+export const smsQueue = bullConnection
+  ? new Queue("sms", { ...connection, defaultJobOptions })
+  : null;
 
-export const reminderQueue = redis
+export const reminderQueue = bullConnection
   ? new Queue("reminders", {
       ...connection,
       defaultJobOptions: {
@@ -31,24 +35,24 @@ export const reminderQueue = redis
     })
   : null;
 
-export const recordQueue = redis
+export const recordQueue = bullConnection
   ? new Queue("record-extraction", { ...connection, defaultJobOptions })
   : null;
 
-export const embeddingsQueue = redis
+export const embeddingsQueue = bullConnection
   ? new Queue("embeddings", { ...connection, defaultJobOptions })
   : null;
 
-export const summariesQueue = redis
+export const summariesQueue = bullConnection
   ? new Queue("summaries", { ...connection, defaultJobOptions })
   : null;
 
-export const pharmacySweepQueue = redis
+export const pharmacySweepQueue = bullConnection
   ? new Queue("pharmacy-sweep", { ...connection, defaultJobOptions })
   : null;
 
 /** Subject-rights jobs: full data export, and anonymisation once grace expires. */
-export const complianceQueue = redis
+export const complianceQueue = bullConnection
   ? new Queue("compliance", { ...connection, defaultJobOptions })
   : null;
 
@@ -119,7 +123,7 @@ export async function addSummaryJob(recordId: string): Promise<void> {
 }
 
 export async function setupSlotGenerationJob() {
-  if (!slotGenerationQueue || !redis) {
+  if (!slotGenerationQueue) {
     console.warn("[bull] Redis not available, skipping slot generation schedule");
     return;
   }
@@ -142,7 +146,7 @@ export async function setupSlotGenerationJob() {
  * even when the API process restarts.
  */
 export async function setupPharmacySweepJob() {
-  if (!pharmacySweepQueue || !redis) {
+  if (!pharmacySweepQueue) {
     console.warn("[bull] Redis not available, skipping pharmacy sweep schedule");
     return;
   }

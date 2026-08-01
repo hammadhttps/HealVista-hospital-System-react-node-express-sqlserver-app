@@ -42,6 +42,23 @@ export const bullConnection = redisUrl
   ? new Redis(redisUrl, { ...baseOptions, enableOfflineQueue: true, maxRetriesPerRequest: null })
   : null;
 
+/**
+ * A fresh connection for the Socket.io Redis adapter.
+ *
+ * The adapter needs its own pair: once a client issues SUBSCRIBE it enters
+ * subscriber mode and can no longer run ordinary commands, so sharing `redis`
+ * here would break every cache read in the app. `enableOfflineQueue` is on
+ * because a dropped pub/sub message is a lost real-time event, not a slow one.
+ */
+export function createSocketAdapterConnection(): Redis | null {
+  if (!redisUrl) return null;
+  return new Redis(redisUrl, {
+    ...baseOptions,
+    enableOfflineQueue: true,
+    maxRetriesPerRequest: null,
+  });
+}
+
 for (const [name, client] of [
   ["cache", redis],
   ["bull", bullConnection],

@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis.js";
+import { bullConnection } from "../config/redis.js";
 import { logger } from "../utils/logger.js";
 import { embedSource } from "./embeddings.service.js";
 import { AppError } from "../utils/AppError.js";
@@ -17,7 +17,7 @@ import { AppError } from "../utils/AppError.js";
  *   survives as a retryable failure rather than poisoning the queue.
  */
 export function startEmbeddingWorker(): Worker | null {
-  if (!redis) {
+  if (!bullConnection) {
     logger.warn("[embeddings-worker] Redis not available, worker disabled");
     return null;
   }
@@ -32,7 +32,7 @@ export function startEmbeddingWorker(): Worker | null {
       await embedSource(sourceType, sourceId);
     },
     {
-      connection: redis,
+      connection: bullConnection,
       concurrency: 2,
     },
   );

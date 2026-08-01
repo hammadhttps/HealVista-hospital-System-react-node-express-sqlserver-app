@@ -1,5 +1,5 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis.js";
+import { bullConnection } from "../config/redis.js";
 import { prisma } from "../config/db.js";
 import { addEmbeddingJob, addSummaryJob } from "../config/bull.js";
 import { isAiConfigured } from "../ai/index.js";
@@ -46,7 +46,7 @@ async function extractPdfText(publicId: string): Promise<string> {
 }
 
 export function startRecordWorker(): Worker | null {
-  if (!redis) {
+  if (!bullConnection) {
     logger.warn("[record-worker] Redis not available, worker disabled");
     return null;
   }
@@ -113,7 +113,7 @@ export function startRecordWorker(): Worker | null {
 
       logger.info({ recordId, chars: text.length }, "[record-worker] Text extracted");
     },
-    { connection: redis },
+    { connection: bullConnection },
   );
 
   worker.on("completed", (job) => {

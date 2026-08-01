@@ -1,9 +1,9 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis.js";
+import { bullConnection } from "../config/redis.js";
 import { generateSlotsForAllDoctors } from "../services/slot.service.js";
 
 export function startSlotGenerationWorker() {
-  if (!redis) {
+  if (!bullConnection) {
     console.warn("[bull] Redis not available, slot generation worker disabled");
     return null;
   }
@@ -16,7 +16,7 @@ export function startSlotGenerationWorker() {
       console.log(`[bull] Generated slots for ${results.length} doctors`);
       return results;
     },
-    { connection: redis },
+    { connection: bullConnection },
   );
 
   worker.on("completed", (job) => {
