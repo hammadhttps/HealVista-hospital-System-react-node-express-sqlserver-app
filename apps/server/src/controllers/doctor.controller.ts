@@ -61,10 +61,10 @@ export async function updateAvailability(req: Request, res: Response, next: Next
     if (profileUserId !== req.user!.userId && req.user!.role !== "ADMIN") {
       throw new AppError("You can only update your own availability", 403);
     }
-    const availability = await doctorService.upsertAvailability(
-      doctorId,
-      req.validated.entries ?? [req.validated],
-    );
+    const entries = Array.isArray(req.validated)
+      ? req.validated
+      : (req.validated.entries ?? [req.validated]);
+    const availability = await doctorService.upsertAvailability(doctorId, entries);
     sendSuccess(res, availability);
   } catch (err) {
     next(err);
