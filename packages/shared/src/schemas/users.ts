@@ -52,6 +52,20 @@ export const doctorUpdateSchema = z.object({
   qualifications: z.array(z.string()).optional(),
 });
 
+/**
+ * Admin decision on the doctor verification queue. A rejection must carry a
+ * reason — it is recorded in the audit log and shown to the doctor.
+ */
+export const doctorVerificationSchema = z
+  .object({
+    status: z.enum(["VERIFIED", "REJECTED"]),
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .refine((v) => v.status !== "REJECTED" || !!v.reason, {
+    message: "A reason is required when rejecting a doctor",
+    path: ["reason"],
+  });
+
 export const avatarUploadSchema = z.object({
   avatarUrl: z.string().url(),
 });
@@ -62,4 +76,5 @@ export type EmergencyContactInput = z.infer<typeof emergencyContactSchema>;
 export type UpdatePatientInput = z.infer<typeof updatePatientSchema>;
 export type StaffUpdateInput = z.infer<typeof staffUpdateSchema>;
 export type DoctorUpdateInput = z.infer<typeof doctorUpdateSchema>;
+export type DoctorVerificationInput = z.infer<typeof doctorVerificationSchema>;
 export type AvatarUploadInput = z.infer<typeof avatarUploadSchema>;

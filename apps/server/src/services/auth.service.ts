@@ -117,6 +117,23 @@ export async function login(input: LoginInput, ipAddress?: string) {
       },
     });
 
+    // Also recorded in the unified audit trail (security.md §5), which is what
+    // the admin audit-log view reads. Only for a known user — an audit row must
+    // reference a real actor, and an unknown email has none. `login_attempts`
+    // remains the complete record, including attempts against unknown emails.
+    await writeAuditLog({
+      actorUserId: user.id,
+      action: "LOGIN_FAILURE",
+      targetType: "User",
+      targetId: user.id,
+      ipAddress,
+      metadata: {
+        reason: "wrong_password",
+        failedCount: newCount,
+        locked: newCount >= LOCKOUT_THRESHOLD,
+      },
+    });
+
     throw new AppError("Invalid email or password", 401);
   }
 
@@ -128,6 +145,15 @@ export async function login(input: LoginInput, ipAddress?: string) {
 
   await prisma.loginAttempt.create({
     data: { email: input.email, ipAddress, successful: true },
+  });
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "LOGIN_SUCCESS",
+    targetType: "User",
+    targetId: user.id,
+    ipAddress,
+    metadata: { role: user.role },
   });
 
   // Create session

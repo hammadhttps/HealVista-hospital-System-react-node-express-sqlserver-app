@@ -4,6 +4,7 @@ import { authenticate, optionalAuth } from "../middlewares/auth.middleware.js";
 import { requireRole } from "../middlewares/rbac.middleware.js";
 import {
   doctorUpdateSchema,
+  doctorVerificationSchema,
   doctorAvailabilitySchema,
   doctorAvailabilityArraySchema,
   availabilityExceptionSchema,
@@ -23,6 +24,15 @@ router.patch(
   requireRole("DOCTOR", "ADMIN"),
   validate(doctorUpdateSchema),
   doctorController.updateProfile,
+);
+
+/** Admin verification queue decision. Both outcomes are audited. */
+router.patch(
+  "/:id/verification",
+  authenticate,
+  requireRole("ADMIN"),
+  validate(doctorVerificationSchema),
+  doctorController.setVerification,
 );
 
 router.get("/:id/availability", authenticate, doctorController.getAvailability);

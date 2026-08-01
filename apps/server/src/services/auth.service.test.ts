@@ -41,6 +41,11 @@ vi.mock("../config/db", () => ({
     loginAttempt: {
       create: vi.fn(),
     },
+    // Login now also writes LOGIN_SUCCESS / LOGIN_FAILURE to the unified audit
+    // trail (security.md §5).
+    auditLog: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));

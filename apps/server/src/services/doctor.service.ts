@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { redis } from "../config/redis.js";
 import { AppError } from "../utils/AppError.js";
+import { writeAuditLog } from "../utils/audit.js";
 import {
   ruleBasedDepartmentSlugs,
   suggestDepartments,
@@ -70,6 +71,45 @@ export async function updateProfile(
     await redis.del(`doctor:${doctor.id}`);
     await redis.del(`doctor:profile:${userId}`);
   }
+  return updated;
+}
+
+/**
+ * Admin decision on the doctor verification queue (Phase 6.4).
+ *
+ * Verifying a doctor is what makes them bookable by patients, so both outcomes
+ * are audited with the deciding admin, per `security.md` §5. A rejection records
+ * its reason.
+ */
+export async function setVerificationStatus(
+  doctorId: string,
+  status: "VERIFIED" | "REJECTED",
+  actorUserId: string,
+  reason?: string,
+  ipAddress?: string | null,
+) {
+  const doctor = await prisma.doctor.findUnique({ where: { id: doctorId } });
+  if (!doctor || doctor.deletedAt) throw new AppError("Doctor not found", 404);
+
+  const updated = await prisma.doctor.update({
+    where: { id: doctorId },
+    data: { verificationStatus: status },
+  });
+
+  await writeAuditLog({
+    actorUserId,
+    action: status === "VERIFIED" ? "VERIFY_DOCTOR" : "REJECT_DOCTOR",
+    targetType: "Doctor",
+    targetId: doctorId,
+    ipAddress,
+    metadata: { previousStatus: doctor.verificationStatus, ...(reason ? { reason } : {}) },
+  });
+
+  if (redis) {
+    await redis.del(`doctor:${doctorId}`);
+    await redis.del(`doctor:profile:${doctor.userId}`);
+  }
+
   return updated;
 }
 
@@ -164,6 +204,7 @@ export async function createException(
   const bookedAppointments = await prisma.appointment.findMany({
     where: {
       doctorId,
+      deletedAt: null,
       slot: {
         startTime: { gte: startDate, lte: endDate },
       },

@@ -11,3 +11,4 @@ export * from "./schemas/clinical.js";
 export * from "./schemas/ai.js";
 export * from "./schemas/analytics.js";
 export * from "./schemas/search.js";
+export * from "./schemas/compliance.js";

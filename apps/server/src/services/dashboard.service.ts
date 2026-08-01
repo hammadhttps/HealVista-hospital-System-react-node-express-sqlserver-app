@@ -406,7 +406,7 @@ async function adminDashboard(): Promise<DashboardData> {
   kpis.push(kpi("noShows", "No-shows (all time)", Number(noShows)));
 
   const pendingDoctors = await prisma.doctor.findMany({
-    where: { verificationStatus: "PENDING" },
+    where: { verificationStatus: "PENDING", deletedAt: null },
     take: 10,
     select: { id: true, fullName: true },
   });

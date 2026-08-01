@@ -134,7 +134,10 @@ export async function resolveClinicalAccess(
     // Only while there is something to dispense. A prescription has no patientId of
     // its own — it reaches the patient through its appointment.
     const prescription = await prisma.prescription.findFirst({
-      where: { isDraft: false, appointment: { patientId } },
+      // `deletedAt: null` is load-bearing: this query is what grants a pharmacist
+      // read access to a patient's clinical record. Without it, a withdrawn
+      // prescription would keep conferring that access indefinitely.
+      where: { isDraft: false, deletedAt: null, appointment: { patientId } },
       select: { id: true },
     });
     return prescription ? { allowed: true, reason: "dispensing_pharmacist" } : { allowed: false };

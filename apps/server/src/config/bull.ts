@@ -47,6 +47,11 @@ export const pharmacySweepQueue = redis
   ? new Queue("pharmacy-sweep", { ...connection, defaultJobOptions })
   : null;
 
+/** Subject-rights jobs: full data export, and anonymisation once grace expires. */
+export const complianceQueue = redis
+  ? new Queue("compliance", { ...connection, defaultJobOptions })
+  : null;
+
 interface NotificationJobData {
   type: "email" | "sms";
   to: string;

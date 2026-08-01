@@ -130,7 +130,7 @@ export async function globalSearch(
   if (total > 0 && groups.some((g) => g.type === "patient" || g.type === "labOrder")) {
     await writeAuditLog({
       actorUserId: userId,
-      action: "search.patient_data",
+      action: "PATIENT_DATA_SEARCHED",
       targetType: "search",
       targetId: userId,
       ipAddress,

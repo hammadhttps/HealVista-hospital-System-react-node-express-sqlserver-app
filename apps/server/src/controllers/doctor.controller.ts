@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import * as doctorService from "../services/doctor.service.js";
 import { sendSuccess, sendPaginated } from "../utils/apiResponse.js";
 import { AppError } from "../utils/AppError.js";
+import type { DoctorVerificationInput } from "@healvista/shared";
 
 export async function list(req: Request, res: Response, next: NextFunction) {
   try {
@@ -38,6 +39,22 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
       throw new AppError("You can only update your own profile", 403);
     }
     const doctor = await doctorService.updateProfile(targetUserId, req.validated);
+    sendSuccess(res, doctor);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function setVerification(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { status, reason } = req.validated as DoctorVerificationInput;
+    const doctor = await doctorService.setVerificationStatus(
+      req.params.id as string,
+      status,
+      req.user!.userId,
+      reason,
+      req.ip,
+    );
     sendSuccess(res, doctor);
   } catch (err) {
     next(err);
