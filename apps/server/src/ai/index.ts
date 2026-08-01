@@ -69,3 +69,29 @@ export {
   type SymptomCheckResult,
   type DepartmentSuggestion,
 } from "./symptom.service.js";
+export {
+  assistant,
+  timelineSummary,
+  semanticSearch,
+  type AssistantResult,
+  type Citation,
+  type TimelineSummaryResult,
+  type SearchHit,
+} from "./rag.service.js";
+export {
+  listKbArticles,
+  getKbArticle,
+  createKbArticle,
+  updateKbArticle,
+  deleteKbArticle,
+  askKb,
+  type KbAskResult,
+  type KbCitation,
+} from "./kb.service.js";
+export {
+  runAnalyticsQuestion,
+  type AnalyticsIntent,
+  type AnalyticsResult,
+  type AnalyticsTable,
+} from "./analytics.service.js";
+export { answerCacheKey, getCachedAnswer, setCachedAnswer } from "./answerCache.js";

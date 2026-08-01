@@ -3,7 +3,16 @@ import { authenticate } from "../middlewares/auth.middleware.js";
 import { requireRole } from "../middlewares/rbac.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import { aiRateLimit } from "../ai/aiRateLimit.middleware.js";
-import { symptomCheckSchema } from "@healvista/shared";
+import {
+  symptomCheckSchema,
+  assistantQuerySchema,
+  timelineSummaryParamsSchema,
+  semanticSearchSchema,
+  kbArticleSchema,
+  kbArticleUpdateSchema,
+  kbAskSchema,
+  analyticsQuerySchema,
+} from "@healvista/shared";
 import * as ai from "../controllers/ai.controller.js";
 
 /**
@@ -18,6 +27,9 @@ import * as ai from "../controllers/ai.controller.js";
  * the caller's relationship to that id before any model call.
  */
 const router = Router();
+
+/** Everyone except patients can read the hospital knowledge base. */
+const STAFF = ["DOCTOR", "RECEPTIONIST", "PHARMACIST", "LAB_TECHNICIAN", "ACCOUNTANT", "ADMIN"];
 
 router.post(
   "/symptom-check",
@@ -54,6 +66,79 @@ router.post(
   authenticate,
   requireRole("DOCTOR", "ADMIN"),
   ai.summarizeRecord,
+);
+
+// ─── RAG: assistant, timeline, semantic search ─────────────────────────────
+
+router.post(
+  "/assistant",
+  authenticate,
+  aiRateLimit(10, 60_000),
+  validate(assistantQuerySchema),
+  ai.assistant,
+);
+
+router.get(
+  "/timeline-summary/:patientId",
+  authenticate,
+  aiRateLimit(10, 60_000),
+  validate(timelineSummaryParamsSchema, "params"),
+  ai.timelineSummary,
+);
+
+router.post(
+  "/search",
+  authenticate,
+  requireRole("DOCTOR"),
+  aiRateLimit(10, 60_000),
+  validate(semanticSearchSchema),
+  ai.semanticSearch,
+);
+
+// ─── Hospital knowledge base ────────────────────────────────────────────────
+
+router.get("/kb", authenticate, requireRole(...STAFF), ai.kbList);
+
+router.post(
+  "/kb/ask",
+  authenticate,
+  requireRole(...STAFF),
+  aiRateLimit(10, 60_000),
+  validate(kbAskSchema),
+  ai.kbAsk,
+);
+
+router.get("/kb/:id", authenticate, requireRole(...STAFF), ai.kbGet);
+
+router.post(
+  "/kb",
+  authenticate,
+  requireRole("ADMIN"),
+  aiRateLimit(20, 60_000),
+  validate(kbArticleSchema),
+  ai.kbCreate,
+);
+
+router.put(
+  "/kb/:id",
+  authenticate,
+  requireRole("ADMIN"),
+  aiRateLimit(20, 60_000),
+  validate(kbArticleUpdateSchema),
+  ai.kbUpdate,
+);
+
+router.delete("/kb/:id", authenticate, requireRole("ADMIN"), aiRateLimit(20, 60_000), ai.kbDelete);
+
+// ─── Analytics assistant (ADMIN) ───────────────────────────────────────────
+
+router.post(
+  "/analytics",
+  authenticate,
+  requireRole("ADMIN"),
+  aiRateLimit(5, 60_000),
+  validate(analyticsQuerySchema),
+  ai.analytics,
 );
 
 export default router;
