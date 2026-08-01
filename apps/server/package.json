@@ -12,12 +12,14 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:embed": "tsx scripts/db-embed.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.15.0",
     "@healvista/shared": "*",
     "@prisma/client": "^6.5.0",
     "bcryptjs": "^3.0.3",
