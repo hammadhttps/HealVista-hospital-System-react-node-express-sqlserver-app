@@ -256,7 +256,20 @@ export async function startTesting(orderId: string, actor: Actor) {
   if (!order) throw new AppError("Lab order not found", 404);
   assertTransition(order.status as LabStatus, "TESTING");
 
-  return prisma.labOrder.update({ where: { id: orderId }, data: { status: "TESTING" } });
+  const updated = await prisma.labOrder.update({
+    where: { id: orderId },
+    data: { status: "TESTING" },
+  });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "LAB_TESTING_STARTED",
+    targetType: "lab_order",
+    targetId: orderId,
+    metadata: { patientId: order.patientId },
+  });
+
+  return updated;
 }
 
 export interface ResultInput {
