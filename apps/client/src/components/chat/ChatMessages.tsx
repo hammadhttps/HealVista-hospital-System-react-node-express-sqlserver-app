@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { useChatMessages } from "../../hooks/queries/useChat";
+import { useQueryClient } from "@tanstack/react-query";
+import { useChatMessages, chatKeys } from "../../hooks/queries/useChat";
 import { useSendMessage } from "../../hooks/mutations/useChatMutations";
 import { useSocket } from "../SocketProvider";
+import type { ChatMessage, ChatMessagePage } from "../../api/notifications";
 import { useAuthStore } from "../../store/authStore";
 import { MessageBubble } from "./MessageBubble";
 
@@ -14,6 +16,7 @@ export function ChatMessages({ threadId, onClose }: Props) {
   const { data, isLoading } = useChatMessages(threadId);
   const sendMessage = useSendMessage(threadId);
   const { chatSocket } = useSocket();
+  const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [content, setContent] = useState("");
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
@@ -41,14 +44,52 @@ export function ChatMessages({ threadId, onClose }: Props) {
       setTypingUsers((prev) => prev.filter((id) => id !== userId));
     };
 
+    /**
+     * A message arriving from the server.
+     *
+     * Written straight into the React Query cache rather than triggering a
+     * refetch: the payload is the complete message, so a round trip would only
+     * add latency to the thing that must feel instant. The thread list is
+     * invalidated because its preview and unread count did change.
+     */
+    const onMessage = (message: ChatMessage) => {
+      if (message.threadId !== threadId) return;
+
+      queryClient.setQueryData(
+        chatKeys.messages(threadId, 1),
+        (previous: ChatMessagePage | undefined) => {
+          if (!previous) return previous;
+          // The sender already appended it optimistically via the mutation, and
+          // the socket echoes to the whole room including them.
+          if (previous.data.some((m) => m.id === message.id)) return previous;
+          return { ...previous, data: [...previous.data, message], total: previous.total + 1 };
+        },
+      );
+      void queryClient.invalidateQueries({ queryKey: chatKeys.threads });
+    };
+
+    const onRead = () => {
+      void queryClient.invalidateQueries({ queryKey: chatKeys.messages(threadId, 1) });
+    };
+
+    // Re-join on every reconnect, or the socket comes back into an empty room
+    // after a Render cold start and silently receives nothing.
+    const onReconnect = () => chatSocket.emit("chat:join", { threadId });
+
+    chatSocket.on("chat:message", onMessage);
+    chatSocket.on("chat:read", onRead);
     chatSocket.on("chat:typing", onTyping);
     chatSocket.on("chat:stop_typing", onStopTyping);
+    chatSocket.io.on("reconnect", onReconnect);
 
     return () => {
+      chatSocket.off("chat:message", onMessage);
+      chatSocket.off("chat:read", onRead);
       chatSocket.off("chat:typing", onTyping);
       chatSocket.off("chat:stop_typing", onStopTyping);
+      chatSocket.io.off("reconnect", onReconnect);
     };
-  }, [chatSocket, threadId, currentUserId]);
+  }, [chatSocket, threadId, currentUserId, queryClient]);
 
   const handleTyping = () => {
     if (!chatSocket) return;

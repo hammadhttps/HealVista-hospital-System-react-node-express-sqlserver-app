@@ -1,6 +1,51 @@
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { getDependentPatientIds } from "./access.service.js";
+import { getIO } from "../sockets/index.js";
+import { logger } from "../utils/logger.js";
+import { cacheKeys, cached, delCached, delCachedByPrefix } from "../config/redis.js";
+
+/**
+ * Chat message cache.
+ *
+ * Only the **first page** of a thread is cached: it is what every open
+ * conversation re-reads constantly, while older pages are scrolled to once.
+ * The TTL is short and the whole thread's cache is dropped on every send, so a
+ * reader can never see a stale conversation — the failure mode of a chat cache
+ * is a missing message, which is worse than the query it saves.
+ */
+const MESSAGES_TTL_SECONDS = 60;
+const THREADS_TTL_SECONDS = 30;
+
+/**
+ * The front desk and admin views listed every thread in the hospital with no
+ * limit, which grows without bound. The list is a recent-activity view, so it
+ * is capped and ordered by last message.
+ */
+const THREAD_LIST_LIMIT = 100;
+
+async function invalidateThreadCache(threadId: string): Promise<void> {
+  await delCachedByPrefix(cacheKeys.chatMessagesPrefix(threadId));
+
+  // The thread list shows last message and unread counts, so it is stale too.
+  const thread = await prisma.chatThread.findUnique({
+    where: { id: threadId },
+    select: {
+      appointment: {
+        select: {
+          patient: { select: { userId: true } },
+          doctor: { select: { userId: true } },
+        },
+      },
+    },
+  });
+  if (!thread) return;
+
+  await delCached(
+    cacheKeys.chatThreads(thread.appointment.patient.userId),
+    cacheKeys.chatThreads(thread.appointment.doctor.userId),
+  );
+}
 
 /**
  * Whether a user may take part in the conversation attached to an appointment.
@@ -40,6 +85,10 @@ async function canParticipate(
 }
 
 export async function getThreads(userId: string) {
+  return cached(cacheKeys.chatThreads(userId), THREADS_TTL_SECONDS, () => loadThreads(userId));
+}
+
+async function loadThreads(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { role: true, patient: { select: { id: true } }, doctor: { select: { id: true } } },
@@ -66,7 +115,8 @@ export async function getThreads(userId: string) {
         },
         messages: { orderBy: { sentAt: "desc" }, take: 1 },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
+      take: THREAD_LIST_LIMIT,
     });
   }
 
@@ -83,7 +133,8 @@ export async function getThreads(userId: string) {
         },
         messages: { orderBy: { sentAt: "desc" }, take: 1 },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
+      take: THREAD_LIST_LIMIT,
     });
   }
 
@@ -100,7 +151,8 @@ export async function getThreads(userId: string) {
         },
         messages: { orderBy: { sentAt: "desc" }, take: 1 },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
+      take: THREAD_LIST_LIMIT,
     });
   }
 
@@ -133,20 +185,29 @@ export async function getMessages(threadId: string, userId: string, page: number
     throw new AppError("Not a participant of this thread", 403);
   }
 
-  const [data, total] = await Promise.all([
-    prisma.chatMessage.findMany({
-      where: { threadId },
-      orderBy: { sentAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-      include: {
-        sender: { select: { id: true, email: true, role: true, avatarUrl: true } },
-      },
-    }),
-    prisma.chatMessage.count({ where: { threadId } }),
-  ]);
+  const load = async () => {
+    const [data, total] = await Promise.all([
+      prisma.chatMessage.findMany({
+        where: { threadId },
+        orderBy: { sentAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          sender: { select: { id: true, email: true, role: true, avatarUrl: true } },
+        },
+      }),
+      prisma.chatMessage.count({ where: { threadId } }),
+    ]);
+    return { data: data.reverse(), total };
+  };
 
-  return { data: data.reverse(), total };
+  // Only the first page is hot enough to be worth caching; deeper pages are
+  // scrolled to once and would just occupy memory.
+  if (page !== 1) return load();
+
+  // Participation is re-checked above on every call, so the cache is keyed on
+  // the thread rather than the reader — it holds no authorisation decision.
+  return cached(cacheKeys.chatMessages(threadId, page), MESSAGES_TTL_SECONDS, load);
 }
 
 export async function sendMessage(threadId: string, userId: string, content: string) {
@@ -167,12 +228,63 @@ export async function sendMessage(threadId: string, userId: string, content: str
     },
   });
 
+  /**
+   * Broadcast to everyone already in the thread room.
+   *
+   * Without this the message reached the database and stopped there: the
+   * recipient saw nothing until they reloaded, which is not a chat. Only sockets
+   * that passed the `chat:join` participation check are in the room, so the
+   * broadcast cannot reach a non-participant.
+   *
+   * Emission must never fail the send — the message is already committed, and
+   * the recipient's next fetch will show it regardless.
+   */
+  try {
+    getIO().of("/chat").to(`chat:${threadId}`).emit("chat:message", message);
+  } catch (err) {
+    logger.error({ err, threadId }, "Failed to broadcast chat message");
+  }
+
+  // Also nudge the recipient's notification socket so an unread badge updates
+  // even when they do not have the thread open.
+  try {
+    const recipients = await threadRecipientUserIds(threadId, userId);
+    const notifications = getIO().of("/notifications");
+    for (const recipientId of recipients) {
+      notifications.to(`user:${recipientId}`).emit("chat:unread", { threadId });
+    }
+  } catch (err) {
+    logger.error({ err, threadId }, "Failed to notify chat recipients");
+  }
+
   await prisma.chatThread.update({
     where: { id: threadId },
-    data: { createdAt: new Date() },
+    data: { lastMessageAt: new Date() },
   });
 
+  await invalidateThreadCache(threadId);
+
   return message;
+}
+
+/** The other participants' user ids — used for unread notifications. */
+async function threadRecipientUserIds(threadId: string, senderUserId: string): Promise<string[]> {
+  const thread = await prisma.chatThread.findUnique({
+    where: { id: threadId },
+    select: {
+      appointment: {
+        select: {
+          patient: { select: { userId: true } },
+          doctor: { select: { userId: true } },
+        },
+      },
+    },
+  });
+  if (!thread) return [];
+
+  return [thread.appointment.patient.userId, thread.appointment.doctor.userId].filter(
+    (id) => id !== senderUserId,
+  );
 }
 
 export async function markThreadRead(threadId: string, userId: string) {
@@ -197,6 +309,16 @@ export async function markThreadRead(threadId: string, userId: string) {
     },
     data: { readAt: new Date() },
   });
+
+  // Read receipts are part of the cached payload, so it is now stale.
+  await invalidateThreadCache(threadId);
+
+  // Tell the sender their message was read, without them polling for it.
+  try {
+    getIO().of("/chat").to(`chat:${threadId}`).emit("chat:read", { threadId, byUserId: userId });
+  } catch (err) {
+    logger.error({ err, threadId }, "Failed to broadcast read receipt");
+  }
 }
 
 export async function createThreadForAppointment(appointmentId: string) {

@@ -5,6 +5,10 @@ import { prisma } from "../config/db.js";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
+import {
+  revokeSession as revokeSessionInCache,
+  revokeAllSessionsForUser,
+} from "./session.service.js";
 import type { RegisterInput, LoginInput } from "@healvista/shared";
 
 const BCRYPT_ROUNDS = 12;
@@ -241,6 +245,8 @@ export async function logout(userId: string, sessionId: string) {
     where: { id: sessionId },
     data: { revokedAt: new Date() },
   });
+  // Mark it in Redis too, or the access token keeps working until it expires.
+  await revokeSessionInCache(sessionId);
 }
 
 export async function logoutAll(userId: string) {
@@ -248,6 +254,7 @@ export async function logoutAll(userId: string) {
     where: { userId, revokedAt: null },
     data: { revokedAt: new Date() },
   });
+  await revokeAllSessionsForUser(userId);
   await prisma.userSession.updateMany({
     where: { userId, revokedAt: null },
     data: { revokedAt: new Date() },
@@ -443,4 +450,8 @@ export async function revokeSession(userId: string, sessionId: string) {
       data: { revokedAt: new Date() },
     }),
   ]);
+
+  // The point of "revoke this session" is that the device stops working now,
+  // not when its access token happens to expire.
+  await revokeSessionInCache(sessionId);
 }

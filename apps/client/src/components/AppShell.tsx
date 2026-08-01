@@ -6,6 +6,15 @@ import Header from "./Layout/Header";
 import ActingBanner from "./Layout/ActingBanner";
 import { CommandPalette } from "./search/CommandPalette";
 
+interface GoToMap {
+  [key: string]: string;
+}
+
+interface TypingTarget extends EventTarget {
+  readonly tagName?: string;
+  readonly isContentEditable?: boolean;
+}
+
 /**
  * Staff keyboard shortcuts (Phase 6.7).
  *
@@ -13,7 +22,7 @@ import { CommandPalette } from "./search/CommandPalette";
  * tools. Deliberately not modifier-based: a clinician's hands stay on the
  * keyboard and single letters do not collide with browser or OS shortcuts.
  */
-const GO_TO = {
+const GO_TO: GoToMap = {
   d: "/",
   p: "/patients",
   a: "/patient/appointments",
@@ -21,7 +30,7 @@ const GO_TO = {
 };
 
 export function AppShell() {
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState<boolean>(false);
   const navigate = useNavigate();
   const { t } = useTranslation("a11y");
 
@@ -29,20 +38,20 @@ export function AppShell() {
   // data fetching, and is cleaned up on unmount.
   useEffect(() => {
     let awaitingGo = false;
-    let goTimer;
+    let goTimer: ReturnType<typeof setTimeout>;
 
-    function isTyping(target) {
-      const el = target;
+    function isTyping(target: EventTarget | null): boolean {
+      const el = target as TypingTarget | null;
       if (!el) return false;
       return (
         el.tagName === "INPUT" ||
         el.tagName === "TEXTAREA" ||
         el.tagName === "SELECT" ||
-        el.isContentEditable
+        el.isContentEditable === true
       );
     }
 
-    function onKeyDown(event) {
+    function onKeyDown(event: KeyboardEvent): void {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setPaletteOpen((open) => !open);
