@@ -54,6 +54,8 @@ const TEMPLATES: Record<string, (data: Record<string, string>) => string> = {
     `Reminder: Appointment with Dr. ${d.doctorName} at ${d.time} on ${d.date}.`,
   PAYMENT_RECEIPT: (d) => `Payment of $${d.amount} received. Receipt: ${d.receiptUrl}`,
   LAB_RESULT_READY: (d) => `Lab results for ${d.testName} are ready. Log in to view.`,
+  CRITICAL_RESULT: (d) =>
+    `URGENT: ${d.patientName} (MRN ${d.mrn}) has ${d.count} critical lab result(s). Review immediately.`,
   FOLLOW_UP_REMINDER: (d) => `Please book a follow-up with Dr. ${d.doctorName}.`,
 };
 

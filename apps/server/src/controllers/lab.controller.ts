@@ -25,12 +25,17 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
 
 export async function cancelOrder(req: Request, res: Response, next: NextFunction) {
   try {
-    const order = await labService.cancelOrder(
-      req.params.id as string,
-      req.body.reason,
-      req.user!,
-    );
+    const order = await labService.cancelOrder(req.params.id as string, req.body.reason, req.user!);
     sendSuccess(res, order);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function retestOrder(req: Request, res: Response, next: NextFunction) {
+  try {
+    const order = await labService.retestOrder(req.params.id as string, req.body.reason, req.user!);
+    sendSuccess(res, order, 201);
   } catch (err) {
     next(err);
   }
@@ -87,10 +92,7 @@ export async function getOrder(req: Request, res: Response, next: NextFunction) 
 
 export async function listPatientOrders(req: Request, res: Response, next: NextFunction) {
   try {
-    const orders = await labService.listPatientOrders(
-      req.params.patientId as string,
-      req.user!,
-    );
+    const orders = await labService.listPatientOrders(req.params.patientId as string, req.user!);
     sendSuccess(res, orders);
   } catch (err) {
     next(err);

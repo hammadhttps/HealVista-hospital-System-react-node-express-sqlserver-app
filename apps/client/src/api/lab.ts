@@ -14,6 +14,10 @@ export const labApi = {
   cancelOrder: (id: string, reason: string) =>
     api.post(`/lab/orders/${id}/cancel`, { reason }).then((r) => r.data.data),
 
+  /** Doctor asks the lab to re-run a previous order. */
+  retest: (id: string, reason: string) =>
+    api.post(`/lab/orders/${id}/retest`, { reason }).then((r) => r.data.data),
+
   /** The lab's own queue. Anything not yet finished, oldest first. */
   worklist: (status?: string) =>
     api.get("/lab/worklist", { params: { status } }).then((r) => r.data.data),

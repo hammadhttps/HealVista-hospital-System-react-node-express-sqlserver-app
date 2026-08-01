@@ -24,6 +24,14 @@ export function useCancelLabOrder() {
   });
 }
 
+export function useRetestLabOrder() {
+  const invalidate = useInvalidateLab();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => labApi.retest(id, reason),
+    onSuccess: invalidate,
+  });
+}
+
 export function useCollectSample() {
   const invalidate = useInvalidateLab();
   return useMutation({ mutationFn: labApi.collect, onSuccess: invalidate });

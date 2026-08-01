@@ -1,12 +1,9 @@
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
-import {
-  assertClinicalAccess,
-  getAccessiblePatientIds,
-  type Actor,
-} from "./access.service.js";
+import { assertClinicalAccess, getAccessiblePatientIds, type Actor } from "./access.service.js";
 import { dispatchNotification } from "./notification.service.js";
+import { addChargeToBill, removeChargeFromBill } from "./bill.service.js";
 
 /**
  * Laboratory orders and results.
@@ -26,12 +23,7 @@ import { dispatchNotification } from "./notification.service.js";
  */
 
 export type LabStatus =
-  | "ORDERED"
-  | "SAMPLE_COLLECTED"
-  | "TESTING"
-  | "COMPLETED"
-  | "VERIFIED"
-  | "CANCELLED";
+  "ORDERED" | "SAMPLE_COLLECTED" | "TESTING" | "COMPLETED" | "VERIFIED" | "CANCELLED";
 
 /** Legal forward transitions. A result cannot be entered on an uncollected sample. */
 const TRANSITIONS: Record<LabStatus, LabStatus[]> = {
@@ -145,6 +137,27 @@ export async function createOrder(
     metadata: { patientId: input.patientId, tests: tests.map((t) => t.code) },
   });
 
+  // The tests' charges flow to the bill — one line per test, on the visit's bill
+  // when there is one, otherwise the patient's standing draft bill. Best-effort: a
+  // billing hiccup must never fail an order a doctor has already acted on.
+  for (const t of tests) {
+    try {
+      await addChargeToBill(
+        {
+          patientId: input.patientId,
+          appointmentId: input.appointmentId,
+          kind: "LAB",
+          sourceId: order.id,
+          description: `Lab — ${t.name} (${t.code})`,
+          unitPrice: t.price,
+        },
+        actor.userId,
+      );
+    } catch (err) {
+      console.error(`[lab] Failed to bill test ${t.code} on order ${order.id}:`, err);
+    }
+  }
+
   return order;
 }
 
@@ -167,7 +180,46 @@ export async function cancelOrder(orderId: string, reason: string, actor: Actor)
     metadata: { patientId: order.patientId, reason },
   });
 
+  // A cancelled order is no longer owed. Draft bills drop the lines; a bill that was
+  // already finalised keeps them, and the money is unwound via refund instead.
+  try {
+    await removeChargeFromBill(orderId, "LAB");
+  } catch (err) {
+    console.error(`[lab] Failed to remove bill charges for cancelled order ${orderId}:`, err);
+  }
+
   return cancelled;
+}
+
+/**
+ * A doctor asks to re-run a previous order. The new order is linked via `retestOfId`
+ * with the reason recorded on it, so the lab sees at a glance what is a fresh order
+ * and what is chasing a doubtful value.
+ */
+export async function retestOrder(orderId: string, reason: string, actor: Actor) {
+  if (!reason?.trim()) throw new AppError("A retest needs a reason", 400);
+
+  const original = await prisma.labOrder.findUnique({
+    where: { id: orderId },
+    include: { items: { select: { labTestId: true } } },
+  });
+  if (!original) throw new AppError("Lab order not found", 404);
+
+  // The doctor retesting must have clinical access to the patient too.
+  await assertClinicalAccess(original.patientId, actor);
+
+  return createOrder(
+    {
+      patientId: original.patientId,
+      appointmentId: original.appointmentId ?? undefined,
+      labTestIds: original.items.map((i) => i.labTestId).filter(Boolean),
+      notes: `Retest requested — reason: ${reason.trim()}`,
+      isRetest: true,
+      retestOfId: orderId,
+      retestReason: reason.trim(),
+    },
+    actor,
+  );
 }
 
 // ─── Sample workflow ────────────────────────────────────────────────────────
@@ -303,7 +355,12 @@ async function notifyCriticalResult(
         criticalItems.length
       } critical result(s) requiring immediate review.`,
       linkUrl: `/lab/orders/${orderId}`,
-      data: { orderId, mrn: patient?.mrn ?? "" },
+      data: {
+        orderId,
+        mrn: patient?.mrn ?? "",
+        patientName: patient?.fullName ?? "A patient",
+        count: String(criticalItems.length),
+      },
     });
   } catch (err) {
     console.error("[lab] Failed to dispatch CRITICAL result alert:", err);
@@ -330,7 +387,10 @@ export async function verifyOrder(orderId: string, actor: Actor) {
 
   const order = await prisma.labOrder.findUnique({
     where: { id: orderId },
-    include: { items: true, patient: { select: { userId: true, fullName: true } } },
+    include: {
+      items: { include: { labTest: { select: { name: true, code: true } } } },
+      patient: { select: { userId: true, fullName: true } },
+    },
   });
   if (!order) throw new AppError("Lab order not found", 404);
   assertTransition(order.status as LabStatus, "VERIFIED");
@@ -350,6 +410,30 @@ export async function verifyOrder(orderId: string, actor: Actor) {
     targetType: "lab_order",
     targetId: orderId,
     metadata: { patientId: order.patientId, verifiedBy: tech.fullName },
+  });
+
+  // A verified order is a finished document, so it becomes a MedicalRecord whose
+  // text feeds the Phase 5 RAG pipeline. The record stores the report as text (no
+  // Cloudinary asset exists), which the records viewer renders inline.
+  const reportText =
+    `Lab order ${order.orderNumber}\n` +
+    order.items
+      .map(
+        (i) =>
+          `${i.labTest.code} ${i.labTest.name}: ${i.resultValue ?? ""} ${i.unit ?? ""}${i.flag ? ` [${i.flag}]` : ""}`,
+      )
+      .join("\n");
+
+  await prisma.medicalRecord.create({
+    data: {
+      patientId: order.patientId,
+      fileUrl: `lab:${order.orderNumber}`,
+      fileType: "text",
+      title: `Lab report ${order.orderNumber}`,
+      category: "lab_report",
+      extractedText: reportText,
+      uploadedById: actor.userId,
+    },
   });
 
   // Only now does the patient learn there is anything to see.

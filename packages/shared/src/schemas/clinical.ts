@@ -206,6 +206,10 @@ export const labResultsSchema = z.object({
     .min(1),
 });
 
+export const labCancelSchema = z.object({
+  reason: z.string().min(1).max(500),
+});
+
 export const retestSchema = z.object({
   reason: z.string().min(1).max(500),
 });

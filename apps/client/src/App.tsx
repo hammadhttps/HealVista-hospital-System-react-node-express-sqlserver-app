@@ -37,6 +37,8 @@ import MyRecords from "./pages/MyRecords";
 import SOAPNoteEditor from "./pages/SOAPNoteEditor";
 import PrescriptionEditor from "./pages/PrescriptionEditor";
 import Pharmacy from "./pages/Pharmacy";
+import Lab from "./pages/Lab";
+import MyLabResults from "./pages/MyLabResults";
 import { AdminDashboard, DoctorDashboard, PatientDashboard } from "./pages/Dashboard";
 
 export default function App() {
@@ -196,6 +198,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/patient/lab-results"
+                element={
+                  <RoleRoute role="PATIENT">
+                    <MyLabResults />
+                  </RoleRoute>
+                }
+              />
+              <Route
                 path="/reception"
                 element={
                   <RoleRoute role={["RECEPTIONIST", "ADMIN"]}>
@@ -208,6 +218,14 @@ export default function App() {
                 element={
                   <RoleRoute role={["PHARMACIST", "ADMIN"]}>
                     <Pharmacy />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/lab"
+                element={
+                  <RoleRoute role={["LAB_TECHNICIAN", "ADMIN"]}>
+                    <Lab />
                   </RoleRoute>
                 }
               />

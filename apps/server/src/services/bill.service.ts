@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, BillItemKind } from "@prisma/client";
 import PDFDocument from "pdfkit";
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
@@ -201,15 +201,176 @@ export async function createBill(input: CreateBillInput, actor: Actor) {
 }
 
 /**
+ * Recomputes a draft bill's totals from its item set. Non-draft bills are left alone —
+ * money already owed must not silently change when a later service call recomputes.
+ */
+export async function recomputeBill(billId: string) {
+  const bill = await prisma.bill.findUnique({
+    where: { id: billId },
+    include: { items: true, discount: true },
+  });
+  if (!bill || bill.status !== BILL_STATUS.DRAFT) return bill;
+
+  const settings = await settingsService.get();
+  const insurance = await getActiveInsurance(bill.patientId);
+  const totals = computeTotals({
+    items: bill.items,
+    discount: bill.discount,
+    taxPercentage: (settings as { taxPercentage: Decimal }).taxPercentage,
+    insuranceCoveragePercentage: insurance?.coveragePercentage ?? null,
+  });
+
+  return prisma.bill.update({
+    where: { id: billId },
+    data: {
+      ...totals,
+      balance: totals.total.minus(bill.amountPaid),
+    },
+    include: billInclude,
+  });
+}
+
+/**
+ * Adds a charge to the patient's bill — the clinical modules' way of making money
+ * flow to billing without coupling to it.
+ *
+ * Appointments get one bill each (`appointmentId` is unique on Bill), so a lab order
+ * during a visit lands on that visit's bill, creating it if the visit has not been
+ * completed yet. Orders without an appointment go on the patient's standing draft
+ * bill. Deduplicated by (sourceId, kind, description) so re-running a hook never
+ * double-charges.
+ */
+export async function addChargeToBill(
+  input: {
+    patientId: string;
+    appointmentId?: string;
+    kind: "CONSULTATION" | "LAB" | "PHARMACY" | "PROCEDURE" | "OTHER";
+    sourceId: string;
+    description: string;
+    unitPrice: Decimal | number;
+    quantity?: number;
+  },
+  actorUserId: string,
+) {
+  const quantity = input.quantity ?? 1;
+  const unitPrice = new D(input.unitPrice);
+
+  let bill = input.appointmentId
+    ? await prisma.bill.findUnique({ where: { appointmentId: input.appointmentId } })
+    : await prisma.bill.findFirst({
+        where: {
+          patientId: input.patientId,
+          deletedAt: null,
+          status: BILL_STATUS.DRAFT,
+          appointmentId: null,
+        },
+      });
+
+  const item = {
+    kind: input.kind,
+    sourceId: input.sourceId,
+    description: input.description,
+    quantity,
+    unitPrice,
+    amount: unitPrice.times(quantity).toDecimalPlaces(2),
+  };
+
+  if (!bill) {
+    const settings = await settingsService.get();
+    const totals = computeTotals({
+      items: [{ quantity, unitPrice }],
+      taxPercentage: (settings as { taxPercentage: Decimal }).taxPercentage,
+    });
+
+    bill = await prisma.bill.create({
+      data: {
+        billNumber: generateBillNumber(),
+        patientId: input.patientId,
+        appointmentId: input.appointmentId ?? null,
+        ...totals,
+        balance: totals.total,
+        status: BILL_STATUS.DRAFT,
+        items: { create: [item] },
+      },
+      include: billInclude,
+    });
+  } else {
+    const duplicate = await prisma.billItem.findFirst({
+      where: { billId: bill.id, sourceId: input.sourceId, kind: input.kind },
+    });
+    if (!duplicate) {
+      await prisma.billItem.create({ data: { billId: bill.id, ...item } });
+      bill = await recomputeBill(bill.id);
+    }
+  }
+
+  await writeAuditLog({
+    actorUserId,
+    action: "BILL_CHARGE_ADDED",
+    targetType: "bill",
+    targetId: bill!.id,
+    metadata: { patientId: input.patientId, kind: input.kind, sourceId: input.sourceId },
+  });
+
+  return bill;
+}
+
+/**
+ * Removes every charge that points at a source (a cancelled lab order), then
+ * recomputes the affected draft bills. Finalised bills keep their lines — money
+ * already billed stays billed, and adjustments go through refunds instead.
+ */
+export async function removeChargeFromBill(sourceId: string, kind: string) {
+  const items = await prisma.billItem.findMany({
+    where: { sourceId, kind: kind as BillItemKind },
+    select: { billId: true },
+  });
+  if (items.length === 0) return;
+
+  await prisma.billItem.deleteMany({ where: { sourceId, kind: kind as BillItemKind } });
+
+  for (const billId of new Set(items.map((i) => i.billId))) {
+    await recomputeBill(billId);
+  }
+}
+
+/**
  * Opens a draft bill for a completed consultation, seeded with the doctor's fee.
  *
  * Returns the existing bill rather than throwing if one is already open — the
  * caller is a consultation-completion hook, and a duplicate-bill error must never
- * be able to fail a clinical action.
+ * be able to fail a clinical action. If a bill already exists but has no
+ * consultation line (a lab order opened it earlier in the visit), the fee is added
+ * here rather than lost.
  */
 export async function createBillForAppointment(appointmentId: string, actorUserId: string) {
-  const existing = await prisma.bill.findUnique({ where: { appointmentId } });
-  if (existing) return existing;
+  const existing = await prisma.bill.findUnique({
+    where: { appointmentId },
+    include: { items: true },
+  });
+  if (existing) {
+    const hasConsultation = existing.items.some((i) => i.kind === "CONSULTATION");
+    if (!hasConsultation) {
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: appointmentId },
+        include: { doctor: { select: { fullName: true, consultationFee: true } } },
+      });
+      const fee = appointment?.doctor.consultationFee ?? new D(0);
+      await prisma.billItem.create({
+        data: {
+          billId: existing.id,
+          kind: "CONSULTATION",
+          sourceId: appointmentId,
+          description: `Consultation — Dr. ${appointment?.doctor.fullName ?? "Doctor"}`,
+          quantity: 1,
+          unitPrice: fee,
+          amount: fee,
+        },
+      });
+      await recomputeBill(existing.id);
+    }
+    return existing;
+  }
 
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },

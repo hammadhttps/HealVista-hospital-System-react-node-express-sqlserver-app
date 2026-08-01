@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { usePatient } from "../hooks/queries/usePatients";
 import { usePatientHistory } from "../hooks/queries/useClinical";
+import { useMe } from "../hooks/queries/useAuth";
 import { CardSkeleton } from "../components/primitives/Skeleton";
 import { Breadcrumbs } from "../components/primitives/Breadcrumbs";
 import { Badge } from "../components/ui/badge";
@@ -10,10 +11,12 @@ import AllergyBanner from "../components/clinical/AllergyBanner";
 import HistoryPanel from "../components/clinical/HistoryPanel";
 import VitalsPanel from "../components/clinical/VitalsPanel";
 import RecordsPanel from "../components/records/RecordsPanel";
+import LabOrdersPanel from "../components/lab/LabOrdersPanel";
 
 const TABS = [
   { value: "history", label: "History" },
   { value: "vitals", label: "Vitals" },
+  { value: "lab", label: "Lab" },
   { value: "records", label: "Records" },
 ];
 
@@ -33,12 +36,14 @@ export default function PatientDetail() {
 
   const { data, isLoading, isError } = usePatient(id!);
   const { data: history, isLoading: historyLoading } = usePatientHistory(id!);
+  const { data: me } = useMe();
 
   if (isLoading) return <CardSkeleton />;
   if (isError) return <div className="text-red-500">Patient not found</div>;
   if (!data) return null;
 
   const age = ageFrom(data.dateOfBirth);
+  const canOrderLab = me?.role === "DOCTOR";
 
   return (
     <div className="space-y-4">
@@ -93,6 +98,9 @@ export default function PatientDetail() {
         </TabsContent>
         <TabsContent value="vitals" className="pt-4">
           <VitalsPanel patientId={id!} />
+        </TabsContent>
+        <TabsContent value="lab" className="pt-4">
+          <LabOrdersPanel patientId={id!} canOrder={canOrderLab} />
         </TabsContent>
         <TabsContent value="records" className="pt-4">
           {/* Deletion is server-enforced via write access; showing the button just

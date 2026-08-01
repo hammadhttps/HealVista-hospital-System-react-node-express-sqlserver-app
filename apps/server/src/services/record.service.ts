@@ -247,6 +247,17 @@ export async function getRecordUrl(recordId: string, actor: Actor) {
     metadata: { patientId: record.patientId, title: record.title },
   });
 
+  // Text records (verified lab reports) have no Cloudinary asset — their content is
+  // `extractedText`. Hand that back directly; there is nothing to sign.
+  if (record.fileType === "text") {
+    return {
+      url: null,
+      title: record.title,
+      fileType: "text",
+      text: record.extractedText,
+    };
+  }
+
   return {
     url: signDeliveryUrl(record.fileUrl, record.fileType),
     expiresInSeconds: SIGNED_URL_TTL_SECONDS,
