@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { FlaskConical, RotateCcw } from "lucide-react";
 import { useMyLabOrders, usePatientLabOrders } from "../../hooks/queries/useLabAndPharmacy";
 import { useRetestLabOrder } from "../../hooks/mutations/useLabPharmacyMutations";
+import LabExplainButton from "../ai/LabExplainButton";
 import { format } from "date-fns";
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
@@ -164,6 +165,13 @@ export default function LabOrdersPanel({
                   <Button size="sm" variant="outline" onClick={() => setRetestOrderId(order.id)}>
                     <RotateCcw className="h-3.5 w-3.5" /> Retest
                   </Button>
+                </div>
+              )}
+
+              {/* Explain only makes sense once there are numbers to explain. */}
+              {order.items.some((i) => i.resultValue) && (
+                <div className="mt-2 flex justify-end">
+                  <LabExplainButton orderId={order.id} />
                 </div>
               )}
             </CardContent>

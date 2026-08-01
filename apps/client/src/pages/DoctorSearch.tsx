@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { doctorSearchApi } from "../api/appointments";
+import SymptomChecker from "../components/ai/SymptomChecker";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -31,9 +32,18 @@ export default function DoctorSearch() {
     setFilters({ search, page: 1, limit: 20 });
   };
 
+  // The symptom checker accepts a suggestion by prefilling the department filter.
+  const applyDepartment = (departmentId: string) => {
+    if (!departmentId) return;
+    setFilters((f) => ({ ...f, departmentId, page: 1, search: "" }));
+    setSearch("");
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Find a Doctor</h1>
+
+      <SymptomChecker onMatchDepartment={applyDepartment} />
 
       <div className="flex gap-2">
         <Input
@@ -44,6 +54,18 @@ export default function DoctorSearch() {
         />
         <Button onClick={handleSearch}>Search</Button>
       </div>
+
+      {filters.departmentId && (
+        <button
+          className="text-sm text-blue-600 hover:underline"
+          onClick={() => {
+            const { departmentId: _drop, ...rest } = filters;
+            setFilters(rest);
+          }}
+        >
+          Clear department filter
+        </button>
+      )}
 
       {isLoading && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

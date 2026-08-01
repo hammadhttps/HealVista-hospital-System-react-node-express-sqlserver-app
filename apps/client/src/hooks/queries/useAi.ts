@@ -27,14 +27,14 @@ export function useTimelineSummary(patientId: string) {
 }
 
 /**
- * A stored report summary. Refetching after the summarize job finishes is handled
- * by invalidating `aiKeys.recordSummary` — the query itself just reads the cache.
+ * A stored report summary. Lazy: pass `enabled` so the audited read (the server
+ * logs every summary view) fires only when a user actually opens the card.
  */
-export function useRecordSummary(recordId: string) {
+export function useRecordSummary(recordId: string, enabled = true) {
   return useQuery({
     queryKey: aiKeys.recordSummary(recordId),
     queryFn: () => aiApi.recordSummary(recordId),
-    enabled: !!recordId,
+    enabled: !!recordId && enabled,
   });
 }
 

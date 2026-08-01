@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { CheckCircle2, Lock, ScrollText } from "lucide-react";
+import { CheckCircle2, Lock, ScrollText, Sparkles, Undo2 } from "lucide-react";
 import { useAppointment } from "../hooks/queries/useAppointments";
 import {
   useConsultationNote,
@@ -10,11 +10,13 @@ import {
   useLatestVitals,
 } from "../hooks/queries/useClinical";
 import { useSaveNote, useSignNote, useAddAddendum } from "../hooks/mutations/useClinicalMutations";
+import { useGenerateSoapDraft } from "../hooks/mutations/useAiMutations";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { CardSkeleton } from "../components/primitives/Skeleton";
+import AIDisclaimer from "../components/ai/AIDisclaimer";
 import { LatestVitalsCard } from "../components/clinical/VitalsPanel";
 import { useParams } from "react-router-dom";
 
@@ -82,6 +84,13 @@ export default function SOAPNoteEditor() {
   const { data: templates } = useNoteTemplates();
 
   const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved">("idle");
+  /** The AI-generated draft currently loaded, or null. `aiAssisted` is recorded on save. */
+  const [aiDraft, setAiDraft] = useState<{
+    subjective: string;
+    objective: string;
+    assessment: string;
+    plan: string;
+  } | null>(null);
 
   const {
     register,
@@ -119,17 +128,36 @@ export default function SOAPNoteEditor() {
   const saveMutation = useSaveNote(appointmentId!);
   const signMutation = useSignNote(appointmentId!);
   const addendumMutation = useAddAddendum(appointmentId!);
+  const draftMutation = useGenerateSoapDraft(appointmentId!);
 
   const locked = Boolean(note?.locked);
   const signed = Boolean(note?.signedAt);
   const noteRow = (note ?? null) as NoteRow | null;
 
+  /** True while a section still holds its AI text untouched — the diff highlight. */
+  function isAiUneditedSection(key: "subjective" | "objective" | "assessment" | "plan"): boolean {
+    return aiDraft !== null && values[key] === aiDraft[key];
+  }
+
+  /** True when every SOAP section is byte-identical to the AI draft. */
+  function isUneditedAiDraft(): boolean {
+    if (!aiDraft) return false;
+    return (
+      values.subjective === aiDraft.subjective &&
+      values.objective === aiDraft.objective &&
+      values.assessment === aiDraft.assessment &&
+      values.plan === aiDraft.plan
+    );
+  }
+
   // Autosave on idle. A debounce timer is an allowed useEffect use (not data
   // fetching); the note stays a draft until signed and the server audits only the
   // first write. Skipped while the form is pristine so a fresh load never rewrites
-  // the same note.
+  // the same note, and skipped while an unedited AI draft is loaded — the server
+  // rejects byte-identical drafts, and a rejected autosave toast would fire on
+  // every keystroke of nothing.
   useEffect(() => {
-    if (locked || !isDirty) return;
+    if (locked || !isDirty || isUneditedAiDraft()) return;
     const handler = setTimeout(() => {
       setAutosaveState("saving");
       saveMutation.mutate(
@@ -142,6 +170,7 @@ export default function SOAPNoteEditor() {
             .split(",")
             .map((s) => s.trim())
             .filter(Boolean),
+          aiAssisted: aiDraft !== null,
         },
         {
           onSuccess: () => setAutosaveState("saved"),
@@ -154,7 +183,7 @@ export default function SOAPNoteEditor() {
     }, 1200);
     return () => clearTimeout(handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, locked, isDirty]);
+  }, [values, locked, isDirty, aiDraft]);
 
   const templateList = useMemo(() => (templates ?? []) as NoteTemplateRow[], [templates]);
 
@@ -168,8 +197,40 @@ export default function SOAPNoteEditor() {
     toast.success(`Template "${t.name}" applied`);
   }
 
+  function onDraftWithAi() {
+    draftMutation.mutate(undefined, {
+      onSuccess: (result) => {
+        setValue("subjective", result.draft.subjective);
+        setValue("objective", result.draft.objective);
+        setValue("assessment", result.draft.assessment);
+        setValue("plan", result.draft.plan);
+        setAiDraft(result.draft);
+        toast.success(
+          result.fallback ? "Draft applied (rule-based — AI unavailable)" : "AI draft applied",
+        );
+      },
+    });
+  }
+
+  /** One-click discard — back to the last saved note (or a blank draft). */
+  function discardAiDraft() {
+    setAiDraft(null);
+    reset({
+      subjective: note?.subjective ?? "",
+      objective: note?.objective ?? "",
+      assessment: note?.assessment ?? "",
+      plan: note?.plan ?? "",
+      diagnosisCodes: (note?.diagnosisCodes ?? []).join(", "),
+    });
+    toast.info("AI draft discarded");
+  }
+
   function onSign() {
     const { assessment, plan } = values;
+    if (isUneditedAiDraft()) {
+      toast.error("Edit the AI draft before signing — an unedited draft cannot become your note");
+      return;
+    }
     if (!assessment.trim() || !plan.trim()) {
       toast.error("Assessment and plan are required before signing");
       return;
@@ -248,37 +309,76 @@ export default function SOAPNoteEditor() {
               <span className="flex items-center gap-2">
                 <ScrollText className="h-4 w-4" /> SOAP note
               </span>
-              {templateList.length > 0 && (
-                <select
-                  className="rounded-md border border-gray-300 px-2 py-1 text-sm"
-                  value=""
-                  onChange={(e) => e.target.value && applyTemplate(e.target.value)}
+              <span className="flex items-center gap-2">
+                {aiDraft && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={discardAiDraft}
+                    disabled={locked}
+                    title="Remove the AI draft and revert to the saved note"
+                  >
+                    <Undo2 className="h-3.5 w-3.5" /> Discard
+                  </Button>
+                )}
+                {templateList.length > 0 && (
+                  <select
+                    className="rounded-md border border-gray-300 px-2 py-1 text-sm"
+                    value=""
+                    onChange={(e) => e.target.value && applyTemplate(e.target.value)}
+                  >
+                    <option value="">Apply template…</option>
+                    {templateList.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onDraftWithAi}
+                  disabled={locked || draftMutation.isPending}
                 >
-                  <option value="">Apply template…</option>
-                  {templateList.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {draftMutation.isPending ? "Drafting…" : "Draft with AI"}
+                </Button>
+              </span>
             </CardTitle>
+            {aiDraft && (
+              <p className="text-xs text-blue-700">
+                AI draft applied — sections you haven't edited are highlighted. The note is not
+                saved until you edit and it autosaves.
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             <form id="soap-form" onSubmit={handleSubmit(() => {})}>
-              {SOAP_FIELDS.map((f) => (
-                <div key={f.key} className="space-y-1">
-                  <label className={labelCls}>
-                    {f.label} <span className="text-xs font-normal text-gray-400">— {f.hint}</span>
-                  </label>
-                  <textarea
-                    className={textareaCls}
-                    disabled={locked}
-                    placeholder={f.label}
-                    {...register(f.key)}
-                  />
-                </div>
-              ))}
+              {SOAP_FIELDS.map((f) => {
+                const aiUnedited = isAiUneditedSection(f.key);
+                return (
+                  <div key={f.key} className="space-y-1">
+                    <label className={labelCls}>
+                      {f.label}{" "}
+                      <span className="text-xs font-normal text-gray-400">— {f.hint}</span>
+                      {aiUnedited && (
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                          <Sparkles className="h-3 w-3" /> AI
+                        </span>
+                      )}
+                    </label>
+                    <textarea
+                      className={`${textareaCls} ${
+                        aiUnedited ? "border-blue-300 bg-blue-50/60 focus:border-blue-500" : ""
+                      }`}
+                      disabled={locked}
+                      placeholder={f.label}
+                      {...register(f.key)}
+                    />
+                  </div>
+                );
+              })}
               <div className="space-y-1">
                 <label className={labelCls}>Diagnosis codes</label>
                 <input
@@ -289,6 +389,14 @@ export default function SOAPNoteEditor() {
                 />
               </div>
             </form>
+
+            {draftMutation.isPending && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+                Assembling a draft from this visit's complaint, vitals, and recent labs…
+              </div>
+            )}
+
+            {!locked && <AIDisclaimer />}
 
             {!locked && (
               <div className="flex items-center justify-between">

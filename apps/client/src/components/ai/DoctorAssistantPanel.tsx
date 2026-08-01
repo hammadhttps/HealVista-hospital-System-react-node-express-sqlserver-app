@@ -31,6 +31,7 @@ export default function DoctorAssistantPanel({ patientId }: { patientId: string 
             <div className="space-y-3">
               <p className="text-sm whitespace-pre-wrap text-gray-800">{timeline.data.summary}</p>
               <CitationList citations={timeline.data.citations} role="DOCTOR" />
+              <AIDisclaimer />
             </div>
           )}
         </CardContent>

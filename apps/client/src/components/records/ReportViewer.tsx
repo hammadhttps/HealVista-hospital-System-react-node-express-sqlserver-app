@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { ExternalLink, Trash2, FileText, File } from "lucide-react";
 import { useOpenRecord } from "../../hooks/mutations/useLabPharmacyMutations";
+import RecordSummaryCard from "../ai/RecordSummaryCard";
 import { Card, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -91,6 +92,11 @@ export default function ReportViewer({
               )}
             </div>
           </CardContent>
+          {/* The AI summary sits inside its own card, below the record — one record,
+              one collapsible summary. */}
+          <div className="px-3 pb-3">
+            <RecordSummaryCard recordId={r.id} />
+          </div>
         </Card>
       ))}
     </div>
