@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import AssistantChat from "../components/ai/AssistantChat";
 import AIDisclaimer from "../components/ai/AIDisclaimer";
 import AnalyticsAssistant from "../components/ai/AnalyticsAssistant";
@@ -12,14 +13,15 @@ import { RoleDashboard } from "../components/dashboard/RoleDashboard";
  */
 
 export function AdminDashboard() {
+  const { t } = useTranslation("dashboard");
   return (
-    <RoleDashboard title="Admin Dashboard">
+    <RoleDashboard title={t("admin")}>
       <div className="flex flex-wrap gap-3">
         <Link
           to="/admin/analytics"
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          Open operational analytics
+          {t("openAnalytics")}
         </Link>
       </div>
       <AnalyticsAssistant />
@@ -28,30 +30,36 @@ export function AdminDashboard() {
 }
 
 export function DoctorDashboard() {
-  return <RoleDashboard title="Doctor Dashboard" />;
+  const { t } = useTranslation("dashboard");
+  return <RoleDashboard title={t("doctor")} />;
 }
 
 export function ReceptionistDashboard() {
-  return <RoleDashboard title="Reception Dashboard" />;
+  const { t } = useTranslation("dashboard");
+  return <RoleDashboard title={t("reception")} />;
 }
 
 export function PharmacistDashboard() {
-  return <RoleDashboard title="Pharmacy Dashboard" />;
+  const { t } = useTranslation("dashboard");
+  return <RoleDashboard title={t("pharmacy")} />;
 }
 
 export function LabDashboard() {
-  return <RoleDashboard title="Laboratory Dashboard" />;
+  const { t } = useTranslation("dashboard");
+  return <RoleDashboard title={t("laboratory")} />;
 }
 
 export function AccountantDashboard() {
-  return <RoleDashboard title="Accounts Dashboard" />;
+  const { t } = useTranslation("dashboard");
+  return <RoleDashboard title={t("accounts")} />;
 }
 
 export function PatientDashboard() {
+  const { t } = useTranslation("dashboard");
   return (
-    <RoleDashboard title="Patient Dashboard">
+    <RoleDashboard title={t("patient")}>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <AssistantChat role="PATIENT" title="Ask about your health" />
+        <AssistantChat role="PATIENT" title={t("askAboutHealth")} />
         <div className="space-y-4">
           <QuickLinks />
           <AIDisclaimer />

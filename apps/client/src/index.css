@@ -175,3 +175,88 @@
     @apply font-sans;
     }
 }
+/* ── Print (Phase 6.7) ─────────────────────────────────────────────────
+   Prescriptions, lab reports, invoices and receipts are handed to patients
+   and filed by the hospital, so they must print as documents, not as
+   screenshots of an app.
+
+   Mark the printable region with `data-print-region` and any element that
+   should not reach paper with `data-no-print`. */
+@media print {
+  /* Force the light palette: a dark-mode screen prints as a solid black page. */
+  :root,
+  .dark {
+    --background: #ffffff;
+    --foreground: #000000;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* App chrome carries no information on paper. */
+  nav,
+  aside,
+  header,
+  [data-no-print],
+  [role="dialog"],
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  [data-print-region] {
+    position: static;
+    width: 100%;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+
+  /* Tables are the substance of a lab report — never split a row across pages. */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+  tr,
+  img,
+  figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* A link that reads "click here" is useless on paper; show the target. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    word-break: break-all;
+  }
+
+  @page {
+    margin: 16mm;
+  }
+}
+
+/* A visible focus ring on every interactive element, in both themes.
+   `:focus-visible` keeps it off mouse clicks but always on for keyboard. */
+@layer base {
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--viz-series-1);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}

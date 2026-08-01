@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { DashboardSection } from "@healvista/shared";
 import { useDashboard } from "../../hooks/queries/useDashboard";
 import { EmptyState } from "../primitives/EmptyState";
@@ -15,6 +16,7 @@ import { formatDateTime } from "../../lib/format";
  */
 export function RoleDashboard({ title, children }: { title: string; children?: React.ReactNode }) {
   const { data, isPending, isError, error, refetch } = useDashboard();
+  const { t } = useTranslation(["dashboard", "common"]);
 
   return (
     <div className="space-y-6">
@@ -33,13 +35,15 @@ export function RoleDashboard({ title, children }: { title: string; children?: R
           role="alert"
           className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
         >
-          <p>Could not load your dashboard. {(error as Error)?.message}</p>
+          <p>
+            {t("dashboard:loadFailed")} {(error as Error)?.message}
+          </p>
           <button
             type="button"
             onClick={() => refetch()}
             className="mt-2 rounded-md border border-red-300 px-3 py-1 font-medium hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900"
           >
-            Try again
+            {t("common:tryAgain")}
           </button>
         </div>
       )}
@@ -48,8 +52,8 @@ export function RoleDashboard({ title, children }: { title: string; children?: R
         <>
           {data.kpis.length === 0 ? (
             <EmptyState
-              title="No figures yet"
-              description="KPIs appear here once there is activity to measure."
+              title={t("dashboard:noFigures")}
+              description={t("dashboard:noFiguresHint")}
             />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -75,11 +79,13 @@ export function RoleDashboard({ title, children }: { title: string; children?: R
 }
 
 function SectionList({ section }: { section: DashboardSection }) {
+  const { t } = useTranslation("common");
+
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
       <h2 className="mb-3 text-sm font-medium text-gray-500 dark:text-gray-400">{section.title}</h2>
       {section.items.length === 0 ? (
-        <p className="py-6 text-center text-sm text-gray-400">Nothing here right now.</p>
+        <p className="py-6 text-center text-sm text-gray-400">{t("nothingHere")}</p>
       ) : (
         <ul className="space-y-1">
           {section.items.map((item) => (
