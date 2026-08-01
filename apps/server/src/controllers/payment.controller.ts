@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import type { PaymentHistoryInput } from "@healvista/shared";
 import * as paymentService from "../services/payment.service.js";
 import { sendSuccess, sendPaginated } from "../utils/apiResponse.js";
 import { AppError } from "../utils/AppError.js";
@@ -32,8 +33,9 @@ export async function refund(req: Request, res: Response, next: NextFunction) {
 
 export async function history(req: Request, res: Response, next: NextFunction) {
   try {
+    // `req.validated` holds the parsed data itself — there is no `.query` on it.
     const result = await paymentService.getPaymentHistory(
-      req.validated?.query ?? req.query,
+      req.validated as PaymentHistoryInput,
       req.user!,
     );
     sendPaginated(res, result.payments, result.total, result.page, result.limit);

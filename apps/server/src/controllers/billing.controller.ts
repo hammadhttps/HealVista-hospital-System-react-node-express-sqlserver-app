@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import type { ListBillsInput } from "@healvista/shared";
 import * as billService from "../services/bill.service.js";
 import * as discountService from "../services/discount.service.js";
 import * as insuranceService from "../services/insurance.service.js";
@@ -45,7 +46,11 @@ export async function voidBill(req: Request, res: Response, next: NextFunction) 
 
 export async function listBills(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await billService.getBills(req.validated?.query ?? req.query, req.user!);
+    // `req.validated` *is* the parsed data, not `{ query: … }`. Reading
+    // `.query` off it always missed, silently fell through to the raw
+    // `req.query`, and handed the service a request with no `page`/`limit`
+    // defaults — every call to this endpoint was a 500.
+    const result = await billService.getBills(req.validated as ListBillsInput, req.user!);
     sendPaginated(res, result.bills, result.total, result.page, result.limit);
   } catch (err) {
     next(err);
@@ -56,7 +61,7 @@ export async function listMyBills(req: Request, res: Response, next: NextFunctio
   try {
     const patient = await patientService.getPatientByUserId(req.user!.userId);
     const result = await billService.getBills(
-      { ...(req.validated?.query ?? req.query), patientId: patient.id },
+      { ...(req.validated as ListBillsInput), patientId: patient.id },
       req.user!,
     );
     const outstanding = await billService.getOutstandingBalance(patient.id);
