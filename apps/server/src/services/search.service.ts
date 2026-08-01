@@ -113,32 +113,42 @@ export async function globalSearch(
   }
 
   const scope = await resolveScope(userId, role);
-  const groups: SearchResultGroup[] = [];
 
-  for (const type of types) {
-    const results = await runTypeSearch(type, tsQuery, role, scope, limit);
-    if (results.length > 0) {
-      groups.push({ type, label: TYPE_LABELS[type], results });
-    }
-  }
+  // Fired together, not in sequence. This is the search-as-you-type endpoint, so
+  // its latency is the most visible in the app — and run one after another, six
+  // independent index lookups cost six network round trips for no reason. Each
+  // hits a different table's GIN index, so they do not contend.
+  const settled = await Promise.all(
+    types.map((type) => runTypeSearch(type, tsQuery, role, scope, limit)),
+  );
+
+  // Rebuilt in `types` order so the result groups stay in a stable, role-defined
+  // order rather than whichever query happened to finish first.
+  const groups: SearchResultGroup[] = types
+    .map((type, i) => ({ type, label: TYPE_LABELS[type], results: settled[i] }))
+    .filter((g) => g.results.length > 0);
 
   const total = groups.reduce((sum, g) => sum + g.results.length, 0);
 
   // Searching the patient directory or a clinical record is a read of patient
   // data, so it is audited like any other. The query text is recorded, never the
   // rows returned.
-  if (total > 0 && groups.some((g) => g.type === "patient" || g.type === "labOrder")) {
-    await writeAuditLog({
-      actorUserId: userId,
-      action: "PATIENT_DATA_SEARCHED",
-      targetType: "search",
-      targetId: userId,
-      ipAddress,
-      metadata: { query: rawQuery, types: groups.map((g) => g.type), total },
-    });
-  }
+  const audited =
+    total > 0 && groups.some((g) => g.type === "patient" || g.type === "labOrder")
+      ? writeAuditLog({
+          actorUserId: userId,
+          action: "PATIENT_DATA_SEARCHED",
+          targetType: "search",
+          targetId: userId,
+          ipAddress,
+          metadata: { query: rawQuery, types: groups.map((g) => g.type), total },
+        })
+      : Promise.resolve();
 
-  await recordHistory(userId, rawQuery);
+  // The audit write is still awaited — a clinical-data read must be recorded
+  // before the caller sees the rows — but it no longer queues behind the history
+  // bookkeeping, which is pure convenience.
+  await Promise.all([audited, recordHistory(userId, rawQuery)]);
 
   return { query: rawQuery, groups, total };
 }
@@ -304,20 +314,36 @@ async function runTypeSearch(
 /** Keeps the 20 most recent distinct queries per user. */
 const HISTORY_LIMIT = 20;
 
+/**
+ * Records the query and prunes the tail, in one statement.
+ *
+ * This was four sequential round trips — delete duplicate, insert, select the
+ * stale ids, delete them — on the critical path of every keystroke-driven
+ * search. Folded into a single CTE chain it is one, and it is atomic: the old
+ * version could leave a user with no history at all if the process died between
+ * the delete and the insert.
+ */
 async function recordHistory(userId: string, query: string): Promise<void> {
   try {
-    await prisma.searchHistory.deleteMany({ where: { userId, query } });
-    await prisma.searchHistory.create({ data: { userId, query } });
-
-    const stale = await prisma.searchHistory.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      skip: HISTORY_LIMIT,
-      select: { id: true },
-    });
-    if (stale.length > 0) {
-      await prisma.searchHistory.deleteMany({ where: { id: { in: stale.map((s) => s.id) } } });
-    }
+    await prisma.$executeRaw`
+      WITH removed AS (
+        DELETE FROM search_history WHERE "userId" = ${userId} AND query = ${query}
+      ),
+      inserted AS (
+        INSERT INTO search_history (id, "userId", query, "createdAt")
+        VALUES (gen_random_uuid(), ${userId}, ${query}, now())
+      )
+      DELETE FROM search_history
+       WHERE id IN (
+         SELECT id FROM search_history
+          WHERE "userId" = ${userId}
+          ORDER BY "createdAt" DESC
+          -- Every part of this statement sees the same snapshot, so the row
+          -- being inserted above is invisible here. The prune therefore has to
+          -- leave room for it: keeping HISTORY_LIMIT rows now would leave
+          -- HISTORY_LIMIT + 1 once the insert lands.
+          OFFSET ${HISTORY_LIMIT - 1}
+       )`;
   } catch {
     // History is a convenience. Never fail a search because it could not be recorded.
   }

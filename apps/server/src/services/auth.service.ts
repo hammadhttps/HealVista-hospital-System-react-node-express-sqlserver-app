@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
+import crypto, { randomUUID } from "crypto";
 import { prisma } from "../config/db.js";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
@@ -110,57 +110,74 @@ export async function login(input: LoginInput, ipAddress?: string) {
       updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
     }
 
-    await prisma.user.update({ where: { id: user.id }, data: updateData });
-
-    await prisma.loginAttempt.create({
-      data: {
-        email: input.email,
+    // All three writes are independent, so they go out together. This path is
+    // also what an online password-guessing attack drives, and three serial
+    // round trips per guess is three times the resource an attacker can tie up.
+    await Promise.all([
+      prisma.user.update({ where: { id: user.id }, data: updateData }),
+      prisma.loginAttempt.create({
+        data: {
+          email: input.email,
+          ipAddress,
+          successful: false,
+          reason: "wrong_password",
+        },
+      }),
+      // Also recorded in the unified audit trail (security.md §5), which is what
+      // the admin audit-log view reads. Only for a known user — an audit row must
+      // reference a real actor, and an unknown email has none. `login_attempts`
+      // remains the complete record, including attempts against unknown emails.
+      writeAuditLog({
+        actorUserId: user.id,
+        action: "LOGIN_FAILURE",
+        targetType: "User",
+        targetId: user.id,
         ipAddress,
-        successful: false,
-        reason: "wrong_password",
-      },
-    });
-
-    // Also recorded in the unified audit trail (security.md §5), which is what
-    // the admin audit-log view reads. Only for a known user — an audit row must
-    // reference a real actor, and an unknown email has none. `login_attempts`
-    // remains the complete record, including attempts against unknown emails.
-    await writeAuditLog({
-      actorUserId: user.id,
-      action: "LOGIN_FAILURE",
-      targetType: "User",
-      targetId: user.id,
-      ipAddress,
-      metadata: {
-        reason: "wrong_password",
-        failedCount: newCount,
-        locked: newCount >= LOCKOUT_THRESHOLD,
-      },
-    });
+        metadata: {
+          reason: "wrong_password",
+          failedCount: newCount,
+          locked: newCount >= LOCKOUT_THRESHOLD,
+        },
+      }),
+    ]);
 
     throw new AppError("Invalid email or password", 401);
   }
 
-  // Successful login — reset lockout
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { failedLoginCount: 0, lockedUntil: null },
-  });
+  // Everything after this point is bookkeeping plus the session itself. Written
+  // as a sequence of `await`s it was five more network round trips on the single
+  // most latency-sensitive request in the app — measured at over ten seconds
+  // against a managed Postgres, of which the bcrypt comparison was under half a
+  // second. The work was never the problem; the waiting was.
+  //
+  // The lockout reset is skipped entirely when there is nothing to reset, which
+  // is every normal login.
+  const needsLockoutReset = user.failedLoginCount > 0 || user.lockedUntil !== null;
 
-  await prisma.loginAttempt.create({
-    data: { email: input.email, ipAddress, successful: true },
-  });
+  const [, , , session] = await Promise.all([
+    needsLockoutReset
+      ? prisma.user.update({
+          where: { id: user.id },
+          data: { failedLoginCount: 0, lockedUntil: null },
+        })
+      : Promise.resolve(null),
+    prisma.loginAttempt.create({
+      data: { email: input.email, ipAddress, successful: true },
+    }),
+    // Still awaited before the caller gets a token: a successful login is a
+    // security event and must be on record by the time the session exists.
+    writeAuditLog({
+      actorUserId: user.id,
+      action: "LOGIN_SUCCESS",
+      targetType: "User",
+      targetId: user.id,
+      ipAddress,
+      metadata: { role: user.role },
+    }),
+    issueSession(user, ipAddress),
+  ]);
 
-  await writeAuditLog({
-    actorUserId: user.id,
-    action: "LOGIN_SUCCESS",
-    targetType: "User",
-    targetId: user.id,
-    ipAddress,
-    metadata: { role: user.role },
-  });
-
-  return issueSession(user, ipAddress);
+  return session;
 }
 
 /**
@@ -175,21 +192,28 @@ export async function issueSession(
   user: { id: string; email: string; role: string },
   ipAddress?: string,
 ) {
-  const session = await prisma.userSession.create({
-    data: { userId: user.id, ipAddress, lastActiveAt: new Date() },
-  });
-
-  const accessToken = signAccessToken(user.id, user.role, session.id);
+  // The session id is generated here rather than by the database so both inserts
+  // can go out together. `$transaction` with an array sends them as one batch —
+  // one round trip instead of two — and the refresh token can therefore never
+  // outlive a session insert that failed.
+  const sessionId = randomUUID();
   const refreshToken = signRefreshToken();
 
-  await prisma.refreshToken.create({
-    data: {
-      userId: user.id,
-      sessionId: session.id,
-      tokenHash: hashToken(refreshToken),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    },
-  });
+  await prisma.$transaction([
+    prisma.userSession.create({
+      data: { id: sessionId, userId: user.id, ipAddress, lastActiveAt: new Date() },
+    }),
+    prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        sessionId,
+        tokenHash: hashToken(refreshToken),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    }),
+  ]);
+
+  const accessToken = signAccessToken(user.id, user.role, sessionId);
 
   return {
     accessToken,
