@@ -35,6 +35,10 @@ export const recordQueue = redis
   ? new Queue("record-extraction", { ...connection, defaultJobOptions })
   : null;
 
+export const embeddingsQueue = redis
+  ? new Queue("embeddings", { ...connection, defaultJobOptions })
+  : null;
+
 export const pharmacySweepQueue = redis
   ? new Queue("pharmacy-sweep", { ...connection, defaultJobOptions })
   : null;
@@ -69,6 +73,27 @@ export async function addReminderJob(
 export async function addRecordExtractionJob(recordId: string): Promise<void> {
   if (!recordQueue) return;
   await recordQueue.add("extract-text", { recordId });
+}
+
+/** Embeddable source types the embedding worker understands. */
+export type EmbeddableSourceType =
+  "consultation_note" | "lab_report" | "prescription" | "medical_record" | "kb_article";
+
+/**
+ * Enqueues a source for embedding. Best-effort by design — a queue outage must
+ * never fail the clinical write that triggered it; the backfill script
+ * (`npm run db:embed`) catches anything missed.
+ */
+export async function addEmbeddingJob(
+  sourceType: EmbeddableSourceType,
+  sourceId: string,
+): Promise<void> {
+  if (!embeddingsQueue) return;
+  try {
+    await embeddingsQueue.add("embed", { sourceType, sourceId });
+  } catch (err) {
+    console.error(`[embeddings] Failed to enqueue ${sourceType} ${sourceId}:`, err);
+  }
 }
 
 export async function setupSlotGenerationJob() {

@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import { redis } from "../config/redis.js";
 import { prisma } from "../config/db.js";
+import { addEmbeddingJob } from "../config/bull.js";
 import { signDeliveryUrl } from "../services/record.service.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { logger } from "../utils/logger.js";
@@ -89,6 +90,14 @@ export function startRecordWorker(): Worker | null {
           targetId: recordId,
           metadata: { patientId: record.patientId, chars: text.length },
         });
+      }
+
+      // The extracted text is what RAG searches — enqueue it for embedding once it
+      // exists. Best-effort; the backfill script catches anything a queue outage drops.
+      try {
+        await addEmbeddingJob("medical_record", recordId);
+      } catch (err) {
+        console.error("[record-worker] Failed to enqueue embedding:", err);
       }
 
       logger.info({ recordId, chars: text.length }, "[record-worker] Text extracted");

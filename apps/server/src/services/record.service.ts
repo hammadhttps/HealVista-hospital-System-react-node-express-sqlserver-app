@@ -4,6 +4,7 @@ import cloudinary from "../config/cloudinary.js";
 import { env } from "../config/env.js";
 import { prisma } from "../config/db.js";
 import { addRecordExtractionJob } from "../config/bull.js";
+import { deleteChunksForSource } from "../ai/embeddings.service.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import * as settingsService from "./settings.service.js";
@@ -276,6 +277,14 @@ export async function removeRecord(recordId: string, actor: Actor) {
     where: { id: recordId },
     data: { deletedAt: new Date() },
   });
+
+  // A soft-deleted record must disappear from RAG too — an orphaned embedding is
+  // a privacy leak. Best-effort; a failure here logs and never fails the delete.
+  try {
+    await deleteChunksForSource("medical_record", recordId);
+  } catch (err) {
+    console.error("[record] Failed to delete embedding chunks:", err);
+  }
 
   await writeAuditLog({
     actorUserId: actor.userId,

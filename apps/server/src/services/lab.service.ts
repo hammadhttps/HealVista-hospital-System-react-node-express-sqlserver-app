@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
+import { addEmbeddingJob } from "../config/bull.js";
 import { assertClinicalAccess, getAccessiblePatientIds, type Actor } from "./access.service.js";
 import { dispatchNotification } from "./notification.service.js";
 import { addChargeToBill, removeChargeFromBill } from "./bill.service.js";
@@ -463,6 +464,13 @@ export async function verifyOrder(orderId: string, actor: Actor) {
     } catch (err) {
       console.error("[lab] Failed to notify patient of verified results:", err);
     }
+  }
+
+  // A verified order is a finished document — feed it to the RAG pipeline.
+  try {
+    await addEmbeddingJob("lab_report", orderId);
+  } catch (err) {
+    console.error("[lab] Failed to enqueue embed for verified order:", err);
   }
 
   return verified;

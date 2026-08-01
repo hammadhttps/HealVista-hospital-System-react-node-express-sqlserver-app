@@ -6,6 +6,7 @@ import { assertClinicalAccess, type Actor } from "./access.service.js";
 import { checkPrescriptionSafety, type SafetyWarning } from "./prescriptionSafety.service.js";
 import { scheduleFollowUpReminder } from "./notification.service.js";
 import * as settingsService from "./settings.service.js";
+import { addEmbeddingJob } from "../config/bull.js";
 
 export interface PrescriptionItemInput {
   medicineId?: string;
@@ -143,6 +144,16 @@ export async function createPrescription(
     }
   }
 
+  // An issued prescription is a RAG source. Best-effort — the backfill script
+  // (`npm run db:embed`) catches anything the queue drops.
+  if (!input.isDraft) {
+    try {
+      await addEmbeddingJob("prescription", prescription.id);
+    } catch (err) {
+      console.error("[prescription] Failed to enqueue embedding:", err);
+    }
+  }
+
   return { prescription, warnings: report.warnings };
 }
 
@@ -204,6 +215,13 @@ export async function issueDraft(prescriptionId: string, acknowledged: string[],
     } catch (err) {
       console.error("[prescription] Failed to schedule follow-up reminder:", err);
     }
+  }
+
+  // The freshly issued prescription is a RAG source. Best-effort.
+  try {
+    await addEmbeddingJob("prescription", prescriptionId);
+  } catch (err) {
+    console.error("[prescription] Failed to enqueue embedding:", err);
   }
 
   return issued;

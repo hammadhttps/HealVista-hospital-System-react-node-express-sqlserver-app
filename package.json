@@ -20,6 +20,7 @@
     "db:deploy": "npm run db:deploy -w apps/server",
     "db:studio": "npm run db:studio -w apps/server",
     "db:seed": "npm run db:seed -w apps/server",
+    "db:embed": "npm run db:embed -w apps/server",
     "db:reset": "npm run db:reset -w apps/server"
   },
   "devDependencies": {

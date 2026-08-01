@@ -1,6 +1,7 @@
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
+import { addEmbeddingJob } from "../config/bull.js";
 import { assertClinicalAccess, assertNoteReadAccess, type Actor } from "./access.service.js";
 
 /**
@@ -156,6 +157,14 @@ export async function signNote(appointmentId: string, actor: Actor) {
     metadata: { patientId: appointment.patientId, appointmentId, lockedAt: signed.lockedAt },
   });
 
+  // A signed note is a finished document — it feeds the RAG pipeline. Enqueue the
+  // embed so the vector store reflects it. Best-effort; the backfill catches misses.
+  try {
+    await addEmbeddingJob("consultation_note", note.id);
+  } catch (err) {
+    console.error("[note] Failed to enqueue embed for signed note:", err);
+  }
+
   return signed;
 }
 
@@ -184,6 +193,13 @@ export async function addAddendum(appointmentId: string, content: string, actor:
     targetId: note.id,
     metadata: { patientId: appointment.patientId, appointmentId, addendumId: addendum.id },
   });
+
+  // The note's embeddable text now includes the addendum — re-embed in place.
+  try {
+    await addEmbeddingJob("consultation_note", note.id);
+  } catch (err) {
+    console.error("[note] Failed to enqueue re-embed after addendum:", err);
+  }
 
   return addendum;
 }

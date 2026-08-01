@@ -22,6 +22,15 @@ vi.mock("./access.service.js", () => ({
 // env schema and process.exit(1)s when env vars are absent in the test runner.
 vi.mock("../config/redis", () => ({ redis: {}, getCached: vi.fn(), setCached: vi.fn() }));
 
+// createPrescription enqueues the issued prescription for embedding; with no real
+// Redis the BullMQ queue would hang forever retrying, so the queue is stubbed.
+vi.mock("../config/bull.js", () => ({
+  embeddingsQueue: null,
+  recordQueue: null,
+  addRecordExtractionJob: vi.fn(),
+  addEmbeddingJob: vi.fn(),
+}));
+
 vi.mock("../utils/audit.js", () => ({ writeAuditLog: vi.fn() }));
 vi.mock("./notification.service.js", () => ({ scheduleFollowUpReminder: vi.fn() }));
 
