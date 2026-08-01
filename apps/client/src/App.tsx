@@ -50,6 +50,7 @@ import {
   AccountantDashboard,
 } from "./pages/Dashboard";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import OAuthCallback from "./pages/OAuthCallback";
 
 export default function App() {
   return (
@@ -62,6 +63,8 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
+            {/* Google OAuth lands here with the token pair in the URL fragment. */}
+            <Route path="/oauth/callback" element={<OAuthCallback />} />
 
             {/* Authenticated routes */}
             <Route

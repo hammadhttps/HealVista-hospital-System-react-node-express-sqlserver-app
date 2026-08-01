@@ -3,6 +3,7 @@ import * as authService from "../services/auth.service.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 import { AppError } from "../utils/AppError.js";
 import { env } from "../config/env.js";
+import { handleGoogleCallback, type GoogleProfileInput } from "../services/oauth.service.js";
 
 export async function register(req: Request, res: Response, next: NextFunction) {
   try {
@@ -165,6 +166,38 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     const user = await authService.updateProfile(req.user!.userId, req.validated);
     sendSuccess(res, user);
   } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Google OAuth callback (Phase 6.6).
+ *
+ * Passport has verified the Google identity; `handleGoogleCallback` decides
+ * whether this account may use it at all. On success the tokens go back to the
+ * SPA through a fragment (`#`) rather than a query string, so they are not
+ * written to server logs, the Referer header, or browser history in the way a
+ * `?token=` would be.
+ */
+export async function googleCallback(req: Request, res: Response, next: NextFunction) {
+  try {
+    const profile = req.user as unknown as GoogleProfileInput;
+    const result = await handleGoogleCallback(profile, req.ip);
+
+    const params = new URLSearchParams({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+    res.redirect(`${env.CLIENT_URL}/oauth/callback#${params.toString()}`);
+  } catch (err) {
+    if (err instanceof AppError) {
+      // A rejection is a normal outcome here (a staff email, an unverified
+      // address), so send the user back to the login screen with a reason
+      // rather than rendering a JSON error page mid-redirect.
+      const reason = encodeURIComponent(err.message);
+      res.redirect(`${env.CLIENT_URL}/login?error=${reason}`);
+      return;
+    }
     next(err);
   }
 }

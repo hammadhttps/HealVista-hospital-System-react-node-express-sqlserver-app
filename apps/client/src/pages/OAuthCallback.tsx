@@ -1,0 +1,75 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../store/authStore";
+import { authApi } from "../api/auth";
+
+/**
+ * Lands the Google OAuth redirect (Phase 6.6).
+ *
+ * The server returns the token pair in the URL **fragment**, which browsers
+ * never send to a server — so the tokens stay out of access logs, the Referer
+ * header, and any proxy in between, unlike a `?token=` query string.
+ *
+ * The fragment is stripped from history immediately after it is read, so the
+ * back button cannot resurface a token.
+ */
+export default function OAuthCallback() {
+  const navigate = useNavigate();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const [error, setError] = useState<string | null>(null);
+
+  // Consuming a one-time credential from the URL is imperative bootstrap work,
+  // not data fetching — it must happen exactly once, on mount.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = params.get("accessToken");
+    const refreshToken = params.get("refreshToken");
+
+    if (!accessToken) {
+      setError("Sign-in did not complete. Please try again.");
+      return;
+    }
+
+    localStorage.setItem("accessToken", accessToken);
+    if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
+
+    // Drop the tokens out of the address bar and history before anything else.
+    window.history.replaceState(null, "", window.location.pathname);
+
+    let cancelled = false;
+    authApi
+      .me()
+      .then((user) => {
+        if (cancelled) return;
+        setAuth(user, accessToken);
+        // OAuth is patients-only, so the destination is never in doubt.
+        navigate("/patient", { replace: true });
+      })
+      .catch(() => {
+        if (!cancelled) setError("Could not load your account. Please sign in again.");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, setAuth]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+      {error ? (
+        <div role="alert" className="max-w-sm text-center">
+          <p className="text-sm text-red-600">{error}</p>
+          <button
+            type="button"
+            onClick={() => navigate("/login", { replace: true })}
+            className="mt-4 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+          >
+            Back to sign in
+          </button>
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">Signing you in…</p>
+      )}
+    </div>
+  );
+}

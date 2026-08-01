@@ -156,12 +156,25 @@ export async function login(input: LoginInput, ipAddress?: string) {
     metadata: { role: user.role },
   });
 
-  // Create session
+  return issueSession(user, ipAddress);
+}
+
+/**
+ * Creates a session and the access/refresh pair for an already-authenticated
+ * user.
+ *
+ * Shared by password login and Google OAuth so both paths issue exactly the same
+ * token shape, lifetime and session record — a second implementation is how the
+ * two drift apart.
+ */
+export async function issueSession(
+  user: { id: string; email: string; role: string },
+  ipAddress?: string,
+) {
   const session = await prisma.userSession.create({
     data: { userId: user.id, ipAddress, lastActiveAt: new Date() },
   });
 
-  // Generate tokens
   const accessToken = signAccessToken(user.id, user.role, session.id);
   const refreshToken = signRefreshToken();
 

@@ -1,7 +1,8 @@
 import axios from "axios";
 import { useAuthStore } from "../store/authStore";
 
-const API_URL: string =
+/** Exported so full-page redirects (OAuth) resolve the API the same way. */
+export const API_URL: string =
   import.meta.env.VITE_API_URL ||
   (import.meta.env.PROD ? "https://healvista-hospital-system-react-node.onrender.com/api" : "/api");
 

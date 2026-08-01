@@ -2,6 +2,7 @@ import { Router } from "express";
 import { validate } from "../middlewares/validate.middleware.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { rateLimit } from "../middlewares/rateLimit.middleware.js";
+import passport, { isGoogleOAuthConfigured } from "../config/passport.js";
 import * as authController from "../controllers/auth.controller.js";
 import {
   registerSchema,
@@ -26,6 +27,26 @@ router.post("/login", rateLimit(10, 15 * 60 * 1000), validate(loginSchema), auth
 router.post("/refresh", authController.refresh);
 router.post("/verify-email", validate(verifyEmailSchema), authController.verifyEmail);
 router.post("/resend-verify", validate(resendVerifySchema), authController.resendVerification);
+
+/**
+ * Google OAuth — patients only, enforced in the callback service.
+ *
+ * Registered only when Google credentials are configured, so a deployment
+ * without them 404s here rather than failing inside passport.
+ */
+if (isGoogleOAuthConfigured) {
+  router.get(
+    "/google",
+    rateLimit(20, 15 * 60 * 1000),
+    passport.authenticate("google", { session: false, scope: ["profile", "email"] }),
+  );
+
+  router.get(
+    "/google/callback",
+    passport.authenticate("google", { session: false, failureRedirect: "/login?error=oauth" }),
+    authController.googleCallback,
+  );
+}
 
 router.use(authenticate);
 router.post("/logout", authController.logout);
