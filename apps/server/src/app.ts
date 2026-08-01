@@ -28,6 +28,7 @@ import billingRoutes, { discountRouter, insuranceRouter } from "./routes/billing
 import paymentRoutes from "./routes/payment.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import searchRoutes from "./routes/search.routes.js";
 import * as paymentController from "./controllers/payment.controller.js";
 
 const app = express();
@@ -132,6 +133,7 @@ app.use("/api/insurance", insuranceRouter);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/search", searchRoutes);
 
 // ─── Error handler (must be last) ──────────────────────────────────
 app.use(errorHandler);
