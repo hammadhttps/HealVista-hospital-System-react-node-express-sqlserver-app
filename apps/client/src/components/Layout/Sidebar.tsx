@@ -18,6 +18,7 @@ import {
   ArrowRightLeft,
   FileText,
   Pill,
+  BookOpen,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -88,6 +89,9 @@ const sharedNav: NavItem[] = [
   { to: "/settings", label: "Account", icon: Settings },
 ];
 
+/** Staff-only: the hospital knowledge base (policies, FAQs, guidelines). */
+const staffNav: NavItem[] = [{ to: "/kb", label: "Knowledge Base", icon: BookOpen }];
+
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `flex items-center gap-3 px-4 py-2 rounded-lg transition font-medium text-gray-700 hover:bg-blue-100 ${
     isActive ? "bg-blue-100 text-blue-700" : ""
@@ -112,6 +116,13 @@ export default function Sidebar() {
             {label}
           </NavLink>
         ))}
+        {role !== "PATIENT" &&
+          staffNav.map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} end className={linkClass}>
+              <Icon className="w-5 h-5" />
+              {label}
+            </NavLink>
+          ))}
       </nav>
 
       <div className="px-2 space-y-1 mb-2 border-t border-gray-100 pt-2">

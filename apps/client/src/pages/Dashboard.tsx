@@ -1,16 +1,18 @@
 import AssistantChat from "../components/ai/AssistantChat";
 import AIDisclaimer from "../components/ai/AIDisclaimer";
+import AnalyticsAssistant from "../components/ai/AnalyticsAssistant";
 import { Link } from "react-router-dom";
 
 export function AdminDashboard() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <DashboardCard title="Users" value="-" />
         <DashboardCard title="Departments" value="-" />
         <DashboardCard title="Appointments" value="-" />
       </div>
+      <AnalyticsAssistant />
     </div>
   );
 }

@@ -35,6 +35,7 @@ import Referrals from "./pages/Referrals";
 import MyReferrals from "./pages/MyReferrals";
 import MyRecords from "./pages/MyRecords";
 import SOAPNoteEditor from "./pages/SOAPNoteEditor";
+import KnowledgeBase from "./pages/KnowledgeBase";
 import PrescriptionEditor from "./pages/PrescriptionEditor";
 import Pharmacy from "./pages/Pharmacy";
 import Lab from "./pages/Lab";
@@ -256,6 +257,42 @@ export default function App() {
               <Route path="/notifications/preferences" element={<NotificationPreferences />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/settings" element={<AccountSettings />} />
+
+              {/* Staff knowledge base — RAG over policies/FAQs; ADMIN writes. */}
+              <Route
+                path="/kb"
+                element={
+                  <RoleRoute
+                    role={[
+                      "DOCTOR",
+                      "RECEPTIONIST",
+                      "PHARMACIST",
+                      "LAB_TECHNICIAN",
+                      "ACCOUNTANT",
+                      "ADMIN",
+                    ]}
+                  >
+                    <KnowledgeBase />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/kb/:id"
+                element={
+                  <RoleRoute
+                    role={[
+                      "DOCTOR",
+                      "RECEPTIONIST",
+                      "PHARMACIST",
+                      "LAB_TECHNICIAN",
+                      "ACCOUNTANT",
+                      "ADMIN",
+                    ]}
+                  >
+                    <KnowledgeBase />
+                  </RoleRoute>
+                }
+              />
             </Route>
 
             {/* Waiting-room screen: full-bleed, no AppShell chrome. Still authenticated —
