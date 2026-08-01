@@ -1,6 +1,21 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { appointmentApi, doctorAvailabilityApi, queueApi, slotApi } from "../../api/appointments";
+import {
+  appointmentApi,
+  doctorAvailabilityApi,
+  doctorSearchApi,
+  queueApi,
+  slotApi,
+} from "../../api/appointments";
 import { appointmentKeys, availabilityKeys, queueKeys } from "../queries/useAppointments";
+
+/**
+ * Symptom → department + doctor matching (Phase 5 upgrade of `/doctors/match`).
+ * A POST performed on a button click, so it is a mutation; the doctor list it
+ * pre-fills is driven by `filters`, which this hook's caller updates on success.
+ */
+export function useMatchBySymptom() {
+  return useMutation({ mutationFn: doctorSearchApi.matchBySymptom });
+}
 
 export function useBookAppointment() {
   const queryClient = useQueryClient();

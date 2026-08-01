@@ -45,8 +45,8 @@ export default function KnowledgeBase() {
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === "ADMIN";
 
-  const { data: articles, isLoading } = useKbArticles();
-  const { data: article, isLoading: detailLoading } = useKbArticle(id ?? "");
+  const { data: articles, isLoading, isError } = useKbArticles();
+  const { data: article, isLoading: detailLoading, isError: detailError } = useKbArticle(id ?? "");
   const del = useDeleteKbArticle();
 
   const [query, setQuery] = useState("");
@@ -88,6 +88,12 @@ export default function KnowledgeBase() {
           </div>
           {isLoading ? (
             <CardSkeleton />
+          ) : isError ? (
+            <Card>
+              <CardContent className="p-4 text-sm text-red-600">
+                Could not load the knowledge base. Try again later.
+              </CardContent>
+            </Card>
           ) : (
             <Card>
               <CardContent className="max-h-[60vh] space-y-1 overflow-auto p-2">
@@ -123,6 +129,11 @@ export default function KnowledgeBase() {
           {id ? (
             detailLoading ? (
               <CardSkeleton />
+            ) : detailError ? (
+              <EmptyState
+                title="Could not load this article"
+                description="Try again later or pick another from the list."
+              />
             ) : article ? (
               <Card>
                 <CardHeader>

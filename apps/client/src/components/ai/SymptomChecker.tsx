@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Stethoscope, Send, Loader2, Siren } from "lucide-react";
 import { useSymptomCheck } from "../../hooks/mutations/useAiMutations";
-import { doctorSearchApi } from "../../api/appointments";
+import { useMatchBySymptom } from "../../hooks/mutations/useAppointmentMutations";
 import AIDisclaimer from "./AIDisclaimer";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -19,6 +19,7 @@ export default function SymptomChecker({
   onMatchDepartment: (departmentId: string) => void;
 }) {
   const check = useSymptomCheck();
+  const match = useMatchBySymptom();
   const [symptom, setSymptom] = useState("");
   const [matched, setMatched] = useState<{
     departmentId: string;
@@ -33,17 +34,18 @@ export default function SymptomChecker({
     check.mutate(text);
   }
 
-  async function findDoctors(slug: string, name: string) {
+  function findDoctors(slug: string, name: string) {
     // The /doctors/match endpoint resolves the slug to a real department id and
     // returns matching doctors; accepting the suggestion jumps straight there.
-    try {
-      const res = await doctorSearchApi.matchBySymptom(symptom.trim());
-      const suggestion = res.suggestions?.find((s: { slug: string }) => s.slug === slug);
-      setMatched({ departmentId: suggestion?.departmentId, departmentName: name });
-      if (suggestion?.departmentId) onMatchDepartment(suggestion.departmentId);
-    } catch {
-      onMatchDepartment(""); // fall through to a plain search
-    }
+    match.mutate(symptom.trim(), {
+      onSuccess: (res: { suggestions?: { slug: string; departmentId?: string }[] }) => {
+        const suggestion = res.suggestions?.find((s) => s.slug === slug);
+        setMatched({ departmentId: suggestion?.departmentId ?? "", departmentName: name });
+        if (suggestion?.departmentId) onMatchDepartment(suggestion.departmentId);
+        else onMatchDepartment(""); // fall through to a plain search
+      },
+      onError: () => onMatchDepartment(""),
+    });
   }
 
   const result = check.data;
@@ -99,9 +101,13 @@ export default function SymptomChecker({
               <Button
                 size="sm"
                 onClick={() => findDoctors(result.department!, result.department!)}
-                disabled={check.isPending}
+                disabled={check.isPending || match.isPending}
               >
-                Find doctors in {result.department.replace("-", " ")}
+                {match.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>Find doctors in {result.department.replace("-", " ")}</>
+                )}
               </Button>
             )}
             {matched && (
