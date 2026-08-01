@@ -1,17 +1,37 @@
 import { prisma } from "../config/db.js";
+import { cached, delCached, cacheKeys } from "../config/redis.js";
 import { AppError } from "../utils/AppError.js";
-import type {
-  CreateDepartmentInput,
-  UpdateDepartmentInput,
-} from "@healvista/shared";
+import type { CreateDepartmentInput, UpdateDepartmentInput } from "@healvista/shared";
+
+/**
+ * The department list is the most-requested read in the app — booking, search,
+ * registration and the symptom checker all load it, and it changes a few times a
+ * year. Cached for an hour and dropped explicitly on every write, so the only
+ * way to serve a stale list is to bypass this module.
+ */
+const LIST_TTL_SECONDS = 60 * 60;
 
 export async function list(slug?: string) {
-  const where = slug ? { slug } : {};
-  return prisma.department.findMany({
-    where,
-    orderBy: { name: "asc" },
-    include: { doctors: { include: { doctor: true } } },
-  });
+  // Only the unfiltered list is cached: a slug lookup is already a unique-index
+  // hit, and caching per-slug would multiply keys for no gain.
+  if (slug) {
+    return prisma.department.findMany({
+      where: { slug },
+      orderBy: { name: "asc" },
+      include: { doctors: { include: { doctor: true } } },
+    });
+  }
+
+  return cached(cacheKeys.departments, LIST_TTL_SECONDS, () =>
+    prisma.department.findMany({
+      orderBy: { name: "asc" },
+      include: { doctors: { include: { doctor: true } } },
+    }),
+  );
+}
+
+async function invalidateList(): Promise<void> {
+  await delCached(cacheKeys.departments);
 }
 
 export async function getById(id: string) {
@@ -28,12 +48,16 @@ export async function create(input: CreateDepartmentInput) {
     where: { slug: input.slug },
   });
   if (existing) throw new AppError("Department slug already exists", 409);
-  return prisma.department.create({ data: input });
+  const created = await prisma.department.create({ data: input });
+  await invalidateList();
+  return created;
 }
 
 export async function update(id: string, input: UpdateDepartmentInput) {
   await getById(id);
-  return prisma.department.update({ where: { id }, data: input });
+  const updated = await prisma.department.update({ where: { id }, data: input });
+  await invalidateList();
+  return updated;
 }
 
 export async function remove(id: string) {
@@ -45,4 +69,5 @@ export async function remove(id: string) {
     throw new AppError("Cannot delete department with assigned doctors", 400);
   }
   await prisma.department.delete({ where: { id } });
+  await invalidateList();
 }

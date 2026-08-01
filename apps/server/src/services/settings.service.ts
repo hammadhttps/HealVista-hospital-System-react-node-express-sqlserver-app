@@ -1,8 +1,12 @@
 import { prisma } from "../config/db.js";
-import { getCached, setCached } from "../config/redis.js";
+import { getCached, setCached, cacheKeys } from "../config/redis.js";
 import type { UpdateSettingsInput } from "@healvista/shared";
 
-const SETTINGS_CACHE_KEY = "hospital:settings";
+// The key lives in `cacheKeys` so invalidation and reads cannot drift apart —
+// this module previously spelled it "hospital:settings" while `cacheKeys`
+// declared "settings:hospital", which is the kind of mismatch that only shows
+// up as a cache that never invalidates.
+const SETTINGS_CACHE_KEY = cacheKeys.settings;
 const SETTINGS_ID = "singleton";
 
 export async function get() {

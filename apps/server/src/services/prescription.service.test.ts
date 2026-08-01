@@ -20,7 +20,14 @@ vi.mock("./access.service.js", () => ({
 
 // settings.service (a transitive import) pulls in config/redis, which imports the
 // env schema and process.exit(1)s when env vars are absent in the test runner.
-vi.mock("../config/redis", () => ({ redis: {}, getCached: vi.fn(), setCached: vi.fn() }));
+vi.mock("../config/redis", () => ({
+  redis: {},
+  getCached: vi.fn(),
+  setCached: vi.fn(),
+  delCached: vi.fn(),
+  cached: vi.fn(),
+  cacheKeys: { settings: "settings:hospital", departments: "departments:all" },
+}));
 
 // createPrescription enqueues the issued prescription for embedding; with no real
 // Redis the BullMQ queue would hang forever retrying, so the queue is stubbed.
