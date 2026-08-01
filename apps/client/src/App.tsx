@@ -40,7 +40,16 @@ import PrescriptionEditor from "./pages/PrescriptionEditor";
 import Pharmacy from "./pages/Pharmacy";
 import Lab from "./pages/Lab";
 import MyLabResults from "./pages/MyLabResults";
-import { AdminDashboard, DoctorDashboard, PatientDashboard } from "./pages/Dashboard";
+import {
+  AdminDashboard,
+  DoctorDashboard,
+  PatientDashboard,
+  ReceptionistDashboard,
+  PharmacistDashboard,
+  LabDashboard,
+  AccountantDashboard,
+} from "./pages/Dashboard";
+import AdminAnalytics from "./pages/AdminAnalytics";
 
 export default function App() {
   return (
@@ -67,6 +76,14 @@ export default function App() {
                 element={
                   <RoleRoute role="ADMIN">
                     <AdminDashboard />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/admin/analytics"
+                element={
+                  <RoleRoute role="ADMIN">
+                    <AdminAnalytics />
                   </RoleRoute>
                 }
               />
@@ -203,6 +220,39 @@ export default function App() {
                 element={
                   <RoleRoute role="PATIENT">
                     <MyLabResults />
+                  </RoleRoute>
+                }
+              />
+              {/* Each staff role gets a KPI dashboard alongside its workspace page. */}
+              <Route
+                path="/reception/dashboard"
+                element={
+                  <RoleRoute role={["RECEPTIONIST", "ADMIN"]}>
+                    <ReceptionistDashboard />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/pharmacy/dashboard"
+                element={
+                  <RoleRoute role={["PHARMACIST", "ADMIN"]}>
+                    <PharmacistDashboard />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/lab/dashboard"
+                element={
+                  <RoleRoute role={["LAB_TECHNICIAN", "ADMIN"]}>
+                    <LabDashboard />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/billing/dashboard"
+                element={
+                  <RoleRoute role={["ACCOUNTANT", "ADMIN"]}>
+                    <AccountantDashboard />
                   </RoleRoute>
                 }
               />

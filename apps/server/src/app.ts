@@ -26,6 +26,8 @@ import recordRoutes from "./routes/record.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import billingRoutes, { discountRouter, insuranceRouter } from "./routes/billing.routes.js";
 import paymentRoutes from "./routes/payment.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 import * as paymentController from "./controllers/payment.controller.js";
 
 const app = express();
@@ -128,6 +130,8 @@ app.use("/api/bills", billingRoutes);
 app.use("/api/discounts", discountRouter);
 app.use("/api/insurance", insuranceRouter);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // ─── Error handler (must be last) ──────────────────────────────────
 app.use(errorHandler);

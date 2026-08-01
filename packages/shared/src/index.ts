@@ -9,3 +9,4 @@ export * from "./schemas/chat.js";
 export * from "./schemas/billing.js";
 export * from "./schemas/clinical.js";
 export * from "./schemas/ai.js";
+export * from "./schemas/analytics.js";

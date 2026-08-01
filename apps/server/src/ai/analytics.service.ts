@@ -51,11 +51,11 @@ const QUERIES: Record<AnalyticsIntent, AnalyticsQueryDef> = {
     run: async (days) => {
       const rows = await prisma.$queryRaw<
         Array<{ day: Date | string; collected: string }>
-      >`SELECT date_trunc('day', p.created_at)::date AS day,
+      >`SELECT date_trunc('day', p."createdAt")::date AS day,
             sum(p.amount)::numeric(12, 2) AS collected
          FROM payments p
          WHERE p.status = 'SUCCEEDED'
-           AND p.created_at >= now() - (${days} * interval '1 day')
+           AND p."createdAt" >= now() - (${days} * interval '1 day')
          GROUP BY 1 ORDER BY 1 DESC LIMIT 30`;
       return {
         columns: ["day", "collected"],
@@ -72,8 +72,8 @@ const QUERIES: Record<AnalyticsIntent, AnalyticsQueryDef> = {
         Array<{ status: string; count: bigint }>
       >`SELECT a.status AS status, count(*) AS count
          FROM appointments a
-         WHERE a.deleted_at IS NULL
-           AND a.created_at >= now() - (${days} * interval '1 day')
+         WHERE a."deletedAt" IS NULL
+           AND a."createdAt" >= now() - (${days} * interval '1 day')
          GROUP BY 1 ORDER BY count DESC`;
       return {
         columns: ["status", "count"],
@@ -91,8 +91,8 @@ const QUERIES: Record<AnalyticsIntent, AnalyticsQueryDef> = {
       >`SELECT count(*) FILTER (WHERE a.status = 'NO_SHOW') AS no_shows,
             count(*) AS total
          FROM appointments a
-         WHERE a.deleted_at IS NULL
-           AND a.created_at >= now() - (${days} * interval '1 day')`;
+         WHERE a."deletedAt" IS NULL
+           AND a."createdAt" >= now() - (${days} * interval '1 day')`;
       const row = rows[0];
       const total = row ? Number(row.total) : 0;
       const noShows = row ? Number(row.no_shows) : 0;
@@ -117,9 +117,9 @@ const QUERIES: Record<AnalyticsIntent, AnalyticsQueryDef> = {
         Array<{ department: string | null; appointments: bigint }>
       >`SELECT COALESCE(d.name, 'Unassigned') AS department, count(*) AS appointments
          FROM appointments a
-         LEFT JOIN departments d ON d.id = a.department_id
-         WHERE a.deleted_at IS NULL
-           AND a.created_at >= now() - (${days} * interval '1 day')
+         LEFT JOIN departments d ON d.id = a."departmentId"
+         WHERE a."deletedAt" IS NULL
+           AND a."createdAt" >= now() - (${days} * interval '1 day')
          GROUP BY 1 ORDER BY appointments DESC LIMIT 5`;
       return {
         columns: ["department", "appointments"],
@@ -137,10 +137,10 @@ const QUERIES: Record<AnalyticsIntent, AnalyticsQueryDef> = {
     run: async (days) => {
       const rows = await prisma.$queryRaw<
         Array<{ day: Date | string; patients: bigint }>
-      >`SELECT date_trunc('day', p.created_at)::date AS day, count(*) AS patients
+      >`SELECT date_trunc('day', p."createdAt")::date AS day, count(*) AS patients
          FROM patients p
-         WHERE p.deleted_at IS NULL
-           AND p.created_at >= now() - (${days} * interval '1 day')
+         WHERE p."deletedAt" IS NULL
+           AND p."createdAt" >= now() - (${days} * interval '1 day')
          GROUP BY 1 ORDER BY 1 DESC LIMIT 30`;
       return {
         columns: ["day", "patients"],

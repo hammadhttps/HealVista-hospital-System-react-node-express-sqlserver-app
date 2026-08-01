@@ -5,7 +5,9 @@ export default defineConfig([
   globalIgnores(["**/dist/", "**/node_modules/", "**/generated/"]),
   js.configs.recommended,
   {
-    files: ["scripts/**/*.mjs"],
+    // Dev/verification scripts run directly under Node, in any workspace.
+    // The pattern must be `**/scripts/…`; a bare `scripts/…` only matches the repo root.
+    files: ["**/scripts/**/*.mjs"],
     languageOptions: {
       globals: {
         console: "readonly",

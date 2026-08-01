@@ -142,6 +142,11 @@ model User {
   notificationPreference NotificationPreference?
   auditLogs              AuditLog[]
   chatMessages           ChatMessage[]
+  searchHistory          SearchHistory[]
+  savedSearches          SavedSearch[]
+  twoFactorRecoveryCodes TwoFactorRecoveryCode[]
+  exportRequests         DataExportRequest[]
+  deletionRequests       AccountDeletionRequest[]
 
   @@index([role, isActive])
   @@map("users")
@@ -1059,6 +1064,9 @@ model DocumentChunk {
   chunkIndex   Int
   content      String
   tokenCount   Int
+  // pgvector column. Unsupported() — Prisma cannot type vector(768), so all
+  // embedding reads/writes go through raw SQL (docs/architecture/ai-rag.md §2).
+  embedding    Unsupported("vector(768)")?
   createdAt    DateTime @default(now())
 
   @@unique([sourceType, sourceId, chunkIndex])
@@ -1099,15 +1107,21 @@ model AiInteraction {
 }
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  actorUserId String
-  actor       User     @relation(fields: [actorUserId], references: [id])
-  action      String
-  targetType  String
-  targetId    String
-  ipAddress   String?
-  metadata    Json?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid())
+  actorUserId   String
+  actor         User     @relation(fields: [actorUserId], references: [id])
+  action        String
+  targetType    String
+  targetId      String
+  ipAddress     String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  // Append-only correction chain. A follow-up entry may point at the log it corrects;
+  // nothing is ever updated or deleted in place.
+  correctionOfId String?
+  correctionOf   AuditLog? @relation("AuditCorrection", fields: [correctionOfId], references: [id])
+
+  corrections AuditLog[] @relation("AuditCorrection")
 
   @@index([targetType, targetId])
   @@index([actorUserId, createdAt])
@@ -1117,6 +1131,7 @@ model AuditLog {
 model DataExportRequest {
   id          String    @id @default(uuid())
   userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   status      String    @default("pending")
   fileUrl     String?
   expiresAt   DateTime?
@@ -1129,10 +1144,49 @@ model DataExportRequest {
 model AccountDeletionRequest {
   id           String    @id @default(uuid())
   userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   scheduledFor DateTime
   cancelledAt  DateTime?
   completedAt  DateTime?
   requestedAt  DateTime  @default(now())
 
   @@map("account_deletion_requests")
+}
+
+/// Keyword-search history (Phase 6 global search). Per-user, capped in the service.
+model SearchHistory {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query      String
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("search_history")
+}
+
+/// A user-pinned search for quick recall from the command palette.
+model SavedSearch {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query     String
+  label     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("saved_searches")
+}
+
+/// TOTP recovery codes, single-use, hashed at rest with SHA-256.
+model TwoFactorRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, usedAt])
+  @@map("two_factor_recovery_codes")
 }

@@ -117,6 +117,53 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* ── Data-visualisation palette ───────────────────────────────────────
+   Categorical series slots, assigned in fixed order and never cycled. The
+   dark column is the same eight hues re-stepped for the dark card surface,
+   not an automatic flip. Both sets are validated (lightness band, chroma
+   floor, adjacent CVD separation, normal-vision floor, contrast) against
+   this app's actual surfaces — light #ffffff, dark oklch(0.205 0 0).
+
+   Three light slots and one dark slot sit below 3:1 on their surface, so
+   every chart using them ships the relief the palette requires: a legend,
+   direct labels, and the table/CSV view on AdminAnalytics.
+
+   Status colours are reserved for state and never reused as a series. */
+:root {
+    --viz-series-1: #2a78d6;
+    --viz-series-2: #eb6834;
+    --viz-series-3: #1baf7a;
+    --viz-series-4: #eda100;
+    --viz-series-5: #e87ba4;
+    --viz-series-6: #008300;
+    --viz-series-7: #4a3aa7;
+    --viz-series-8: #e34948;
+
+    --viz-grid: #e1e0d9;
+    --viz-axis: #c3c2b7;
+    --viz-muted: #898781;
+
+    --viz-good: #0ca30c;
+    --viz-warning: #fab219;
+    --viz-serious: #ec835a;
+    --viz-critical: #d03b3b;
+}
+
+.dark {
+    --viz-series-1: #3987e5;
+    --viz-series-2: #d95926;
+    --viz-series-3: #199e70;
+    --viz-series-4: #c98500;
+    --viz-series-5: #d55181;
+    --viz-series-6: #008300;
+    --viz-series-7: #9085e9;
+    --viz-series-8: #e66767;
+
+    --viz-grid: #2c2c2a;
+    --viz-axis: #383835;
+    --viz-muted: #898781;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
