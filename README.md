@@ -29,11 +29,12 @@ npm install
 # 3. Configure environment
 cp apps/server/.env.example apps/server/.env
 cp apps/client/.env.example apps/client/.env
-# Fill in DATABASE_URL, JWT secrets, etc.
+# Fill in DATABASE_URL, JWT secrets, GEMINI_API_KEY (AI Studio), etc.
 
-# 4. Run database migration and seed
+# 4. Run database migration, seed, and backfill AI embeddings
 npm run db:migrate
 npm run db:seed
+npm run db:embed
 
 # 5. Start both apps in dev mode
 npm run dev
