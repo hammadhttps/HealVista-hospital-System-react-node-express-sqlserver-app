@@ -9,6 +9,7 @@ import {
   AssistantQueryInput,
   TimelineSummaryParams,
   SemanticSearchInput,
+  SemanticSearchAllInput,
   KbArticleInput,
   KbArticleUpdateInput,
   KbAskInput,
@@ -117,6 +118,16 @@ export async function semanticSearch(req: Request, res: Response, next: NextFunc
   try {
     const { query, patientId, k } = req.validated as SemanticSearchInput;
     const result = await ragService.semanticSearch(query, patientId, req.user!, k);
+    sendSuccess(res, result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function semanticSearchAll(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { query, k } = req.validated as SemanticSearchAllInput;
+    const result = await ragService.semanticSearchAll(query, req.user!, k);
     sendSuccess(res, result);
   } catch (err) {
     next(err);

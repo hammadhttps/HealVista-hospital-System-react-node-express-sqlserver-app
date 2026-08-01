@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { usePatients } from "../hooks/queries/usePatients";
+import { useMe } from "../hooks/queries/useAuth";
 import { TableSkeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { Breadcrumbs } from "../components/primitives/Breadcrumbs";
+import SemanticSearchBar from "../components/ai/SemanticSearchBar";
 import { Link } from "react-router-dom";
 
 export default function PatientList() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const { data, isLoading, isError } = usePatients({ search, page, limit: 20 });
+  const { data: me } = useMe();
+  const isDoctor = me?.role === "DOCTOR";
 
   return (
     <div>
@@ -22,6 +26,12 @@ export default function PatientList() {
           + Register Patient
         </Link>
       </div>
+
+      {isDoctor && (
+        <div className="mb-4">
+          <SemanticSearchBar />
+        </div>
+      )}
 
       <input
         type="text"
@@ -54,10 +64,7 @@ export default function PatientList() {
                 <tr key={p.id} className="border-t hover:bg-gray-50">
                   <td className="p-3 font-mono text-sm">{p.mrn}</td>
                   <td className="p-3">
-                    <Link
-                      to={`/patients/${p.id}`}
-                      className="text-blue-600 hover:underline"
-                    >
+                    <Link to={`/patients/${p.id}`} className="text-blue-600 hover:underline">
                       {p.fullName}
                     </Link>
                   </td>

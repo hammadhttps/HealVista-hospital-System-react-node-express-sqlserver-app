@@ -8,6 +8,7 @@ import {
   assistantQuerySchema,
   timelineSummaryParamsSchema,
   semanticSearchSchema,
+  semanticSearchAllSchema,
   kbArticleSchema,
   kbArticleUpdateSchema,
   kbAskSchema,
@@ -93,6 +94,15 @@ router.post(
   aiRateLimit(10, 60_000),
   validate(semanticSearchSchema),
   ai.semanticSearch,
+);
+
+router.post(
+  "/search-all",
+  authenticate,
+  requireRole("DOCTOR"),
+  aiRateLimit(10, 60_000),
+  validate(semanticSearchAllSchema),
+  ai.semanticSearchAll,
 );
 
 // ─── Hospital knowledge base ────────────────────────────────────────────────

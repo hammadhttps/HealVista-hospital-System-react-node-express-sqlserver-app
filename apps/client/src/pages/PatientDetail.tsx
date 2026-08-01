@@ -12,12 +12,14 @@ import HistoryPanel from "../components/clinical/HistoryPanel";
 import VitalsPanel from "../components/clinical/VitalsPanel";
 import RecordsPanel from "../components/records/RecordsPanel";
 import LabOrdersPanel from "../components/lab/LabOrdersPanel";
+import DoctorAssistantPanel from "../components/ai/DoctorAssistantPanel";
 
 const TABS = [
   { value: "history", label: "History" },
   { value: "vitals", label: "Vitals" },
   { value: "lab", label: "Lab" },
   { value: "records", label: "Records" },
+  { value: "ai", label: "AI", doctorOnly: true },
 ];
 
 function ageFrom(dob?: string | null): number | null {
@@ -44,6 +46,7 @@ export default function PatientDetail() {
 
   const age = ageFrom(data.dateOfBirth);
   const canOrderLab = me?.role === "DOCTOR";
+  const visibleTabs = TABS.filter((t) => !t.doctorOnly || me?.role === "DOCTOR");
 
   return (
     <div className="space-y-4">
@@ -87,7 +90,7 @@ export default function PatientDetail() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          {TABS.map((t) => (
+          {visibleTabs.map((t) => (
             <TabsTrigger key={t.value} value={t.value}>
               {t.label}
             </TabsTrigger>
@@ -107,6 +110,11 @@ export default function PatientDetail() {
               avoids offering an action that would fail. */}
           <RecordsPanel patientId={id!} canDelete />
         </TabsContent>
+        {me?.role === "DOCTOR" && (
+          <TabsContent value="ai" className="pt-4">
+            <DoctorAssistantPanel patientId={id!} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

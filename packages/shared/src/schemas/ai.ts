@@ -43,6 +43,18 @@ export const semanticSearchSchema = z.object({
 
 export type SemanticSearchInput = z.infer<typeof semanticSearchSchema>;
 
+/**
+ * Scope-wide semantic search — doctor-facing. Searches across *every* patient the
+ * doctor may read (no single patientId) so a natural-language query like "patients
+ * with worsening blood sugar" can surface matching notes from the whole panel.
+ */
+export const semanticSearchAllSchema = z.object({
+  query: z.string().min(1).max(1000),
+  k: z.number().int().min(1).max(20).optional(),
+});
+
+export type SemanticSearchAllInput = z.infer<typeof semanticSearchAllSchema>;
+
 /** Hospital knowledge base — read by staff, written by ADMIN. */
 export const kbArticleSchema = z.object({
   title: z.string().min(1).max(200),

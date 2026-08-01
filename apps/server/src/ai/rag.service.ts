@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import {
   resolveRetrievalScope,
@@ -325,6 +326,68 @@ export async function semanticSearch(
       sourceType: c.sourceType,
       sourceId: c.sourceId,
       patientId: c.patientId,
+      content: c.content,
+      chunkIndex: c.chunkIndex,
+      similarity: c.similarity,
+    })),
+    fallback: false,
+  };
+}
+
+export interface ScopeSearchHit extends SearchHit {
+  patientName: string | null;
+}
+
+/**
+ * Scope-wide semantic search — doctor-facing. Searches the doctor's *whole*
+ * retrieval scope (all shared-appointment and accepted-referral patients) rather
+ * than one named patient, then attaches each patient's display name so the results
+ * read like a panel, not a jumble of ids. Scope still lands in the SQL WHERE
+ * clause via `retrieve` — a doctor can only ever surface their own patients.
+ */
+export async function semanticSearchAll(
+  query: string,
+  actor: Actor,
+  k = 12,
+): Promise<{ results: ScopeSearchHit[]; fallback: boolean }> {
+  const scope = await resolveRetrievalScope(actor);
+  if (scope.patientIds.length === 0) {
+    return { results: [], fallback: false };
+  }
+
+  if (!isAiConfigured()) {
+    return { results: [], fallback: true };
+  }
+
+  const chunks = await retrieve(query, scope, {
+    k,
+    minSimilarity: 0.35,
+    actor,
+    feature: "semantic-search-all",
+  });
+
+  await logInteraction({
+    userId: actor.userId,
+    feature: "semantic-search-all",
+    question: query,
+    citedChunks: chunks.map((c) => c.id),
+    wasFallback: false,
+  });
+
+  const patientIds = [...new Set(chunks.map((c) => c.patientId).filter(Boolean))] as string[];
+  const patients = await prisma.patient.findMany({
+    where: { id: { in: patientIds } },
+    select: { id: true, fullName: true, mrn: true },
+  });
+  const nameById = new Map(patients.map((p) => [p.id, p]));
+
+  return {
+    results: chunks.map((c) => ({
+      id: c.id,
+      sourceType: c.sourceType,
+      sourceId: c.sourceId,
+      patientId: c.patientId,
+      patientName: c.patientId ? (nameById.get(c.patientId)?.fullName ?? null) : null,
       content: c.content,
       chunkIndex: c.chunkIndex,
       similarity: c.similarity,

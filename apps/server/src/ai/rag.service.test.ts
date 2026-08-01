@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { assistant, timelineSummary, semanticSearch } from "./rag.service.js";
+import { assistant, timelineSummary, semanticSearch, semanticSearchAll } from "./rag.service.js";
 import { isAiConfigured } from "./index.js";
 import { resolveRetrievalScope, retrieve } from "./retrieval.js";
 import { getCached, setCached } from "../config/redis.js";
@@ -29,6 +29,16 @@ vi.mock("../config/redis.js", () => ({
   getCached: vi.fn(),
   setCached: vi.fn(),
 }));
+
+vi.mock("../config/db.js", () => ({
+  prisma: {
+    patient: {
+      findMany: vi.fn(),
+    },
+  },
+}));
+
+import { prisma } from "../config/db.js";
 
 const chunks = [
   {
@@ -68,6 +78,9 @@ beforeEach(() => {
   vi.mocked(isAiConfigured).mockReturnValue(true);
   vi.mocked(getCached).mockResolvedValue(null);
   vi.mocked(retrieve).mockResolvedValue(chunks as never);
+  vi.mocked(prisma.patient.findMany).mockResolvedValue([
+    { id: "p1", fullName: "Ana Doe", mrn: "MRN1" },
+  ] as never);
 });
 
 describe("assistant", () => {
@@ -255,6 +268,49 @@ describe("semanticSearch", () => {
     vi.mocked(isAiConfigured).mockReturnValue(false);
 
     const result = await semanticSearch("x", "p1", doctorActor);
+
+    expect(result.fallback).toBe(true);
+    expect(result.results).toEqual([]);
+    expect(retrieve).not.toHaveBeenCalled();
+  });
+});
+
+describe("semanticSearchAll", () => {
+  it("searches across the doctor's whole scope and names each patient", async () => {
+    vi.mocked(resolveRetrievalScope).mockResolvedValue({ patientIds: ["p1", "p3"] } as never);
+
+    const result = await semanticSearchAll("worsening blood sugar", doctorActor, 8);
+
+    expect(result.fallback).toBe(false);
+    expect(result.results).toHaveLength(3);
+    expect(result.results[0].patientId).toBe("p1");
+    expect(retrieve).toHaveBeenCalledWith(
+      "worsening blood sugar",
+      { patientIds: ["p1", "p3"] },
+      expect.objectContaining({ feature: "semantic-search-all", k: 8 }),
+    );
+    // The scope landed in the WHERE clause — the search never saw a patient outside it.
+    expect(retrieve).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ patientIds: expect.arrayContaining(["p9"]) }),
+      expect.anything(),
+    );
+  });
+
+  it("returns nothing when the doctor has an empty scope", async () => {
+    vi.mocked(resolveRetrievalScope).mockResolvedValue({ patientIds: [] } as never);
+
+    const result = await semanticSearchAll("anything", doctorActor);
+
+    expect(result.results).toEqual([]);
+    expect(retrieve).not.toHaveBeenCalled();
+  });
+
+  it("returns empty results when AI is unconfigured", async () => {
+    vi.mocked(resolveRetrievalScope).mockResolvedValue({ patientIds: ["p1"] } as never);
+    vi.mocked(isAiConfigured).mockReturnValue(false);
+
+    const result = await semanticSearchAll("anything", doctorActor);
 
     expect(result.fallback).toBe(true);
     expect(result.results).toEqual([]);
