@@ -39,6 +39,10 @@ export const embeddingsQueue = redis
   ? new Queue("embeddings", { ...connection, defaultJobOptions })
   : null;
 
+export const summariesQueue = redis
+  ? new Queue("summaries", { ...connection, defaultJobOptions })
+  : null;
+
 export const pharmacySweepQueue = redis
   ? new Queue("pharmacy-sweep", { ...connection, defaultJobOptions })
   : null;
@@ -93,6 +97,19 @@ export async function addEmbeddingJob(
     await embeddingsQueue.add("embed", { sourceType, sourceId });
   } catch (err) {
     console.error(`[embeddings] Failed to enqueue ${sourceType} ${sourceId}:`, err);
+  }
+}
+
+/**
+ * Enqueues a record for AI report summarisation. Best-effort; the summary worker
+ * is idempotent (a record with a summary already present is skipped).
+ */
+export async function addSummaryJob(recordId: string): Promise<void> {
+  if (!summariesQueue) return;
+  try {
+    await summariesQueue.add("summarize", { recordId });
+  } catch (err) {
+    console.error(`[summaries] Failed to enqueue record ${recordId}:`, err);
   }
 }
 

@@ -144,7 +144,7 @@ export async function getSlotsForDate(req: Request, res: Response, next: NextFun
 export async function matchDoctors(req: Request, res: Response, next: NextFunction) {
   try {
     const { symptom } = req.validated as { symptom: string };
-    const result = await doctorService.matchDoctorsBySymptom(symptom);
+    const result = await doctorService.matchDoctorsBySymptom(symptom, req.user!);
     sendSuccess(res, result);
   } catch (err) {
     next(err);

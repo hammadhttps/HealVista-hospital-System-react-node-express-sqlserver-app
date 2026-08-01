@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { AppError } from "../utils/AppError.js";
-import type { AIProvider } from "./ai.provider.js";
+import type { AIProvider, GenerationImage } from "./ai.provider.js";
 
 /**
  * The shared guardrail system prompt, prepended to **every** generation in the
@@ -38,6 +38,8 @@ export interface GenerateValidatedOptions<T> {
   schema: z.ZodType<T>;
   system?: string;
   maxTokens?: number;
+  /** Inline base64 images for the vision path (OCR). */
+  images?: GenerationImage[];
   /** Retries on transient failure and malformed output. Default 1. */
   retries?: number;
 }
@@ -66,6 +68,7 @@ export async function generateValidated<T>(
           ? `${GUARDRAIL_SYSTEM_PROMPT}\n\n${opts.system}`
           : GUARDRAIL_SYSTEM_PROMPT,
         maxTokens: opts.maxTokens,
+        images: opts.images,
       });
       return opts.schema.parse(raw);
     } catch (err) {

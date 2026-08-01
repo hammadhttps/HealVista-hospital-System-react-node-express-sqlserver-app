@@ -5,6 +5,7 @@ import * as dependentService from "../services/dependent.service.js";
 import * as prescriptionService from "../services/prescription.service.js";
 import * as noteService from "../services/note.service.js";
 import * as referralService from "../services/referral.service.js";
+import * as soapDraftService from "../ai/soapDraft.service.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 
 // ─── Medical history ────────────────────────────────────────────────────────
@@ -487,6 +488,18 @@ export async function saveNote(req: Request, res: Response, next: NextFunction) 
       req.user!,
     );
     sendSuccess(res, note);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function draftNote(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await soapDraftService.generateDraft(
+      req.params.appointmentId as string,
+      req.user!,
+    );
+    sendSuccess(res, result);
   } catch (err) {
     next(err);
   }

@@ -2,7 +2,7 @@ import { GoogleGenAI, Type, type Schema } from "@google/genai";
 import { z, type ZodTypeAny } from "zod";
 import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
-import type { AIProvider, AiUsage } from "./ai.provider.js";
+import type { AIProvider, AiUsage, GenerationImage } from "./ai.provider.js";
 
 /**
  * The Gemini implementation of `AIProvider`.
@@ -137,13 +137,22 @@ class GeminiProvider implements AIProvider {
     schema: z.ZodType<T>;
     system?: string;
     maxTokens?: number;
+    images?: GenerationImage[];
   }): Promise<T> {
     const start = Date.now();
     const ai = getClient();
     try {
+      // Vision input rides inline (base64) ahead of the text prompt — never a URL,
+      // so a signed Cloudinary link cannot leak into logs or provider telemetry.
+      const parts: Array<Record<string, unknown>> = [
+        ...(opts.images ?? []).map((img) => ({
+          inline_data: { mime_type: img.mimeType, data: img.data },
+        })),
+        { text: opts.prompt },
+      ];
       const response = await ai.models.generateContent({
         model: env.GEMINI_MODEL,
-        contents: [{ role: "user", parts: [{ text: opts.prompt }] }],
+        contents: [{ role: "user", parts }],
         config: {
           responseMimeType: "application/json",
           responseSchema: zodToGeminiSchema(opts.schema),

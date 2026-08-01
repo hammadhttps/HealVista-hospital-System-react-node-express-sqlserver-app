@@ -1,6 +1,12 @@
 import { prisma } from "../config/db.js";
 import { redis } from "../config/redis.js";
 import { AppError } from "../utils/AppError.js";
+import {
+  ruleBasedDepartmentSlugs,
+  suggestDepartments,
+  type DepartmentSuggestion,
+} from "../ai/symptom.service.js";
+import type { Actor } from "./access.service.js";
 
 export async function list(search?: string) {
   const where: any = { deletedAt: null };
@@ -279,71 +285,62 @@ export async function getSlotsForDate(doctorId: string, date: string) {
   return slots;
 }
 
-export async function matchDoctorsBySymptom(symptom: string) {
-  const keywords = symptom.toLowerCase().split(/\s+/);
+export interface DepartmentMatch {
+  slug: string;
+  departmentId: string;
+  departmentName: string;
+  confidence: number;
+  reason?: string;
+}
 
-  const departmentMatches: Record<string, number> = {};
-  const keywordDeptMap: Record<string, string[]> = {
-    heart: ["cardiology"],
-    chest: ["cardiology", "general-medicine"],
-    breath: ["cardiology", "general-medicine"],
-    lung: ["general-medicine", "radiology"],
-    cough: ["general-medicine", "pediatrics"],
-    fever: ["general-medicine", "pediatrics"],
-    child: ["pediatrics"],
-    bone: ["orthopedics"],
-    fracture: ["orthopedics"],
-    joint: ["orthopedics"],
-    spine: ["orthopedics", "neurology"],
-    head: ["neurology"],
-    brain: ["neurology"],
-    migraine: ["neurology"],
-    seizure: ["neurology"],
-    skin: ["dermatology"],
-    rash: ["dermatology"],
-    hair: ["dermatology"],
-    eye: ["ophthalmology"],
-    vision: ["ophthalmology"],
-    ear: ["ent"],
-    hearing: ["ent"],
-    throat: ["ent"],
-    neck: ["ent"],
-    pregnancy: ["gynecology"],
-    menstrual: ["gynecology"],
-    hormone: ["gynecology"],
-    anxiety: ["psychiatry"],
-    depression: ["psychiatry"],
-    sleep: ["psychiatry"],
-    mental: ["psychiatry"],
-    pain: ["general-medicine", "orthopedics"],
-    infection: ["general-medicine"],
-    diabetes: ["general-medicine"],
-    pressure: ["cardiology"],
-    accident: ["emergency"],
-    injury: ["emergency", "orthopedics"],
-  };
+/**
+ * Symptom → department matching. Upgraded in Phase 5.4: Gemini ranks the
+ * departments first, the deterministic keyword map stays as the fallback, and the
+ * response states which path produced it. A provider outage or a non-configured
+ * server falls straight through to the rules — the front-desk flow never depends on
+ * the AI being up.
+ */
+export async function matchDoctorsBySymptom(symptom: string, actor?: Actor) {
+  const ruleSlugs = ruleBasedDepartmentSlugs(symptom);
 
-  for (const kw of keywords) {
-    const depts = keywordDeptMap[kw];
-    if (depts) {
-      for (const d of depts) {
-        departmentMatches[d] = (departmentMatches[d] || 0) + 1;
-      }
-    }
+  // The AI path never throws to the caller — `suggestDepartments` returns null on
+  // any failure and the rules take over.
+  const aiSuggestions: DepartmentSuggestion[] | null = await suggestDepartments(symptom, actor);
+
+  let matchedSlugs: string[] = [];
+  let source: "ai" | "rules" = "rules";
+  const confidenceBySlug: Record<string, number> = {};
+
+  if (aiSuggestions && aiSuggestions.length > 0) {
+    matchedSlugs = aiSuggestions.map((s) => s.slug).slice(0, 3);
+    for (const s of aiSuggestions) confidenceBySlug[s.slug] = s.confidence;
+    source = "ai";
+  } else {
+    matchedSlugs = ruleSlugs;
   }
 
-  const matchedSlugs = Object.entries(departmentMatches)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([slug]) => slug);
+  const emptyResult = (suggestedDepartment: string) => ({
+    source,
+    suggestions: [] as DepartmentMatch[],
+    suggestedDepartment,
+    doctors: [] as never[],
+  });
 
-  if (matchedSlugs.length === 0) return { suggestedDepartment: "general-medicine", doctors: [] };
+  if (matchedSlugs.length === 0) return emptyResult("general-medicine");
 
   const departments = await prisma.department.findMany({
     where: { slug: { in: matchedSlugs }, isActive: true },
   });
 
-  if (departments.length === 0) return { suggestedDepartment: "general-medicine", doctors: [] };
+  if (departments.length === 0) return emptyResult("general-medicine");
+
+  const suggestions: DepartmentMatch[] = departments.map((d) => ({
+    slug: d.slug,
+    departmentId: d.id,
+    departmentName: d.name,
+    confidence: confidenceBySlug[d.slug] ?? 0.5,
+    reason: source === "ai" ? aiSuggestions?.find((s) => s.slug === d.slug)?.reason : undefined,
+  }));
 
   const doctors = await prisma.doctor.findMany({
     where: {
@@ -359,5 +356,5 @@ export async function matchDoctorsBySymptom(symptom: string) {
     take: 10,
   });
 
-  return { suggestedDepartment: departments[0].slug, doctors };
+  return { source, suggestions, suggestedDepartment: departments[0].slug, doctors };
 }

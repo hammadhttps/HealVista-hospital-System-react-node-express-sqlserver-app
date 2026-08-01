@@ -82,6 +82,10 @@ export const noteInputSchema = z.object({
   plan: z.string().max(4000),
   diagnosisCodes: z.array(z.string().max(20)).optional(),
   isDraft: z.boolean().optional(),
+  // True when the content started life as an AI SOAP draft the doctor edited.
+  // The server enforces that an AI draft was actually modified before it can be
+  // saved verbatim (see soapDraft.store).
+  aiAssisted: z.boolean().optional(),
 });
 
 export const noteTemplateSchema = z.object({

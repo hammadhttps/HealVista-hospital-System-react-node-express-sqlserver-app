@@ -22,7 +22,7 @@ export function isAiConfigured(): boolean {
 }
 
 export { geminiProvider } from "./gemini.provider.js";
-export type { AIProvider, AiUsage } from "./ai.provider.js";
+export type { AIProvider, AiUsage, GenerationImage } from "./ai.provider.js";
 export {
   GUARDRAIL_SYSTEM_PROMPT,
   AiGenerationError,
@@ -39,3 +39,33 @@ export {
   type RetrievedChunk,
   type RetrieveOptions,
 } from "./retrieval.js";
+export {
+  explainLabReport,
+  explainPrescription,
+  recommendFollowUp,
+  ocrRecord,
+  summarizeRecord,
+  getReportSummary,
+  enqueueReportSummary,
+  type LabExplainResult,
+  type RxExplainResult,
+  type FollowUpResult,
+  type OcrResult,
+} from "./directPrompts.service.js";
+export { generateDraft, type SoapDraftResult } from "./soapDraft.service.js";
+export {
+  isUneditedDraft,
+  getStoredDraft,
+  storeDraft,
+  clearStoredDraft,
+  type SoapDraft,
+  type NoteDraftInput,
+} from "./soapDraft.store.js";
+export {
+  checkSymptom,
+  suggestDepartments,
+  ruleBasedDepartmentSlugs,
+  KNOWN_DEPARTMENT_SLUGS,
+  type SymptomCheckResult,
+  type DepartmentSuggestion,
+} from "./symptom.service.js";

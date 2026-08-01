@@ -1,7 +1,8 @@
 import { Worker } from "bullmq";
 import { redis } from "../config/redis.js";
 import { prisma } from "../config/db.js";
-import { addEmbeddingJob } from "../config/bull.js";
+import { addEmbeddingJob, addSummaryJob } from "../config/bull.js";
+import { isAiConfigured } from "../ai/index.js";
 import { signDeliveryUrl } from "../services/record.service.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { logger } from "../utils/logger.js";
@@ -98,6 +99,16 @@ export function startRecordWorker(): Worker | null {
         await addEmbeddingJob("medical_record", recordId);
       } catch (err) {
         console.error("[record-worker] Failed to enqueue embedding:", err);
+      }
+
+      // The text is also what the AI report summary reads. Only when the AI layer is
+      // configured — no point queueing summarise jobs on a server without a key.
+      if (isAiConfigured()) {
+        try {
+          await addSummaryJob(recordId);
+        } catch (err) {
+          console.error("[record-worker] Failed to enqueue summary:", err);
+        }
       }
 
       logger.info({ recordId, chars: text.length }, "[record-worker] Text extracted");

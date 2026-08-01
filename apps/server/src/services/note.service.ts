@@ -2,6 +2,7 @@ import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { addEmbeddingJob } from "../config/bull.js";
+import { getStoredDraft, isUneditedDraft } from "../ai/soapDraft.store.js";
 import { assertClinicalAccess, assertNoteReadAccess, type Actor } from "./access.service.js";
 
 /**
@@ -41,9 +42,10 @@ async function requireDoctor(actor: Actor) {
  * Only the treating doctor writes the note.
  *
  * `assertClinicalAccess` is deliberately not enough here — it admits a referred
- * doctor and an admin, neither of whom authored this consultation.
+ * doctor and an admin, neither of whom authored this consultation. Exported so the
+ * AI features (SOAP draft, follow-up recommendation) reuse the same gate.
  */
-async function assertIsTreatingDoctor(appointmentId: string, actor: Actor) {
+export async function assertTreatingDoctor(appointmentId: string, actor: Actor) {
   const doctor = await requireDoctor(actor);
   const appointment = await prisma.appointment.findUnique({
     where: { id: appointmentId },
@@ -68,7 +70,21 @@ export function isLocked(note: { signedAt: Date | null; lockedAt: Date | null })
  * the client can call this on a debounce and the note stays a draft until signed.
  */
 export async function upsertNote(appointmentId: string, input: NoteInput, actor: Actor) {
-  const { appointment } = await assertIsTreatingDoctor(appointmentId, actor);
+  const { appointment } = await assertTreatingDoctor(appointmentId, actor);
+
+  // An AI SOAP draft must be edited before it becomes part of a note — submitted
+  // verbatim it would sign the model's words, not the doctor's. The check is
+  // against the stored draft (see soapDraft.store); when Redis is absent the rule
+  // degrades off, never fails the save.
+  if (input.aiAssisted) {
+    const draft = await getStoredDraft(appointmentId);
+    if (draft && draft.source === "ai" && isUneditedDraft(input, draft)) {
+      throw new AppError(
+        "Edit the AI draft before saving it — an unedited draft cannot become part of your note.",
+        400,
+      );
+    }
+  }
 
   const existing = await prisma.consultationNote.findUnique({
     where: { appointmentId },
@@ -127,7 +143,7 @@ export async function upsertNote(appointmentId: string, input: NoteInput, actor:
  * is the doctor's own account of the consultation.
  */
 export async function signNote(appointmentId: string, actor: Actor) {
-  const { appointment } = await assertIsTreatingDoctor(appointmentId, actor);
+  const { appointment } = await assertTreatingDoctor(appointmentId, actor);
 
   const note = await prisma.consultationNote.findUnique({ where: { appointmentId } });
   if (!note) throw new AppError("There is no note to sign", 404);
@@ -173,7 +189,7 @@ export async function signNote(appointmentId: string, actor: Actor) {
  * appends rather than overwrites — the original text stays exactly as signed.
  */
 export async function addAddendum(appointmentId: string, content: string, actor: Actor) {
-  const { appointment } = await assertIsTreatingDoctor(appointmentId, actor);
+  const { appointment } = await assertTreatingDoctor(appointmentId, actor);
 
   const note = await prisma.consultationNote.findUnique({ where: { appointmentId } });
   if (!note) throw new AppError("Note not found", 404);
