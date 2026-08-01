@@ -32,3 +32,10 @@ export {
 export { stripPII, PII_TEST_TOKENS } from "./pii.js";
 export { detectEmergency, type EmergencyResult } from "./emergency.js";
 export { logInteraction, type InteractionInput } from "./aiInteraction.service.js";
+export {
+  resolveRetrievalScope,
+  retrieve,
+  type RetrievalScope,
+  type RetrievedChunk,
+  type RetrieveOptions,
+} from "./retrieval.js";
