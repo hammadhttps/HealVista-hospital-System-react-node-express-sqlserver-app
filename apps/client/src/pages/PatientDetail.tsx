@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { usePatient } from "../hooks/queries/usePatients";
 import { usePatientHistory } from "../hooks/queries/useClinical";
 import { useMe } from "../hooks/queries/useAuth";
@@ -15,11 +16,11 @@ import LabOrdersPanel from "../components/lab/LabOrdersPanel";
 import DoctorAssistantPanel from "../components/ai/DoctorAssistantPanel";
 
 const TABS = [
-  { value: "history", label: "History" },
-  { value: "vitals", label: "Vitals" },
-  { value: "lab", label: "Lab" },
-  { value: "records", label: "Records" },
-  { value: "ai", label: "AI", doctorOnly: true },
+  { value: "history", labelKey: "tabHistory" },
+  { value: "vitals", labelKey: "tabVitals" },
+  { value: "lab", labelKey: "tabLab" },
+  { value: "records", labelKey: "tabRecords" },
+  { value: "ai", labelKey: "tabAi", doctorOnly: true },
 ];
 
 function ageFrom(dob?: string | null): number | null {
@@ -33,6 +34,7 @@ function ageFrom(dob?: string | null): number | null {
 }
 
 export default function PatientDetail() {
+  const { t } = useTranslation(["common", "patients"]);
   const { id } = useParams<{ id: string }>();
   const [tab, setTab] = useState(TABS[0].value);
 
@@ -41,7 +43,7 @@ export default function PatientDetail() {
   const { data: me } = useMe();
 
   if (isLoading) return <CardSkeleton />;
-  if (isError) return <div className="text-red-500">Patient not found</div>;
+  if (isError) return <div className="text-red-500">{t("patients:notFound")}</div>;
   if (!data) return null;
 
   const age = ageFrom(data.dateOfBirth);
@@ -50,7 +52,9 @@ export default function PatientDetail() {
 
   return (
     <div className="space-y-4">
-      <Breadcrumbs items={[{ label: "Patients", href: "/patients" }, { label: data.fullName }]} />
+      <Breadcrumbs
+        items={[{ label: t("patients:title"), href: "/patients" }, { label: data.fullName }]}
+      />
 
       <AllergyBanner allergies={history?.allergies} isLoading={historyLoading} />
 
@@ -60,29 +64,35 @@ export default function PatientDetail() {
           <h1 className="text-2xl font-bold">{data.fullName}</h1>
           <span className="font-mono text-sm text-gray-500">{data.mrn}</span>
           {data.gender && <Badge variant="outline">{data.gender}</Badge>}
-          {data.bloodGroup && <Badge variant="outline">Blood {data.bloodGroup}</Badge>}
-          {data.isOrganDonor && <Badge variant="default">Organ donor</Badge>}
+          {data.bloodGroup && (
+            <Badge variant="outline">
+              {t("patients:bloodGroupLabel", { group: data.bloodGroup })}
+            </Badge>
+          )}
+          {data.isOrganDonor && <Badge variant="default">{t("patients:organDonor")}</Badge>}
         </div>
         <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
           {data.dateOfBirth && (
             <div>
-              <span className="text-gray-500">Date of birth:</span>{" "}
+              <span className="text-gray-500">{t("patients:dateOfBirth")}</span>{" "}
               {new Date(data.dateOfBirth).toLocaleDateString()}
-              {age !== null && <span className="text-gray-500"> ({age} y/o)</span>}
+              {age !== null && <span className="text-gray-500"> {t("patients:age", { age })}</span>}
             </div>
           )}
           <div>
-            <span className="text-gray-500">Email:</span> {data.user?.email}
+            <span className="text-gray-500">{t("patients:emailLabel")}</span> {data.user?.email}
           </div>
           <div>
-            <span className="text-gray-500">Phone:</span> {data.user?.phone || "-"}
+            <span className="text-gray-500">{t("patients:phoneLabel")}</span>{" "}
+            {data.user?.phone || "-"}
           </div>
           <div>
-            <span className="text-gray-500">Marital status:</span> {data.maritalStatus || "-"}
+            <span className="text-gray-500">{t("patients:maritalStatus")}</span>{" "}
+            {data.maritalStatus || "-"}
           </div>
           {data.occupation && (
             <div>
-              <span className="text-gray-500">Occupation:</span> {data.occupation}
+              <span className="text-gray-500">{t("patients:occupation")}</span> {data.occupation}
             </div>
           )}
         </div>
@@ -90,9 +100,9 @@ export default function PatientDetail() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          {visibleTabs.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>
-              {t.label}
+          {visibleTabs.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {t(`patients:${tab.labelKey}`)}
             </TabsTrigger>
           ))}
         </TabsList>

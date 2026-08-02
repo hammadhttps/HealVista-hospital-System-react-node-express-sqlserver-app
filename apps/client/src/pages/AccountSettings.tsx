@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/authStore";
 import { authApi } from "../api/auth";
 import { useSessions } from "../hooks/queries/useAuth";
@@ -7,6 +8,7 @@ import { authKeys } from "../hooks/queries/useAuth";
 import { getErrorMessage } from "../utils/errors";
 
 export default function AccountSettings() {
+  const { t } = useTranslation("account");
   const user = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   const { data: sessions } = useSessions();
@@ -22,10 +24,10 @@ export default function AccountSettings() {
     setErr("");
     try {
       await authApi.changePassword(passwords.current, passwords.newPw);
-      setMsg("Password changed.");
+      setMsg(t("account:passwordChanged"));
       setPasswords({ current: "", newPw: "" });
     } catch (err: any) {
-      setErr(getErrorMessage(err, "Failed"));
+      setErr(getErrorMessage(err, t("account:failed")));
     }
   };
 
@@ -35,10 +37,10 @@ export default function AccountSettings() {
     setErr("");
     try {
       await authApi.changeEmail(emailForm.email, emailForm.password);
-      setMsg("Email changed. Verify your new email.");
+      setMsg(t("account:emailChanged"));
       setEmailForm({ email: "", password: "" });
     } catch (err: any) {
-      setErr(getErrorMessage(err, "Failed"));
+      setErr(getErrorMessage(err, t("account:failed")));
     }
   };
 
@@ -49,23 +51,23 @@ export default function AccountSettings() {
 
   return (
     <div className="max-w-2xl space-y-8">
-      <h1 className="text-2xl font-bold text-gray-800">Account Settings</h1>
+      <h1 className="text-2xl font-bold text-gray-800">{t("account:title")}</h1>
 
       <div className="bg-white rounded-xl shadow-sm p-6 space-y-2">
-        <h2 className="text-lg font-semibold text-gray-700 mb-3">Profile</h2>
+        <h2 className="text-lg font-semibold text-gray-700 mb-3">{t("account:profile")}</h2>
         <p className="text-gray-600">
-          Email: <strong>{user?.email}</strong>
+          {t("account:email")}: <strong>{user?.email}</strong>
         </p>
         <p className="text-gray-600">
-          Role: <strong>{user?.role}</strong>
+          {t("account:role")}: <strong>{user?.role}</strong>
         </p>
       </div>
 
       <form onSubmit={handleChangePassword} className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-700">Change Password</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t("account:changePassword")}</h2>
         <input
           type="password"
-          placeholder="Current password"
+          placeholder={t("account:currentPassword")}
           className="w-full px-4 py-2 border rounded-lg"
           value={passwords.current}
           onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
@@ -73,7 +75,7 @@ export default function AccountSettings() {
         />
         <input
           type="password"
-          placeholder="New password (min 8 chars)"
+          placeholder={t("account:newPassword")}
           className="w-full px-4 py-2 border rounded-lg"
           value={passwords.newPw}
           onChange={(e) => setPasswords({ ...passwords, newPw: e.target.value })}
@@ -84,15 +86,15 @@ export default function AccountSettings() {
           type="submit"
           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
         >
-          Change Password
+          {t("account:changePassword")}
         </button>
       </form>
 
       <form onSubmit={handleChangeEmail} className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-700">Change Email</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t("account:changeEmail")}</h2>
         <input
           type="email"
-          placeholder="New email"
+          placeholder={t("account:newEmail")}
           className="w-full px-4 py-2 border rounded-lg"
           value={emailForm.email}
           onChange={(e) => setEmailForm({ ...emailForm, email: e.target.value })}
@@ -100,7 +102,7 @@ export default function AccountSettings() {
         />
         <input
           type="password"
-          placeholder="Confirm password"
+          placeholder={t("account:confirmPassword")}
           className="w-full px-4 py-2 border rounded-lg"
           value={emailForm.password}
           onChange={(e) => setEmailForm({ ...emailForm, password: e.target.value })}
@@ -110,14 +112,14 @@ export default function AccountSettings() {
           type="submit"
           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
         >
-          Change Email
+          {t("account:changeEmail")}
         </button>
       </form>
 
       <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-700">Active Sessions</h2>
+        <h2 className="text-lg font-semibold text-gray-700">{t("account:activeSessions")}</h2>
         {(sessions as any[])?.length === 0 ? (
-          <p className="text-gray-500">No active sessions.</p>
+          <p className="text-gray-500">{t("account:noActiveSessions")}</p>
         ) : (
           <div className="space-y-2">
             {(sessions as any[])?.map((s: any) => (
@@ -126,16 +128,16 @@ export default function AccountSettings() {
                 className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
               >
                 <div>
-                  <p className="text-sm font-medium">{s.ipAddress || "Unknown IP"}</p>
+                  <p className="text-sm font-medium">{s.ipAddress || t("account:unknownIp")}</p>
                   <p className="text-xs text-gray-500">
-                    Last active: {new Date(s.lastActiveAt).toLocaleString()}
+                    {t("account:lastActive")} {new Date(s.lastActiveAt).toLocaleString()}
                   </p>
                 </div>
                 <button
                   onClick={() => handleRevoke(s.id)}
                   className="text-sm text-red-500 hover:text-red-700"
                 >
-                  Revoke
+                  {t("account:revoke")}
                 </button>
               </div>
             ))}

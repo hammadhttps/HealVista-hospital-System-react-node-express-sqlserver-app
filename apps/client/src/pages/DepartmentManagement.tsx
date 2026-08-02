@@ -1,24 +1,26 @@
+import { useTranslation } from "react-i18next";
 import { useDepartments } from "../hooks/queries/useDepartments";
 import { TableSkeleton } from "../components/primitives/Skeleton";
 import { Breadcrumbs } from "../components/primitives/Breadcrumbs";
 
 export default function DepartmentManagement() {
+  const { t } = useTranslation(["departments", "nav"]);
   const { data, isLoading } = useDepartments();
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: "Departments" }]} />
-      <h1 className="text-2xl font-bold mb-4">Department Management</h1>
+      <Breadcrumbs items={[{ label: t("nav:departments") }]} />
+      <h1 className="text-2xl font-bold mb-4">{t("departments:title")}</h1>
       {isLoading && <TableSkeleton />}
       {data && (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="text-left p-3">Name</th>
-                <th className="text-left p-3">Slug</th>
-                <th className="text-left p-3">Description</th>
-                <th className="text-left p-3">Doctors</th>
+                <th className="text-left p-3">{t("departments:name")}</th>
+                <th className="text-left p-3">{t("departments:slug")}</th>
+                <th className="text-left p-3">{t("departments:description")}</th>
+                <th className="text-left p-3">{t("departments:doctors")}</th>
               </tr>
             </thead>
             <tbody>

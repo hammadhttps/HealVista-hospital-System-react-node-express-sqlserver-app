@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useStaff } from "../hooks/queries/useStaff";
 import { useUpdateStaff } from "../hooks/mutations/useStaffMutations";
 import { useDepartments } from "../hooks/queries/useDepartments";
@@ -6,6 +7,7 @@ import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 
 export default function StaffManagement() {
+  const { t } = useTranslation(["common", "staff"]);
   const { data: staff, isLoading, isError } = useStaff();
   const { data: departments } = useDepartments();
   const update = useUpdateStaff();
@@ -18,19 +20,27 @@ export default function StaffManagement() {
         <Skeleton className="h-64 w-full" />
       </div>
     );
-  if (isError) return <EmptyState title="Failed to load staff" />;
+  if (isError) return <EmptyState title={t("staff:loadFailed")} />;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Staff Management</h1>
+      <h1 className="text-2xl font-bold text-gray-800">{t("staff:title")}</h1>
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Employee Code</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Designation</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Department</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Status</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">
+                {t("staff:employeeCode")}
+              </th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">
+                {t("staff:designation")}
+              </th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">
+                {t("staff:department")}
+              </th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">
+                {t("common:status")}
+              </th>
               <th className="p-4" />
             </tr>
           </thead>
@@ -84,9 +94,9 @@ export default function StaffManagement() {
                       update.mutate({ userId: s.userId, data: { status: e.target.value } })
                     }
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="suspended">Suspended</option>
+                    <option value="active">{t("staff:active")}</option>
+                    <option value="inactive">{t("staff:inactive")}</option>
+                    <option value="suspended">{t("staff:suspended")}</option>
                   </select>
                 </td>
                 <td className="p-4">{update.isPending ? "..." : ""}</td>

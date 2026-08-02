@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Search, Star, X } from "lucide-react";
 import { SEARCH_MIN_LENGTH, type SearchResult } from "@healvista/shared";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
@@ -34,6 +35,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation(["search", "a11y"]);
 
   const { data, isFetching } = useGlobalSearch(debounced, open);
   const { data: history } = useSearchHistory(open);
@@ -105,7 +107,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Global search"
+        aria-label={t("a11y:openSearch")}
         className="w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
@@ -117,8 +119,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             type="text"
             value={term}
             onChange={(e) => setTerm(e.target.value)}
-            placeholder="Search patients, doctors, medicines, invoices…"
-            aria-label="Search"
+            placeholder={t("search:placeholder")}
+            aria-label={t("a11y:openSearch")}
             aria-controls="command-palette-results"
             aria-activedescendant={flat.length > 0 ? `search-result-${activeIndex}` : undefined}
             className="w-full bg-transparent py-4 text-base outline-none placeholder:text-gray-400 dark:text-gray-100"
@@ -127,7 +129,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             <button
               type="button"
               onClick={() => setTerm("")}
-              aria-label="Clear search"
+              aria-label={t("a11y:clearSearch")}
               className="rounded p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
               <X className="h-4 w-4" />
@@ -139,16 +141,21 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           id="command-palette-results"
           ref={listRef}
           role="listbox"
-          aria-label="Search results"
+          aria-label={t("a11y:searchResults")}
           className="max-h-[60vh] overflow-y-auto p-2"
         >
           {showSuggestions ? (
-            <Suggestions history={history ?? []} saved={saved ?? []} onPick={(q) => setTerm(q)} />
+            <Suggestions
+              history={history ?? []}
+              saved={saved ?? []}
+              onPick={(q) => setTerm(q)}
+              t={t}
+            />
           ) : isFetching && !data ? (
-            <p className="px-3 py-8 text-center text-sm text-gray-500">Searching…</p>
+            <p className="px-3 py-8 text-center text-sm text-gray-500">{t("search:searching")}</p>
           ) : flat.length === 0 ? (
             <p className="px-3 py-8 text-center text-sm text-gray-500">
-              No matches for “{debounced}”.
+              {t("search:noMatches", { query: debounced })}
             </p>
           ) : (
             <>
@@ -211,7 +218,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         </div>
 
         <div className="flex items-center justify-between border-t border-gray-200 px-4 py-2 text-xs text-gray-500 dark:border-gray-700">
-          <span>↑↓ to navigate · ↵ to open · Esc to close</span>
+          <span>{t("search:hint")}</span>
           {debounced.trim().length >= SEARCH_MIN_LENGTH && (
             <button
               type="button"
@@ -220,7 +227,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
               className="flex items-center gap-1 rounded px-2 py-1 hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-700"
             >
               <Star className="h-3 w-3" aria-hidden="true" />
-              Save this search
+              {t("search:saveThis")}
             </button>
           )}
         </div>
@@ -233,23 +240,29 @@ function Suggestions({
   history,
   saved,
   onPick,
+  t,
 }: {
   history: { id: string; query: string }[];
   saved: { id: string; query: string; label: string | null }[];
   onPick: (query: string) => void;
+  t: ReturnType<typeof useTranslation<["search", "a11y"]>>["t"];
 }) {
   if (history.length === 0 && saved.length === 0) {
     return (
       <p className="px-3 py-8 text-center text-sm text-gray-500">
-        Type at least {SEARCH_MIN_LENGTH} characters to search.
+        {t("search:minChars", { count: SEARCH_MIN_LENGTH })}
       </p>
     );
   }
 
   return (
     <>
-      {saved.length > 0 && <SuggestionGroup title="Saved searches" items={saved} onPick={onPick} />}
-      {history.length > 0 && <SuggestionGroup title="Recent" items={history} onPick={onPick} />}
+      {saved.length > 0 && (
+        <SuggestionGroup title={t("search:saved")} items={saved} onPick={onPick} />
+      )}
+      {history.length > 0 && (
+        <SuggestionGroup title={t("search:recent")} items={history} onPick={onPick} />
+      )}
     </>
   );
 }

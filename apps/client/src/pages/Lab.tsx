@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { ClipboardCheck, FlaskConical, TestTube, CheckCircle2 } from "lucide-react";
 import { useLabWorklist } from "../hooks/queries/useLabAndPharmacy";
@@ -26,11 +27,11 @@ import {
 } from "../components/ui/dialog";
 
 const FILTERS = [
-  { value: "", label: "All open" },
-  { value: "ORDERED", label: "Ordered" },
-  { value: "SAMPLE_COLLECTED", label: "Collected" },
-  { value: "TESTING", label: "Testing" },
-  { value: "COMPLETED", label: "Completed" },
+  { value: "", key: "lab:allOpen" },
+  { value: "ORDERED", key: "lab:ordered" },
+  { value: "SAMPLE_COLLECTED", key: "lab:collected" },
+  { value: "TESTING", key: "lab:testing" },
+  { value: "COMPLETED", key: "lab:completed" },
 ] as const;
 
 interface WorkItem {
@@ -63,6 +64,7 @@ interface ResultDraft {
  * Actions follow the legal transitions: collect, start, enter results, verify.
  */
 export default function Lab() {
+  const { t } = useTranslation(["common", "lab"]);
   const [filter, setFilter] = useState<string>("");
   const [resultsOrder, setResultsOrder] = useState<WorkItem | null>(null);
   const [drafts, setDrafts] = useState<ResultDraft>({});
@@ -99,14 +101,14 @@ export default function Lab() {
       };
     });
     if (results.some((r) => !r.resultValue.trim())) {
-      toast.error("Every test needs a result value");
+      toast.error(t("lab:resultRequired"));
       return;
     }
     enterResults.mutate(
       { id: resultsOrder.id, results },
       {
         onSuccess: () => {
-          toast.success("Results saved");
+          toast.success(t("lab:resultsSaved"));
           setResultsOrder(null);
           setDrafts({});
         },
@@ -118,15 +120,15 @@ export default function Lab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Laboratory</h1>
-        <Badge variant="warning">{queue.length} open</Badge>
+        <h1 className="text-2xl font-bold">{t("lab:title")}</h1>
+        <Badge variant="warning">{t("lab:openCount", { count: queue.length })}</Badge>
       </div>
 
       <Tabs value={filter} onValueChange={setFilter}>
         <TabsList>
           {FILTERS.map((f) => (
             <TabsTrigger key={f.value} value={f.value}>
-              {f.label}
+              {t(f.key)}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -135,7 +137,7 @@ export default function Lab() {
           {isLoading && <Skeleton className="h-64" />}
 
           {!isLoading && queue.length === 0 && (
-            <EmptyState title="Nothing here" description="No orders match this filter." />
+            <EmptyState title={t("common:nothingHere")} description={t("lab:noOrders")} />
           )}
 
           <div className="space-y-3">
@@ -183,20 +185,20 @@ export default function Lab() {
                       {order.status === "ORDERED" && (
                         <Button
                           size="sm"
-                          onClick={() => run(collect, order.id, "Sample collected")}
+                          onClick={() => run(collect, order.id, t("lab:sampleCollected"))}
                           disabled={collect.isPending}
                         >
-                          <TestTube className="h-3.5 w-3.5" /> Collect sample
+                          <TestTube className="h-3.5 w-3.5" /> {t("lab:collectSample")}
                         </Button>
                       )}
                       {["SAMPLE_COLLECTED", "COMPLETED"].includes(order.status) && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => run(start, order.id, "Testing started")}
+                          onClick={() => run(start, order.id, t("lab:testingStarted"))}
                           disabled={start.isPending}
                         >
-                          Start testing
+                          {t("lab:startTesting")}
                         </Button>
                       )}
                       {/* Results are entered once, from TESTING (the service rejects
@@ -218,18 +220,16 @@ export default function Lab() {
                             setResultsOrder(order);
                           }}
                         >
-                          <ClipboardCheck className="h-3.5 w-3.5" /> Enter results
+                          <ClipboardCheck className="h-3.5 w-3.5" /> {t("lab:enterResults")}
                         </Button>
                       )}
                       {order.status === "COMPLETED" && canVerify && (
                         <Button
                           size="sm"
-                          onClick={() =>
-                            run(verify, order.id, "Order verified — results released to patient")
-                          }
+                          onClick={() => run(verify, order.id, t("lab:orderVerified"))}
                           disabled={verify.isPending}
                         >
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Verify
+                          <CheckCircle2 className="h-3.5 w-3.5" /> {t("lab:verify")}
                         </Button>
                       )}
                     </div>
@@ -267,6 +267,7 @@ function ResultsDialog({
   onSubmit: () => void;
   pending: boolean;
 }) {
+  const { t } = useTranslation(["common", "lab"]);
   const set = (
     itemId: string,
     patch: Partial<{ resultValue: string; unit: string; flag: string }>,
@@ -283,10 +284,10 @@ function ResultsDialog({
     <Dialog open={!!order} onOpenChange={(o) => !o && !pending && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Enter results — {order?.orderNumber}</DialogTitle>
-          <DialogDescription>
-            A CRITICAL value alerts the ordering doctor immediately.
-          </DialogDescription>
+          <DialogTitle>
+            {t("lab:enterResultsTitle", { orderNumber: order?.orderNumber ?? "" })}
+          </DialogTitle>
+          <DialogDescription>{t("lab:criticalHint")}</DialogDescription>
         </DialogHeader>
 
         {order && (
@@ -304,13 +305,13 @@ function ResultsDialog({
                   <div className="grid grid-cols-[1fr_80px_120px] gap-2">
                     <input
                       className={inputClass}
-                      placeholder="Result value"
+                      placeholder={t("lab:resultValue")}
                       value={d.resultValue}
                       onChange={(e) => set(item.id, { resultValue: e.target.value })}
                     />
                     <input
                       className={inputClass}
-                      placeholder="Unit"
+                      placeholder={t("lab:unit")}
                       value={d.unit}
                       onChange={(e) => set(item.id, { unit: e.target.value })}
                     />
@@ -319,11 +320,11 @@ function ResultsDialog({
                       value={d.flag}
                       onChange={(e) => set(item.id, { flag: e.target.value })}
                     >
-                      <option value="">Flag</option>
-                      <option value="LOW">Low</option>
-                      <option value="NORMAL">Normal</option>
-                      <option value="HIGH">High</option>
-                      <option value="CRITICAL">Critical</option>
+                      <option value="">{t("lab:flag")}</option>
+                      <option value="LOW">{t("lab:low")}</option>
+                      <option value="NORMAL">{t("lab:normal")}</option>
+                      <option value="HIGH">{t("lab:high")}</option>
+                      <option value="CRITICAL">{t("lab:critical")}</option>
                     </select>
                   </div>
                 </div>
@@ -334,10 +335,10 @@ function ResultsDialog({
 
         <DialogFooter>
           <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-            Cancel
+            {t("common:cancel")}
           </Button>
           <Button onClick={onSubmit} disabled={pending}>
-            {pending ? "Saving…" : "Save results"}
+            {pending ? t("common:saving") : t("lab:saveResults")}
           </Button>
         </DialogFooter>
       </DialogContent>

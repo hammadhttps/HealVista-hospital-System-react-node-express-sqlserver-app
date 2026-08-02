@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import LabOrdersPanel from "../components/lab/LabOrdersPanel";
 
 /**
@@ -6,9 +7,10 @@ import LabOrdersPanel from "../components/lab/LabOrdersPanel";
  * values once an order is VERIFIED.
  */
 export default function MyLabResults() {
+  const { t } = useTranslation(["common", "labResults"]);
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">My Lab Results</h1>
+      <h1 className="text-2xl font-bold">{t("labResults:title")}</h1>
       <LabOrdersPanel mine />
     </div>
   );

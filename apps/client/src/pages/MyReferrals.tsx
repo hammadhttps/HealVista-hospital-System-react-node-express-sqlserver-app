@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useMe } from "../hooks/queries/useAuth";
 import { usePatientReferrals } from "../hooks/queries/useClinical";
 import { useActingPatientStore } from "../store/actingPatientStore";
@@ -10,6 +11,7 @@ import { CardSkeleton } from "../components/primitives/Skeleton";
  * dependant's referrals instead of the caller's own.
  */
 export default function MyReferrals() {
+  const { t } = useTranslation(["common", "referrals"]);
   const { data: me } = useMe();
   const actingPatientId = useActingPatientStore((s) => s.actingPatientId);
   const patientId = actingPatientId ?? (me?.patient?.id as string | undefined);
@@ -22,12 +24,9 @@ export default function MyReferrals() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">My Referrals</h1>
+      <h1 className="text-2xl font-bold">{t("referrals:title")}</h1>
       {referrals.length === 0 ? (
-        <EmptyState
-          title="No referrals yet"
-          description="When a doctor refers you, it will appear here."
-        />
+        <EmptyState title={t("referrals:empty")} description={t("referrals:emptyHint")} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {referrals.map((r) => (

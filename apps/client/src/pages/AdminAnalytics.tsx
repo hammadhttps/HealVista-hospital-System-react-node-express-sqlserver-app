@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AnalyticsOverview } from "@healvista/shared";
 import { useAnalyticsOverview } from "../hooks/queries/useDashboard";
 import { ChartCard, DataTable, RankBarChart, TrendChart } from "../components/analytics/charts";
@@ -15,10 +16,10 @@ import { formatCurrency, formatNumber } from "../lib/format";
  */
 
 const RANGE_PRESETS = [
-  { label: "Last 7 days", days: 7 },
-  { label: "Last 30 days", days: 30 },
-  { label: "Last 90 days", days: 90 },
-  { label: "Year to date", days: null },
+  { key: "last7", days: 7 },
+  { key: "last30", days: 30 },
+  { key: "last90", days: 90 },
+  { key: "yearToDate", days: null },
 ] as const;
 
 function isoDay(date: Date): string {
@@ -35,12 +36,13 @@ function presetRange(days: number | null): { from: string; to: string } {
 }
 
 export default function AdminAnalytics() {
+  const { t } = useTranslation(["analytics", "common"]);
   const [range, setRange] = useState(() => presetRange(30));
-  const [activePreset, setActivePreset] = useState<string | null>("Last 30 days");
+  const [activePreset, setActivePreset] = useState<string | null>("last30");
   const { data, isPending, isError, error, refetch } = useAnalyticsOverview(range);
 
-  function applyPreset(label: string, days: number | null) {
-    setActivePreset(label);
+  function applyPreset(key: string, days: number | null) {
+    setActivePreset(key);
     setRange(presetRange(days));
   }
 
@@ -53,7 +55,7 @@ export default function AdminAnalytics() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Operational Analytics</h1>
+          <h1 className="text-2xl font-bold">{t("analytics:title")}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {range.from} → {range.to}
           </p>
@@ -64,22 +66,22 @@ export default function AdminAnalytics() {
       <div className="flex flex-wrap items-end gap-2">
         {RANGE_PRESETS.map((p) => (
           <button
-            key={p.label}
+            key={p.key}
             type="button"
-            onClick={() => applyPreset(p.label, p.days)}
-            aria-pressed={activePreset === p.label}
+            onClick={() => applyPreset(p.key, p.days)}
+            aria-pressed={activePreset === p.key}
             className={`rounded-md border px-3 py-1.5 text-sm ${
-              activePreset === p.label
+              activePreset === p.key
                 ? "border-blue-600 bg-blue-50 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-200"
                 : "border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700/50"
             }`}
           >
-            {p.label}
+            {t(`analytics:${p.key}`)}
           </button>
         ))}
         <div className="ms-2 flex items-end gap-2">
           <label className="text-xs text-gray-500 dark:text-gray-400">
-            From
+            {t("common:from")}
             <input
               type="date"
               value={range.from}
@@ -89,7 +91,7 @@ export default function AdminAnalytics() {
             />
           </label>
           <label className="text-xs text-gray-500 dark:text-gray-400">
-            To
+            {t("common:to")}
             <input
               type="date"
               value={range.to}
@@ -114,13 +116,15 @@ export default function AdminAnalytics() {
           role="alert"
           className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
         >
-          <p>Could not load analytics. {(error as Error)?.message}</p>
+          <p>
+            {t("analytics:loadFailed")} {(error as Error)?.message}
+          </p>
           <button
             type="button"
             onClick={() => refetch()}
             className="mt-2 rounded-md border border-red-300 px-3 py-1 font-medium hover:bg-red-100 dark:border-red-800"
           >
-            Try again
+            {t("common:tryAgain")}
           </button>
         </div>
       )}
@@ -131,16 +135,23 @@ export default function AdminAnalytics() {
 }
 
 function Overview({ data }: { data: AnalyticsOverview }) {
+  const { t } = useTranslation(["analytics"]);
   const totalRevenue = data.revenueByDepartment.reduce((s, r) => s + r.amount, 0);
 
   return (
     <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard kpi={{ key: "noShow", label: "No-show rate", value: `${data.noShow.rate}%` }} />
+        <KpiCard
+          kpi={{
+            key: "noShow",
+            label: t("analytics:noShowRate"),
+            value: `${data.noShow.rate}%`,
+          }}
+        />
         <KpiCard
           kpi={{
             key: "waiting",
-            label: "Avg waiting time",
+            label: t("analytics:avgWaiting"),
             value: data.avgWaitingTimeMins ?? 0,
             unit: "min",
           }}
@@ -148,7 +159,7 @@ function Overview({ data }: { data: AnalyticsOverview }) {
         <KpiCard
           kpi={{
             key: "consult",
-            label: "Avg consultation",
+            label: t("analytics:avgConsultation"),
             value: data.avgConsultationMins ?? 0,
             unit: "min",
           }}
@@ -156,146 +167,148 @@ function Overview({ data }: { data: AnalyticsOverview }) {
         <KpiCard
           kpi={{
             key: "lead",
-            label: "Avg booking lead time",
-            value: `${formatNumber(data.avgLeadTimeDays ?? 0)} days`,
+            label: t("analytics:avgLeadTime"),
+            value: `${formatNumber(data.avgLeadTimeDays ?? 0)} ${t("analytics:days")}`,
           }}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ChartCard title="Appointments per day">
+        <ChartCard title={t("analytics:appointmentsPerDay")}>
           <TrendChart
             data={data.appointmentsPerDay}
             xKey="date"
             yKey="count"
-            yLabel="Appointments"
+            yLabel={t("analytics:appointments")}
           />
         </ChartCard>
 
-        <ChartCard title="New patient registrations">
-          <TrendChart data={data.patientGrowth} xKey="date" yKey="count" yLabel="Patients" />
+        <ChartCard title={t("analytics:newRegistrations")}>
+          <TrendChart
+            data={data.patientGrowth}
+            xKey="date"
+            yKey="count"
+            yLabel={t("analytics:patients")}
+          />
         </ChartCard>
 
-        <ChartCard title="Appointments by department">
+        <ChartCard title={t("analytics:byDepartment")}>
           <RankBarChart
             data={data.appointmentsPerDepartment}
             categoryKey="department"
             valueKey="count"
-            valueLabel="Appointments"
+            valueLabel={t("analytics:appointments")}
           />
         </ChartCard>
 
-        <ChartCard title="Appointments by doctor">
+        <ChartCard title={t("analytics:byDoctor")}>
           <RankBarChart
             data={data.appointmentsPerDoctor}
             categoryKey="doctor"
             valueKey="count"
-            valueLabel="Appointments"
+            valueLabel={t("analytics:appointments")}
           />
         </ChartCard>
 
-        <ChartCard
-          title="Doctor utilisation"
-          subtitle="Booked slots ÷ available slots. Bars below 40% are flagged."
-        >
+        <ChartCard title={t("analytics:utilisation")} subtitle={t("analytics:utilisationHint")}>
           <RankBarChart
             data={data.doctorUtilisation}
             categoryKey="doctor"
             valueKey="utilisation"
-            valueLabel="Utilisation"
+            valueLabel={t("analytics:utilisationShort")}
             unit="percent"
             highlight={(row) => Number(row.utilisation) < 40}
           />
         </ChartCard>
 
-        <ChartCard title="Cancellation reasons">
+        <ChartCard title={t("analytics:cancellationReasons")}>
           <RankBarChart
             data={data.cancellationReasons}
             categoryKey="reason"
             valueKey="count"
-            valueLabel="Cancellations"
+            valueLabel={t("analytics:cancellations")}
           />
         </ChartCard>
 
         <ChartCard
-          title="Revenue by department"
-          subtitle={`Total ${formatCurrency(totalRevenue)} in range`}
+          title={t("analytics:revenueByDepartment")}
+          subtitle={t("analytics:totalInRange", { amount: formatCurrency(totalRevenue) })}
         >
           <RankBarChart
             data={data.revenueByDepartment}
             categoryKey="department"
             valueKey="amount"
-            valueLabel="Revenue"
+            valueLabel={t("analytics:revenue")}
             unit="currency"
           />
         </ChartCard>
 
-        <ChartCard title="Revenue by payment method">
+        <ChartCard title={t("analytics:revenueByMethod")}>
           <RankBarChart
             data={data.revenueByMethod}
             categoryKey="method"
             valueKey="amount"
-            valueLabel="Revenue"
+            valueLabel={t("analytics:revenue")}
             unit="currency"
           />
         </ChartCard>
 
-        <ChartCard title="Most prescribed medicines">
+        <ChartCard title={t("analytics:topMedicines")}>
           <RankBarChart
             data={data.topMedicines}
             categoryKey="medicine"
             valueKey="count"
-            valueLabel="Prescribed"
+            valueLabel={t("analytics:prescribed")}
           />
         </ChartCard>
 
-        <ChartCard title="Most ordered lab tests">
+        <ChartCard title={t("analytics:topLabTests")}>
           <RankBarChart
             data={data.topLabTests}
             categoryKey="test"
             valueKey="count"
-            valueLabel="Ordered"
+            valueLabel={t("analytics:ordered")}
           />
         </ChartCard>
 
-        <ChartCard title="Top diagnoses">
+        <ChartCard title={t("analytics:topDiagnoses")}>
           <RankBarChart
             data={data.topDiagnoses}
             categoryKey="diagnosis"
             valueKey="count"
-            valueLabel="Recorded"
+            valueLabel={t("analytics:recorded")}
           />
         </ChartCard>
 
-        <ChartCard title="Revenue by month">
+        <ChartCard title={t("analytics:revenueByMonth")}>
           <RankBarChart
             data={data.revenueByMonth}
             categoryKey="month"
             valueKey="amount"
-            valueLabel="Revenue"
+            valueLabel={t("analytics:revenue")}
             unit="currency"
           />
         </ChartCard>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <ChartCard title="Low stock" subtitle="At or below reorder level">
+        <ChartCard title={t("analytics:lowStock")} subtitle={t("analytics:lowStockHint")}>
           <DataTable
             columns={[
-              { key: "medicine", label: "Medicine" },
-              { key: "quantity", label: "Qty", align: "right" },
-              { key: "reorderLevel", label: "Reorder at", align: "right" },
+              { key: "medicine", label: t("analytics:medicine") },
+              { key: "quantity", label: t("analytics:quantity"), align: "right" },
+              { key: "reorderLevel", label: t("analytics:reorderAt"), align: "right" },
             ]}
             rows={data.stockLow}
           />
         </ChartCard>
 
-        <ChartCard title="Expiring within 90 days">
+        <ChartCard title={t("analytics:expiringSoon")}>
           <DataTable
             columns={[
-              { key: "medicine", label: "Medicine" },
-              { key: "batchNumber", label: "Batch" },
-              { key: "expiryDate", label: "Expires", align: "right" },
+              { key: "medicine", label: t("analytics:medicine") },
+              { key: "batchNumber", label: t("analytics:batch") },
+              { key: "expiryDate", label: t("analytics:expires"), align: "right" },
             ]}
             rows={data.stockExpiring.map((s) => ({
               ...s,
@@ -319,92 +332,114 @@ function ExportButton({
   data: AnalyticsOverview;
   range: { from: string; to: string };
 }) {
+  const { t } = useTranslation(["analytics", "common"]);
+
   function handleExport() {
     const columns = [
-      { key: "section", label: "Section" },
-      { key: "label", label: "Label" },
-      { key: "value", label: "Value" },
+      { key: "section", label: t("analytics:csvSection") },
+      { key: "label", label: t("analytics:csvLabel") },
+      { key: "value", label: t("analytics:csvValue") },
     ];
 
     const rows: Record<string, unknown>[] = [
-      { section: "Summary", label: "No-show rate (%)", value: data.noShow.rate },
-      { section: "Summary", label: "No-shows", value: data.noShow.noShows },
-      { section: "Summary", label: "Appointments in range", value: data.noShow.total },
-      { section: "Summary", label: "Avg waiting time (min)", value: data.avgWaitingTimeMins ?? "" },
       {
-        section: "Summary",
-        label: "Avg consultation (min)",
+        section: t("analytics:csvSummary"),
+        label: t("analytics:csvNoShowRate"),
+        value: data.noShow.rate,
+      },
+      {
+        section: t("analytics:csvSummary"),
+        label: t("analytics:csvNoShows"),
+        value: data.noShow.noShows,
+      },
+      {
+        section: t("analytics:csvSummary"),
+        label: t("analytics:csvAppointmentsInRange"),
+        value: data.noShow.total,
+      },
+      {
+        section: t("analytics:csvSummary"),
+        label: t("analytics:csvAvgWaiting"),
+        value: data.avgWaitingTimeMins ?? "",
+      },
+      {
+        section: t("analytics:csvSummary"),
+        label: t("analytics:csvAvgConsultation"),
         value: data.avgConsultationMins ?? "",
       },
-      { section: "Summary", label: "Avg booking lead (days)", value: data.avgLeadTimeDays ?? "" },
+      {
+        section: t("analytics:csvSummary"),
+        label: t("analytics:csvAvgLead"),
+        value: data.avgLeadTimeDays ?? "",
+      },
       ...data.appointmentsPerDay.map((r) => ({
-        section: "Appointments per day",
+        section: t("analytics:appointmentsPerDay"),
         label: r.date,
         value: r.count,
       })),
       ...data.appointmentsPerDepartment.map((r) => ({
-        section: "Appointments by department",
+        section: t("analytics:byDepartment"),
         label: r.department,
         value: r.count,
       })),
       ...data.appointmentsPerDoctor.map((r) => ({
-        section: "Appointments by doctor",
+        section: t("analytics:byDoctor"),
         label: r.doctor,
         value: r.count,
       })),
       ...data.cancellationReasons.map((r) => ({
-        section: "Cancellation reasons",
+        section: t("analytics:cancellationReasons"),
         label: r.reason,
         value: r.count,
       })),
       ...data.patientGrowth.map((r) => ({
-        section: "Patient growth",
+        section: t("analytics:csvPatientGrowth"),
         label: r.date,
         value: r.count,
       })),
       ...data.doctorUtilisation.map((r) => ({
-        section: "Doctor utilisation (%)",
+        section: t("analytics:csvDoctorUtilisation"),
         label: r.doctor,
         value: r.utilisation,
       })),
       ...data.revenueByDepartment.map((r) => ({
-        section: "Revenue by department",
+        section: t("analytics:revenueByDepartment"),
         label: r.department,
         value: r.amount,
       })),
       ...data.revenueByMethod.map((r) => ({
-        section: "Revenue by method",
+        section: t("analytics:csvRevenueByMethod"),
         label: r.method,
         value: r.amount,
       })),
       ...data.revenueByMonth.map((r) => ({
-        section: "Revenue by month",
+        section: t("analytics:revenueByMonth"),
         label: r.month,
         value: r.amount,
       })),
       ...data.topMedicines.map((r) => ({
-        section: "Most prescribed medicines",
+        section: t("analytics:topMedicines"),
         label: r.medicine,
         value: r.count,
       })),
       ...data.topLabTests.map((r) => ({
-        section: "Most ordered lab tests",
+        section: t("analytics:topLabTests"),
         label: r.test,
         value: r.count,
       })),
       ...data.topDiagnoses.map((r) => ({
-        section: "Top diagnoses",
+        section: t("analytics:topDiagnoses"),
         label: r.diagnosis,
         value: r.count,
       })),
       ...data.stockLow.map((r) => ({
-        section: "Low stock",
+        section: t("analytics:lowStock"),
         label: r.medicine,
-        value: `${r.quantity} (reorder at ${r.reorderLevel})`,
+        value: t("analytics:csvLowStockValue", { quantity: r.quantity, level: r.reorderLevel }),
       })),
       ...data.stockExpiring.map((r) => ({
-        section: "Expiring within 90 days",
-        label: `${r.medicine}${r.batchNumber ? ` — batch ${r.batchNumber}` : ""}`,
+        section: t("analytics:expiringSoon"),
+        label: `${r.medicine}${r.batchNumber ? t("analytics:csvBatchSuffix", { batch: r.batchNumber }) : ""}`,
         value: r.expiryDate ? r.expiryDate.slice(0, 10) : "",
       })),
     ];
@@ -418,7 +453,7 @@ function ExportButton({
       onClick={handleExport}
       className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700/50"
     >
-      Export CSV
+      {t("common:exportCsv")}
     </button>
   );
 }

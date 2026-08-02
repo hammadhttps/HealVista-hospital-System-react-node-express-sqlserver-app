@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { usePaymentHistory } from "../hooks/queries/useBilling";
 import { paymentApi } from "../api/billing";
@@ -19,6 +20,7 @@ const statusVariant: Record<string, string> = {
 };
 
 export default function PaymentHistory() {
+  const { t } = useTranslation(["billing", "common"]);
   const [method, setMethod] = useState("");
   const filters = method ? { method } : {};
   const { data, isLoading, isError } = usePaymentHistory(filters);
@@ -28,7 +30,7 @@ export default function PaymentHistory() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Payment History</h1>
+        <h1 className="text-2xl font-bold">{t("billing:paymentHistory")}</h1>
         <select
           className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
           value={method}
@@ -36,7 +38,7 @@ export default function PaymentHistory() {
         >
           {METHODS.map((m) => (
             <option key={m} value={m}>
-              {m === "" ? "All methods" : m.replace("_", " ")}
+              {m === "" ? t("billing:allMethods") : m.replace("_", " ")}
             </option>
           ))}
         </select>
@@ -51,14 +53,11 @@ export default function PaymentHistory() {
       )}
 
       {isError && (
-        <EmptyState
-          title="Could not load payments"
-          description="Something went wrong. Try refreshing the page."
-        />
+        <EmptyState title={t("billing:paymentsLoadFailed")} description={t("common:errorBody")} />
       )}
 
       {!isLoading && !isError && payments.length === 0 && (
-        <EmptyState title="No payments" description="Nothing matches this filter." />
+        <EmptyState title={t("billing:noPayments")} description={t("billing:nothingMatches")} />
       )}
 
       {!isLoading && payments.length > 0 && (
@@ -80,15 +79,17 @@ export default function PaymentHistory() {
                   </p>
                   {p.receivedByEmail && (
                     <p className="text-xs text-muted-foreground">
-                      Received by {p.receivedByEmail}
+                      {t("billing:receivedBy", { email: p.receivedByEmail })}
                     </p>
                   )}
                   {p.reference && (
-                    <p className="text-xs text-muted-foreground">Ref: {p.reference}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("billing:reference", { reference: p.reference })}
+                    </p>
                   )}
                   {Number(p.refundedAmount) > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      Refunded {Number(p.refundedAmount).toFixed(2)}
+                      {t("billing:refunded", { amount: Number(p.refundedAmount).toFixed(2) })}
                     </p>
                   )}
                 </div>
@@ -100,7 +101,7 @@ export default function PaymentHistory() {
                     variant="outline"
                     onClick={() => window.open(paymentApi.receiptUrl(p.id), "_blank", "noopener")}
                   >
-                    Receipt
+                    {t("billing:receipt")}
                   </Button>
                 </div>
               </CardContent>

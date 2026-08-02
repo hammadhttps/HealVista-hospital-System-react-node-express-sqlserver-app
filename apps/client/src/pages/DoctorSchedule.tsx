@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/authStore";
 import { useDoctorAvailability, useDoctorExceptions } from "../hooks/queries/useAppointments";
 import {
@@ -26,6 +27,16 @@ import { toast } from "sonner";
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export default function DoctorSchedule() {
+  const { t } = useTranslation(["common", "nav", "schedule"]);
+  const dayLabels = [
+    t("schedule:daySunday"),
+    t("schedule:dayMonday"),
+    t("schedule:dayTuesday"),
+    t("schedule:dayWednesday"),
+    t("schedule:dayThursday"),
+    t("schedule:dayFriday"),
+    t("schedule:daySaturday"),
+  ];
   const user = useAuthStore((s) => s.user);
   const userId = user?.id ?? "";
   const { data: profile } = useQuery({
@@ -54,31 +65,31 @@ export default function DoctorSchedule() {
     updateAvail.mutate(
       { doctorId, entries: entries.length > 0 ? entries : (availability ?? []) },
       {
-        onSuccess: () => toast.success("Availability saved"),
-        onError: (err: any) => toast.error(err?.message || "Failed to save"),
+        onSuccess: () => toast.success(t("schedule:availabilitySaved")),
+        onError: (err: any) => toast.error(err?.message || t("schedule:saveFailed")),
       },
     );
   };
 
   const handleGenerateSlots = () => {
     generateSlots.mutate(doctorId, {
-      onSuccess: () => toast.success("Slots generated"),
-      onError: (err: any) => toast.error(err?.message || "Generation failed"),
+      onSuccess: () => toast.success(t("schedule:slotsGenerated")),
+      onError: (err: any) => toast.error(err?.message || t("schedule:generationFailed")),
     });
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">My Schedule</h1>
+      <h1 className="text-2xl font-bold">{t("nav:mySchedule")}</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Weekly Availability</CardTitle>
+          <CardTitle>{t("schedule:weeklyAvailability")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2 items-end">
             <div>
-              <label className="text-sm">Day</label>
+              <label className="text-sm">{t("schedule:day")}</label>
               <Select
                 value={String(newEntry.dayOfWeek)}
                 onValueChange={(v) => setNewEntry({ ...newEntry, dayOfWeek: Number(v) })}
@@ -89,14 +100,14 @@ export default function DoctorSchedule() {
                 <SelectContent>
                   {DAYS.map((day, i) => (
                     <SelectItem key={i} value={String(i)}>
-                      {day}
+                      {dayLabels[i]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="text-sm">Start</label>
+              <label className="text-sm">{t("schedule:start")}</label>
               <Input
                 type="time"
                 value={newEntry.startTime}
@@ -104,7 +115,7 @@ export default function DoctorSchedule() {
               />
             </div>
             <div>
-              <label className="text-sm">End</label>
+              <label className="text-sm">{t("schedule:end")}</label>
               <Input
                 type="time"
                 value={newEntry.endTime}
@@ -112,7 +123,7 @@ export default function DoctorSchedule() {
               />
             </div>
             <div>
-              <label className="text-sm">Duration (min)</label>
+              <label className="text-sm">{t("schedule:durationMin")}</label>
               <Input
                 type="number"
                 value={newEntry.slotDurationMins}
@@ -133,7 +144,7 @@ export default function DoctorSchedule() {
                 });
               }}
             >
-              Add
+              {t("schedule:add")}
             </Button>
           </div>
 
@@ -144,7 +155,12 @@ export default function DoctorSchedule() {
               {availability.map((a: any) => (
                 <div key={a.id} className="flex justify-between items-center p-2 bg-muted rounded">
                   <span>
-                    {DAYS[a.dayOfWeek]}: {a.startTime}-{a.endTime} ({a.slotDurationMins}min)
+                    {t("schedule:availabilityRow", {
+                      day: dayLabels[a.dayOfWeek],
+                      start: a.startTime,
+                      end: a.endTime,
+                      minutes: a.slotDurationMins,
+                    })}
                   </span>
                 </div>
               ))}
@@ -152,7 +168,7 @@ export default function DoctorSchedule() {
           )}
 
           <Button onClick={handleSave} disabled={updateAvail.isPending}>
-            {updateAvail.isPending ? "Saving..." : "Save Availability"}
+            {updateAvail.isPending ? t("common:saving") : t("schedule:saveAvailability")}
           </Button>
           <Button
             variant="outline"
@@ -160,31 +176,37 @@ export default function DoctorSchedule() {
             disabled={generateSlots.isPending}
             className="ml-2"
           >
-            {generateSlots.isPending ? "Generating..." : "Generate Slots"}
+            {generateSlots.isPending ? t("schedule:generating") : t("schedule:generateSlots")}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Exceptions</CardTitle>
+          <CardTitle>{t("schedule:exceptions")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {!exceptions || exceptions.length === 0 ? (
-            <EmptyState title="No exceptions" description="Add time-off or surgery days." />
+            <EmptyState
+              title={t("schedule:noExceptions")}
+              description={t("schedule:noExceptionsHint")}
+            />
           ) : (
             exceptions.map((ex: any) => (
               <div key={ex.id} className="flex justify-between items-center p-2 bg-muted rounded">
                 <span>
-                  {ex.type}: {new Date(ex.startDate).toLocaleDateString()} -{" "}
-                  {new Date(ex.endDate).toLocaleDateString()}
+                  {t("schedule:exceptionRow", {
+                    type: ex.type,
+                    start: new Date(ex.startDate).toLocaleDateString(),
+                    end: new Date(ex.endDate).toLocaleDateString(),
+                  })}
                 </span>
                 <Button
                   size="sm"
                   variant="destructive"
                   onClick={() => deleteException.mutate({ doctorId, exceptionId: ex.id })}
                 >
-                  Delete
+                  {t("common:delete")}
                 </Button>
               </div>
             ))

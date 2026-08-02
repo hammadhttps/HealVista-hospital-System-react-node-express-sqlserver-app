@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useBills, useDiscounts } from "../hooks/queries/useBilling";
@@ -18,11 +19,11 @@ import { EmptyState } from "../components/primitives/EmptyState";
 import { getErrorMessage } from "../utils/errors";
 
 const STATUS_TABS = [
-  { value: "", label: "All" },
-  { value: "draft", label: "Drafts" },
-  { value: "finalised", label: "Due" },
-  { value: "partially_paid", label: "Partly paid" },
-  { value: "paid", label: "Paid" },
+  { value: "", key: "common:all" },
+  { value: "draft", key: "billing:drafts" },
+  { value: "finalised", key: "billing:due" },
+  { value: "partially_paid", key: "billing:partlyPaid" },
+  { value: "paid", key: "billing:paid" },
 ];
 
 const statusVariant: Record<string, string> = {
@@ -34,6 +35,7 @@ const statusVariant: Record<string, string> = {
 };
 
 export default function BillingConsole() {
+  const { t } = useTranslation(["billing", "common", "nav"]);
   const [tab, setTab] = useState("");
   const [cashAmounts, setCashAmounts] = useState<Record<string, string>>({});
 
@@ -49,8 +51,8 @@ export default function BillingConsole() {
 
   const handleFinalise = (id: string) => {
     finalise.mutate(id, {
-      onSuccess: () => toast.success("Bill finalised"),
-      onError: (err) => toast.error(getErrorMessage(err, "Could not finalise the bill")),
+      onSuccess: () => toast.success(t("billing:billFinalised")),
+      onError: (err) => toast.error(getErrorMessage(err, t("billing:finaliseFailed"))),
     });
   };
 
@@ -59,8 +61,8 @@ export default function BillingConsole() {
     applyDiscount.mutate(
       { id, discountId },
       {
-        onSuccess: () => toast.success("Discount applied"),
-        onError: (err) => toast.error(getErrorMessage(err, "Could not apply the discount")),
+        onSuccess: () => toast.success(t("billing:discountApplied")),
+        onError: (err) => toast.error(getErrorMessage(err, t("billing:applyDiscountFailed"))),
       },
     );
   };
@@ -73,29 +75,29 @@ export default function BillingConsole() {
       { billId, amount },
       {
         onSuccess: () => {
-          toast.success(`Cash payment of ${amount} recorded`);
+          toast.success(t("billing:cashRecorded", { amount }));
           setCashAmounts((prev) => ({ ...prev, [billId]: "" }));
         },
-        onError: (err) => toast.error(getErrorMessage(err, "Could not record the payment")),
+        onError: (err) => toast.error(getErrorMessage(err, t("billing:recordPaymentFailed"))),
       },
     );
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Billing</h1>
+      <h1 className="text-2xl font-bold">{t("nav:billing")}</h1>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          {STATUS_TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>
-              {t.label}
+          {STATUS_TABS.map((tabItem) => (
+            <TabsTrigger key={tabItem.value} value={tabItem.value}>
+              {t(tabItem.key)}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {STATUS_TABS.map((t) => (
-          <TabsContent key={t.value} value={t.value} className="space-y-4">
+        {STATUS_TABS.map((tabItem) => (
+          <TabsContent key={tabItem.value} value={tabItem.value} className="space-y-4">
             {isLoading && (
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -105,14 +107,11 @@ export default function BillingConsole() {
             )}
 
             {isError && (
-              <EmptyState
-                title="Could not load bills"
-                description="Something went wrong. Try refreshing the page."
-              />
+              <EmptyState title={t("billing:loadFailed")} description={t("common:errorBody")} />
             )}
 
             {!isLoading && !isError && bills.length === 0 && (
-              <EmptyState title="No bills here" description="Nothing matches this filter." />
+              <EmptyState title={t("billing:noBills")} description={t("billing:nothingMatches")} />
             )}
 
             {!isLoading &&
@@ -130,10 +129,14 @@ export default function BillingConsole() {
 
                   <CardContent className="space-y-3">
                     <div className="flex flex-wrap gap-x-8 gap-y-1 text-sm">
-                      <span>Total: <strong>{Number(bill.total).toFixed(2)}</strong></span>
-                      <span>Paid: {Number(bill.amountPaid).toFixed(2)}</span>
                       <span>
-                        Balance: <strong>{Number(bill.balance).toFixed(2)}</strong>
+                        {t("billing:total")}: <strong>{Number(bill.total).toFixed(2)}</strong>
+                      </span>
+                      <span>
+                        {t("billing:paid")}: {Number(bill.amountPaid).toFixed(2)}
+                      </span>
+                      <span>
+                        {t("billing:balance")}: <strong>{Number(bill.balance).toFixed(2)}</strong>
                       </span>
                       <span className="text-muted-foreground">
                         {format(new Date(bill.createdAt), "d MMM yyyy")}
@@ -149,7 +152,9 @@ export default function BillingConsole() {
                           onChange={(e) => handleDiscount(bill.id, e.target.value)}
                         >
                           <option value="">
-                            {bill.discountId ? `Discount: ${bill.discount?.name}` : "Apply discount…"}
+                            {bill.discountId
+                              ? t("billing:discount", { name: bill.discount?.name })
+                              : t("billing:applyDiscount")}
                           </option>
                           {(discounts ?? []).map((d: any) => (
                             <option key={d.id} value={d.id}>
@@ -163,7 +168,7 @@ export default function BillingConsole() {
                           onClick={() => handleFinalise(bill.id)}
                           disabled={finalise.isPending}
                         >
-                          Finalise
+                          {t("billing:finalise")}
                         </Button>
                       </div>
                     )}
@@ -173,7 +178,9 @@ export default function BillingConsole() {
                         <Input
                           className="max-w-[160px]"
                           inputMode="decimal"
-                          placeholder={`Cash (max ${Number(bill.balance).toFixed(2)})`}
+                          placeholder={t("billing:cashPlaceholder", {
+                            max: Number(bill.balance).toFixed(2),
+                          })}
                           value={cashAmounts[bill.id] ?? ""}
                           onChange={(e) =>
                             setCashAmounts((prev) => ({ ...prev, [bill.id]: e.target.value }))
@@ -185,7 +192,7 @@ export default function BillingConsole() {
                           onClick={() => handleCash(bill.id)}
                           disabled={recordCash.isPending || !(cashAmounts[bill.id] ?? "").trim()}
                         >
-                          Record cash
+                          {t("billing:recordCash")}
                         </Button>
                       </div>
                     )}
@@ -196,7 +203,7 @@ export default function BillingConsole() {
                         variant="outline"
                         onClick={() => window.open(billApi.pdfUrl(bill.id), "_blank", "noopener")}
                       >
-                        Invoice PDF
+                        {t("billing:invoicePdf")}
                       </Button>
                     </div>
                   </CardContent>

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 import StockTable from "../components/pharmacy/StockTable";
 import DispenseQueue from "../components/pharmacy/DispenseQueue";
@@ -11,6 +12,7 @@ import { Badge } from "../components/ui/badge";
  * and the low-stock count so nothing waits for a page reload to be noticed.
  */
 export default function Pharmacy() {
+  const { t } = useTranslation(["nav", "pharmacy"]);
   const { data: queue } = useDispenseQueue();
   const { data: lowStock } = useLowStock();
 
@@ -20,14 +22,14 @@ export default function Pharmacy() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Pharmacy</h1>
+        <h1 className="text-2xl font-bold">{t("nav:pharmacy")}</h1>
       </div>
 
       <Tabs defaultValue="inventory">
         <TabsList>
-          <TabsTrigger value="inventory">Inventory</TabsTrigger>
+          <TabsTrigger value="inventory">{t("pharmacy:inventory")}</TabsTrigger>
           <TabsTrigger value="queue">
-            Dispense Queue
+            {t("pharmacy:dispenseQueue")}
             {queueCount > 0 && (
               <Badge className="ml-1.5" variant="warning">
                 {queueCount}
@@ -35,10 +37,10 @@ export default function Pharmacy() {
             )}
           </TabsTrigger>
           <TabsTrigger value="recall">
-            Batch Recall
+            {t("pharmacy:batchRecall")}
             {lowStockCount > 0 && (
               <Badge className="ml-1.5" variant="warning">
-                {lowStockCount} low
+                {t("pharmacy:lowCount", { count: lowStockCount })}
               </Badge>
             )}
           </TabsTrigger>

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useBookingStore } from "../store/bookingStore";
 import { useBookAppointment } from "../hooks/mutations/useAppointmentMutations";
 import { useDoctorAvailability } from "../hooks/queries/useAppointments";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { toast } from "sonner";
 
 export default function BookingConfirm() {
+  const { t } = useTranslation(["common", "booking"]);
   const navigate = useNavigate();
   const { selection, reset } = useBookingStore();
   const bookMutation = useBookAppointment();
@@ -15,7 +17,7 @@ export default function BookingConfirm() {
 
   const handleConfirm = async () => {
     if (!selection.doctorId || !selection.slotId) {
-      toast.error("Missing booking information");
+      toast.error(t("booking:missingInfo"));
       return;
     }
 
@@ -27,12 +29,12 @@ export default function BookingConfirm() {
       },
       {
         onSuccess: () => {
-          toast.success("Appointment booked!");
+          toast.success(t("booking:booked"));
           reset();
           navigate("/patient/appointments");
         },
         onError: (err: any) => {
-          toast.error(err?.message || "Booking failed");
+          toast.error(err?.message || t("booking:failed"));
         },
       },
     );
@@ -40,25 +42,31 @@ export default function BookingConfirm() {
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Confirm Booking</h1>
+      <h1 className="text-2xl font-bold">{t("booking:title")}</h1>
 
       <Card>
         <CardHeader>
-          <CardTitle>Appointment Summary</CardTitle>
+          <CardTitle>{t("booking:summary")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p>Doctor: {selection.doctorId}</p>
-          <p>Date: {selection.date}</p>
-          <p>Reason: {selection.reasonNote || "Not specified"}</p>
+          <p>
+            {t("booking:doctor")} {selection.doctorId}
+          </p>
+          <p>
+            {t("booking:date")} {selection.date}
+          </p>
+          <p>
+            {t("booking:reason")} {selection.reasonNote || t("booking:notSpecified")}
+          </p>
         </CardContent>
       </Card>
 
       <div className="flex gap-4">
         <Button variant="outline" onClick={() => navigate(-1)}>
-          Back
+          {t("common:back")}
         </Button>
         <Button onClick={handleConfirm} disabled={bookMutation.isPending}>
-          {bookMutation.isPending ? "Booking..." : "Confirm Booking"}
+          {bookMutation.isPending ? t("booking:booking") : t("booking:title")}
         </Button>
       </div>
     </div>

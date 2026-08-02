@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useFavouriteDoctors } from "../hooks/queries/usePatients";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
@@ -7,6 +8,7 @@ import { EmptyState } from "../components/primitives/EmptyState";
 import { FavouriteToggle } from "../components/doctors/FavouriteToggle";
 
 export default function FavouriteDoctors() {
+  const { t } = useTranslation(["common", "doctors", "favourites"]);
   const navigate = useNavigate();
   const { data, isLoading, isError } = useFavouriteDoctors();
 
@@ -14,7 +16,7 @@ export default function FavouriteDoctors() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Favourite Doctors</h1>
+      <h1 className="text-2xl font-bold">{t("favourites:title")}</h1>
 
       {isLoading && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -26,16 +28,13 @@ export default function FavouriteDoctors() {
 
       {isError && (
         <EmptyState
-          title="Could not load favourites"
-          description="Something went wrong. Try refreshing the page."
+          title={t("favourites:loadFailed")}
+          description={t("favourites:loadFailedHint")}
         />
       )}
 
       {!isLoading && !isError && favourites.length === 0 && (
-        <EmptyState
-          title="No favourites yet"
-          description="Tap the heart on a doctor's card to save them here."
-        />
+        <EmptyState title={t("favourites:empty")} description={t("favourites:emptyHint")} />
       )}
 
       {!isLoading && favourites.length > 0 && (
@@ -60,7 +59,9 @@ export default function FavouriteDoctors() {
                 </div>
                 {fav.doctor?.consultationFee != null && (
                   <p className="text-sm">
-                    Fee: ${Number(fav.doctor.consultationFee).toFixed(2)}
+                    {t("doctors:fee", {
+                      amount: Number(fav.doctor.consultationFee).toFixed(2),
+                    })}
                   </p>
                 )}
               </CardContent>

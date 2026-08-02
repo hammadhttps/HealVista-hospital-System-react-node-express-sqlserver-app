@@ -1,4 +1,5 @@
 import { UserRound } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useDependents } from "../../hooks/queries/useClinical";
 import { useActingPatientStore } from "../../store/actingPatientStore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -22,6 +23,7 @@ export default function ProfileSwitcher() {
   const actingPatientId = useActingPatientStore((s) => s.actingPatientId);
   const setActingPatient = useActingPatientStore((s) => s.setActingPatient);
   const { data, isLoading } = useDependents();
+  const { t } = useTranslation(["common", "profile"]);
 
   const dependents = (data ?? []) as DependentLink[];
   const value = actingPatientId ?? "me";
@@ -31,10 +33,10 @@ export default function ProfileSwitcher() {
       <UserRound className="h-4 w-4 text-gray-400" />
       <Select value={value} onValueChange={(v) => setActingPatient(v === "me" ? null : v)}>
         <SelectTrigger size="sm" className="w-44">
-          <SelectValue placeholder={isLoading ? "Loading…" : "Acting profile"} />
+          <SelectValue placeholder={isLoading ? t("common:loading") : t("profile:actingProfile")} />
         </SelectTrigger>
         <SelectContent align="end">
-          <SelectItem value="me">Me</SelectItem>
+          <SelectItem value="me">{t("profile:me")}</SelectItem>
           {dependents.map((d) => (
             <SelectItem key={d.relationshipId} value={d.patient.id}>
               {d.patient.fullName} · {d.relationship}

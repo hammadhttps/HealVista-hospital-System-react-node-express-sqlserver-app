@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { UserPlus, ScanLine } from "lucide-react";
@@ -33,6 +34,7 @@ function todayRange() {
 }
 
 export default function ReceptionDesk() {
+  const { t } = useTranslation(["common", "reception"]);
   const navigate = useNavigate();
   const [token, setToken] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,12 +49,16 @@ export default function ReceptionDesk() {
 
     scan.mutate(value, {
       onSuccess: (apt: any) => {
-        toast.success(`Checked in: ${apt?.patient?.fullName ?? "patient"}`);
+        toast.success(
+          t("reception:checkedIn", {
+            name: apt?.patient?.fullName ?? t("reception:patientFallback"),
+          }),
+        );
         setToken("");
         inputRef.current?.focus();
       },
       onError: (err: any) => {
-        toast.error(getErrorMessage(err, "Check-in failed"));
+        toast.error(getErrorMessage(err, t("reception:checkInFailed")));
         setToken("");
         inputRef.current?.focus();
       },
@@ -65,16 +71,16 @@ export default function ReceptionDesk() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Reception Desk</h1>
+        <h1 className="text-2xl font-bold">{t("reception:title")}</h1>
         <Button onClick={() => navigate("/patients/register")}>
-          <UserPlus className="mr-2 h-4 w-4" /> Register walk-in
+          <UserPlus className="mr-2 h-4 w-4" /> {t("reception:registerWalkIn")}
         </Button>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <ScanLine className="h-5 w-5" /> Scan check-in code
+            <ScanLine className="h-5 w-5" /> {t("reception:scanCheckInCode")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -88,43 +94,41 @@ export default function ReceptionDesk() {
               ref={inputRef}
               autoFocus
               value={token}
-              placeholder="Scan the patient's QR code, or type the token"
+              placeholder={t("reception:scanPlaceholder")}
               onChange={(e) => setToken(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submitToken()}
             />
             <Button onClick={submitToken} disabled={scan.isPending || !token.trim()}>
-              {scan.isPending ? "Checking in..." : "Check in"}
+              {scan.isPending ? t("reception:checkingIn") : t("reception:checkIn")}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Scanner input lands here automatically while this page is open.
-          </p>
+          <p className="text-xs text-muted-foreground">{t("reception:scannerHint")}</p>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Today</p>
+            <p className="text-sm text-muted-foreground">{t("reception:today")}</p>
             <p className="text-2xl font-bold">{appointments.length}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Expected</p>
+            <p className="text-sm text-muted-foreground">{t("reception:expected")}</p>
             <p className="text-2xl font-bold">{expected}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Waiting</p>
+            <p className="text-sm text-muted-foreground">{t("reception:waiting")}</p>
             <p className="text-2xl font-bold">{waiting}</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Today&rsquo;s appointments</h2>
+        <h2 className="text-lg font-semibold">{t("reception:todayAppointments")}</h2>
 
         {isLoading && (
           <div className="space-y-3">
@@ -135,14 +139,14 @@ export default function ReceptionDesk() {
         )}
 
         {isError && (
-          <EmptyState
-            title="Could not load today's list"
-            description="Something went wrong. Try refreshing the page."
-          />
+          <EmptyState title={t("reception:loadFailed")} description={t("common:errorBody")} />
         )}
 
         {!isLoading && !isError && appointments.length === 0 && (
-          <EmptyState title="Nothing booked today" description="Today's schedule is empty." />
+          <EmptyState
+            title={t("reception:nothingBooked")}
+            description={t("reception:scheduleEmpty")}
+          />
         )}
 
         {!isLoading && appointments.length > 0 && (

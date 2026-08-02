@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { UserPlus, Search } from "lucide-react";
 import { ROLES } from "@healvista/shared";
 import { useUsers } from "../hooks/queries/useUsers";
@@ -19,38 +20,6 @@ import {
   DialogTitle,
 } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
-
-const ROLE_LABELS: Record<string, string> = {
-  PATIENT: "Patient",
-  DOCTOR: "Doctor",
-  RECEPTIONIST: "Receptionist",
-  PHARMACIST: "Pharmacist",
-  LAB_TECHNICIAN: "Lab Technician",
-  ACCOUNTANT: "Accountant",
-  ADMIN: "Admin",
-};
-
-const createUserFormSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  email: z.string().email("A valid email is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  phone: z.string().optional(),
-  role: z.enum(ROLES),
-  departmentId: z.string().optional(),
-  designation: z.string().optional(),
-  licenseNumber: z.string().optional(),
-  consultationFee: z.string().optional(),
-  consultationMins: z.string().optional(),
-  deskLocation: z.string().optional(),
-  canVerify: z.boolean().optional(),
-  gender: z.string().optional(),
-  bloodGroup: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  addressLine1: z.string().optional(),
-  city: z.string().optional(),
-});
-
-type CreateUserForm = z.infer<typeof createUserFormSchema>;
 
 const inputClass =
   "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none";
@@ -70,12 +39,56 @@ function roleBadgeClass(role: string) {
 }
 
 export default function UserManagement() {
+  const { t } = useTranslation(["common", "users"]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const { data, isLoading, isError } = useUsers({ search, role: roleFilter || undefined });
   const { data: departments } = useDepartments();
   const createUser = useCreateUser();
+
+  const roleLabel = (role: string) => {
+    switch (role) {
+      case "PATIENT":
+        return t("users:rolePatient");
+      case "DOCTOR":
+        return t("users:roleDoctor");
+      case "RECEPTIONIST":
+        return t("users:roleReceptionist");
+      case "PHARMACIST":
+        return t("users:rolePharmacist");
+      case "LAB_TECHNICIAN":
+        return t("users:roleLabTechnician");
+      case "ACCOUNTANT":
+        return t("users:roleAccountant");
+      case "ADMIN":
+        return t("users:roleAdmin");
+      default:
+        return role;
+    }
+  };
+
+  const createUserFormSchema = z.object({
+    fullName: z.string().min(1, t("users:fullNameRequired")),
+    email: z.string().email(t("users:emailRequired")),
+    password: z.string().min(8, t("users:passwordMin")),
+    phone: z.string().optional(),
+    role: z.enum(ROLES),
+    departmentId: z.string().optional(),
+    designation: z.string().optional(),
+    licenseNumber: z.string().optional(),
+    consultationFee: z.string().optional(),
+    consultationMins: z.string().optional(),
+    deskLocation: z.string().optional(),
+    canVerify: z.boolean().optional(),
+    gender: z.string().optional(),
+    bloodGroup: z.string().optional(),
+    dateOfBirth: z.string().optional(),
+    addressLine1: z.string().optional(),
+    city: z.string().optional(),
+  });
+
+  type CreateUserForm = z.infer<typeof createUserFormSchema>;
 
   const form = useForm<CreateUserForm>({
     resolver: zodResolver(createUserFormSchema),
@@ -137,11 +150,11 @@ export default function UserManagement() {
       },
       {
         onSuccess: () => {
-          toast.success(`${ROLE_LABELS[role]} account created`);
+          toast.success(t("users:accountCreated", { role: roleLabel(role) }));
           form.reset();
           setDialogOpen(false);
         },
-        onError: (e: any) => toast.error(e.message || "Failed to create user"),
+        onError: (e: any) => toast.error(e.message || t("users:createFailed")),
       },
     );
   };
@@ -153,16 +166,16 @@ export default function UserManagement() {
         <Skeleton className="h-64 w-full" />
       </div>
     );
-  if (isError) return <EmptyState title="Failed to load users" />;
+  if (isError) return <EmptyState title={t("users:loadFailed")} />;
 
   const users: any[] = data?.data ?? [];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
+        <h1 className="text-2xl font-bold text-gray-800">{t("users:title")}</h1>
         <Button onClick={() => setDialogOpen(true)}>
-          <UserPlus className="h-4 w-4" /> New User
+          <UserPlus className="h-4 w-4" /> {t("users:newUser")}
         </Button>
       </div>
 
@@ -171,7 +184,7 @@ export default function UserManagement() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
           <input
             className="rounded-md border border-gray-300 pl-8 pr-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-            placeholder="Search name or email"
+            placeholder={t("users:searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -181,10 +194,10 @@ export default function UserManagement() {
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
         >
-          <option value="">All roles</option>
+          <option value="">{t("users:allRoles")}</option>
           {ROLES.map((r) => (
             <option key={r} value={r}>
-              {ROLE_LABELS[r]}
+              {roleLabel(r)}
             </option>
           ))}
         </select>
@@ -194,17 +207,21 @@ export default function UserManagement() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Name</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Email</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Role</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Status</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">{t("users:name")}</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">
+                {t("users:email")}
+              </th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">{t("users:role")}</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">
+                {t("common:status")}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {users.length === 0 && (
               <tr>
                 <td colSpan={4} className="p-8 text-center text-gray-500">
-                  No users found.
+                  {t("users:noUsers")}
                 </td>
               </tr>
             )}
@@ -221,13 +238,13 @@ export default function UserManagement() {
                   <td className="p-4 font-medium text-gray-800">{profileName || "—"}</td>
                   <td className="p-4 text-gray-600">{u.email}</td>
                   <td className="p-4">
-                    <span className={roleBadgeClass(u.role)}>{ROLE_LABELS[u.role] ?? u.role}</span>
+                    <span className={roleBadgeClass(u.role)}>{roleLabel(u.role)}</span>
                   </td>
                   <td className="p-4">
                     {u.isActive ? (
-                      <span className="text-green-600">Active</span>
+                      <span className="text-green-600">{t("users:active")}</span>
                     ) : (
-                      <span className="text-red-600">Inactive</span>
+                      <span className="text-red-600">{t("users:inactive")}</span>
                     )}
                   </td>
                 </tr>
@@ -244,27 +261,25 @@ export default function UserManagement() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4" /> Create User Account
+              <UserPlus className="h-4 w-4" /> {t("users:createTitle")}
             </DialogTitle>
-            <DialogDescription>
-              Creates the account and role profile. Doctors are verified immediately.
-            </DialogDescription>
+            <DialogDescription>{t("users:createDescription")}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
             <div>
-              <label className="mb-1 block text-sm text-gray-600">Role</label>
+              <label className="mb-1 block text-sm text-gray-600">{t("users:role")}</label>
               <select className={inputClass} {...form.register("role")}>
                 {ROLES.map((r) => (
                   <option key={r} value={r}>
-                    {ROLE_LABELS[r]}
+                    {roleLabel(r)}
                   </option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="mb-1 block text-sm text-gray-600">Full name</label>
+              <label className="mb-1 block text-sm text-gray-600">{t("users:fullName")}</label>
               <input className={inputClass} {...form.register("fullName")} />
               {form.formState.errors.fullName && (
                 <p className="mt-1 text-xs text-red-600">
@@ -275,14 +290,14 @@ export default function UserManagement() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-sm text-gray-600">Email</label>
+                <label className="mb-1 block text-sm text-gray-600">{t("users:email")}</label>
                 <input type="email" className={inputClass} {...form.register("email")} />
                 {form.formState.errors.email && (
                   <p className="mt-1 text-xs text-red-600">{form.formState.errors.email.message}</p>
                 )}
               </div>
               <div>
-                <label className="mb-1 block text-sm text-gray-600">Password</label>
+                <label className="mb-1 block text-sm text-gray-600">{t("users:password")}</label>
                 <input type="password" className={inputClass} {...form.register("password")} />
                 {form.formState.errors.password && (
                   <p className="mt-1 text-xs text-red-600">
@@ -296,30 +311,34 @@ export default function UserManagement() {
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1 block text-sm text-gray-600">Gender</label>
+                    <label className="mb-1 block text-sm text-gray-600">{t("users:gender")}</label>
                     <select className={inputClass} {...form.register("gender")}>
                       <option value="">—</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
+                      <option value="Male">{t("users:male")}</option>
+                      <option value="Female">{t("users:female")}</option>
+                      <option value="Other">{t("users:other")}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm text-gray-600">Blood group</label>
+                    <label className="mb-1 block text-sm text-gray-600">
+                      {t("users:bloodGroup")}
+                    </label>
                     <input className={inputClass} {...form.register("bloodGroup")} />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm text-gray-600">Date of birth</label>
+                  <label className="mb-1 block text-sm text-gray-600">
+                    {t("users:dateOfBirth")}
+                  </label>
                   <input type="date" className={inputClass} {...form.register("dateOfBirth")} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1 block text-sm text-gray-600">Address</label>
+                    <label className="mb-1 block text-sm text-gray-600">{t("users:address")}</label>
                     <input className={inputClass} {...form.register("addressLine1")} />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm text-gray-600">City</label>
+                    <label className="mb-1 block text-sm text-gray-600">{t("users:city")}</label>
                     <input className={inputClass} {...form.register("city")} />
                   </div>
                 </div>
@@ -328,7 +347,7 @@ export default function UserManagement() {
 
             {showsDepartment && (
               <div>
-                <label className="mb-1 block text-sm text-gray-600">Department</label>
+                <label className="mb-1 block text-sm text-gray-600">{t("users:department")}</label>
                 <select className={inputClass} {...form.register("departmentId")}>
                   <option value="">—</option>
                   {(departments as any[])?.map((d: any) => (
@@ -343,7 +362,9 @@ export default function UserManagement() {
             {role === "DOCTOR" && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-sm text-gray-600">Consultation fee</label>
+                  <label className="mb-1 block text-sm text-gray-600">
+                    {t("users:consultationFee")}
+                  </label>
                   <input
                     type="number"
                     min={0}
@@ -352,7 +373,9 @@ export default function UserManagement() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm text-gray-600">Consultation minutes</label>
+                  <label className="mb-1 block text-sm text-gray-600">
+                    {t("users:consultationMinutes")}
+                  </label>
                   <input
                     type="number"
                     min={5}
@@ -365,17 +388,21 @@ export default function UserManagement() {
 
             {showsLicense && (
               <div>
-                <label className="mb-1 block text-sm text-gray-600">License number</label>
+                <label className="mb-1 block text-sm text-gray-600">
+                  {t("users:licenseNumber")}
+                </label>
                 <input className={inputClass} {...form.register("licenseNumber")} />
               </div>
             )}
 
             {role === "RECEPTIONIST" && (
               <div>
-                <label className="mb-1 block text-sm text-gray-600">Desk location</label>
+                <label className="mb-1 block text-sm text-gray-600">
+                  {t("users:deskLocation")}
+                </label>
                 <input
                   className={inputClass}
-                  placeholder="e.g. Front Desk B"
+                  placeholder={t("users:deskLocationPlaceholder")}
                   {...form.register("deskLocation")}
                 />
               </div>
@@ -384,7 +411,7 @@ export default function UserManagement() {
             {role === "LAB_TECHNICIAN" && (
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input type="checkbox" {...form.register("canVerify")} />
-                Can verify results
+                {t("users:canVerify")}
               </label>
             )}
 
@@ -395,10 +422,10 @@ export default function UserManagement() {
                 disabled={createUser.isPending}
                 onClick={() => setDialogOpen(false)}
               >
-                Cancel
+                {t("common:cancel")}
               </Button>
               <Button type="submit" disabled={createUser.isPending}>
-                {createUser.isPending ? "Creating…" : "Create User"}
+                {createUser.isPending ? t("users:creating") : t("users:createUser")}
               </Button>
             </DialogFooter>
           </form>

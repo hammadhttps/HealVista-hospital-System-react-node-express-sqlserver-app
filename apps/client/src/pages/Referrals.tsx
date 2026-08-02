@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useIncomingReferrals, useOutgoingReferrals } from "../hooks/queries/useClinical";
 import ReferralCard, { type ReferralRow } from "../components/referrals/ReferralCard";
 import { EmptyState } from "../components/primitives/EmptyState";
@@ -6,6 +7,7 @@ import { CardSkeleton } from "../components/primitives/Skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs";
 
 export default function Referrals() {
+  const { t } = useTranslation(["nav", "referrals"]);
   const [tab, setTab] = useState("incoming");
   const { data: incoming, isLoading: loadingIn } = useIncomingReferrals();
   const { data: outgoing, isLoading: loadingOut } = useOutgoingReferrals();
@@ -15,21 +17,23 @@ export default function Referrals() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Referrals</h1>
+      <h1 className="text-2xl font-bold">{t("nav:referrals")}</h1>
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="incoming">
-            Incoming {loadingIn ? "" : `(${listIn.length})`}
+            {t("referrals:incoming")}
+            {loadingIn ? "" : ` (${listIn.length})`}
           </TabsTrigger>
           <TabsTrigger value="outgoing">
-            Outgoing {loadingOut ? "" : `(${listOut.length})`}
+            {t("referrals:outgoing")}
+            {loadingOut ? "" : ` (${listOut.length})`}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="incoming" className="pt-4">
           {loadingIn ? (
             <CardSkeleton />
           ) : listIn.length === 0 ? (
-            <EmptyState title="No incoming referrals" />
+            <EmptyState title={t("referrals:noIncoming")} />
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {listIn.map((r) => (
@@ -42,7 +46,7 @@ export default function Referrals() {
           {loadingOut ? (
             <CardSkeleton />
           ) : listOut.length === 0 ? (
-            <EmptyState title="No referrals made yet" />
+            <EmptyState title={t("referrals:noOutgoing")} />
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {listOut.map((r) => (

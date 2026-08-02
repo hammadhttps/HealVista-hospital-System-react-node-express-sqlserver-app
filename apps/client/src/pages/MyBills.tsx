@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useMyBills } from "../hooks/queries/useBilling";
 import { billApi } from "../api/billing";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -15,15 +16,16 @@ const statusVariant: Record<string, string> = {
   void: "destructive",
 };
 
-const statusLabel: Record<string, string> = {
-  draft: "Draft",
-  finalised: "Due",
-  partially_paid: "Partly paid",
-  paid: "Paid",
-  void: "Void",
+const statusKey: Record<string, string> = {
+  draft: "statusDraft",
+  finalised: "statusDue",
+  partially_paid: "statusPartlyPaid",
+  paid: "statusPaid",
+  void: "statusVoid",
 };
 
 export default function MyBills() {
+  const { t } = useTranslation(["common", "bills"]);
   const { data, isLoading, isError } = useMyBills();
 
   const bills = data?.bills ?? [];
@@ -32,11 +34,11 @@ export default function MyBills() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">My Bills</h1>
+        <h1 className="text-2xl font-bold">{t("bills:title")}</h1>
         {!isLoading && !isError && (
           <Card className="min-w-[220px]">
             <CardContent className="p-4">
-              <p className="text-sm text-muted-foreground">Outstanding balance</p>
+              <p className="text-sm text-muted-foreground">{t("bills:outstandingBalance")}</p>
               <p className="text-2xl font-bold">{outstanding}</p>
             </CardContent>
           </Card>
@@ -52,14 +54,11 @@ export default function MyBills() {
       )}
 
       {isError && (
-        <EmptyState
-          title="Could not load your bills"
-          description="Something went wrong. Try refreshing the page."
-        />
+        <EmptyState title={t("bills:loadFailed")} description={t("bills:loadFailedHint")} />
       )}
 
       {!isLoading && !isError && bills.length === 0 && (
-        <EmptyState title="No bills yet" description="Bills appear here after a visit." />
+        <EmptyState title={t("bills:empty")} description={t("bills:emptyHint")} />
       )}
 
       {!isLoading && bills.length > 0 && (
@@ -69,12 +68,14 @@ export default function MyBills() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-lg">{bill.billNumber}</CardTitle>
                 <Badge variant={statusVariant[bill.status] as any}>
-                  {statusLabel[bill.status] ?? bill.status}
+                  {statusKey[bill.status] ? t(`bills:${statusKey[bill.status]}`) : bill.status}
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  Issued {format(new Date(bill.createdAt), "d MMM yyyy")}
+                  {t("bills:issued", {
+                    date: format(new Date(bill.createdAt), "d MMM yyyy"),
+                  })}
                 </p>
 
                 <ul className="space-y-1 text-sm">
@@ -92,26 +93,29 @@ export default function MyBills() {
                 <div className="border-t pt-2 text-sm">
                   {Number(bill.discountAmount) > 0 && (
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Discount{bill.discount?.name ? ` (${bill.discount.name})` : ""}</span>
+                      <span>
+                        {t("bills:discount")}
+                        {bill.discount?.name ? ` (${bill.discount.name})` : ""}
+                      </span>
                       <span>- {Number(bill.discountAmount).toFixed(2)}</span>
                     </div>
                   )}
                   {Number(bill.insuranceCovered) > 0 && (
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Insurance covered</span>
+                      <span>{t("bills:insuranceCovered")}</span>
                       <span>- {Number(bill.insuranceCovered).toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-medium">
-                    <span>Total</span>
+                    <span>{t("bills:total")}</span>
                     <span>{Number(bill.total).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Paid</span>
+                    <span>{t("bills:paid")}</span>
                     <span>{Number(bill.amountPaid).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between font-bold">
-                    <span>Balance due</span>
+                    <span>{t("bills:balanceDue")}</span>
                     <span>{Number(bill.balance).toFixed(2)}</span>
                   </div>
                 </div>
@@ -122,7 +126,7 @@ export default function MyBills() {
                     variant="outline"
                     onClick={() => window.open(billApi.pdfUrl(bill.id), "_blank", "noopener")}
                   >
-                    Download invoice
+                    {t("bills:downloadInvoice")}
                   </Button>
                 </div>
               </CardContent>

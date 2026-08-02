@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useHolidays } from "../hooks/queries/useHolidays";
 import { useCreateHoliday, useDeleteHoliday } from "../hooks/mutations/useHolidayMutations";
 import { useDepartments } from "../hooks/queries/useDepartments";
@@ -6,6 +7,7 @@ import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 
 export default function HolidayCalendar() {
+  const { t } = useTranslation(["common", "holidays"]);
   const { data: holidays, isLoading, isError } = useHolidays();
   const { data: departments } = useDepartments();
   const create = useCreateHoliday();
@@ -29,15 +31,17 @@ export default function HolidayCalendar() {
         <Skeleton className="h-64 w-full" />
       </div>
     );
-  if (isError) return <EmptyState title="Failed to load holidays" />;
+  if (isError) return <EmptyState title={t("holidays:loadFailed")} />;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Holiday Calendar</h1>
+      <h1 className="text-2xl font-bold text-gray-800">{t("holidays:title")}</h1>
 
       <form onSubmit={handleAdd} className="bg-white rounded-xl shadow-sm p-6 flex gap-4 items-end">
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Holiday Name</label>
+          <label className="block text-sm font-medium text-gray-600 mb-1">
+            {t("holidays:holidayName")}
+          </label>
           <input
             className="border rounded-lg px-3 py-2 w-48"
             value={name}
@@ -46,7 +50,7 @@ export default function HolidayCalendar() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1">Date</label>
+          <label className="block text-sm font-medium text-gray-600 mb-1">{t("common:date")}</label>
           <input
             type="date"
             className="border rounded-lg px-3 py-2"
@@ -57,14 +61,14 @@ export default function HolidayCalendar() {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">
-            Department (optional)
+            {t("holidays:departmentOptional")}
           </label>
           <select
             className="border rounded-lg px-3 py-2"
             value={departmentId}
             onChange={(e) => setDepartmentId(e.target.value)}
           >
-            <option value="">All departments</option>
+            <option value="">{t("holidays:allDepartments")}</option>
             {(departments as any[])?.map((d: any) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -76,7 +80,7 @@ export default function HolidayCalendar() {
           type="submit"
           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
         >
-          Add Holiday
+          {t("holidays:add")}
         </button>
       </form>
 
@@ -84,9 +88,15 @@ export default function HolidayCalendar() {
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Name</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Date</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-500">Department</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">
+                {t("holidays:name")}
+              </th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">
+                {t("common:date")}
+              </th>
+              <th className="text-left p-4 text-sm font-medium text-gray-500">
+                {t("holidays:department")}
+              </th>
               <th className="p-4" />
             </tr>
           </thead>
@@ -95,13 +105,13 @@ export default function HolidayCalendar() {
               <tr key={h.id}>
                 <td className="p-4">{h.name}</td>
                 <td className="p-4">{new Date(h.date).toLocaleDateString()}</td>
-                <td className="p-4">{h.department?.name || "All"}</td>
+                <td className="p-4">{h.department?.name || t("common:all")}</td>
                 <td className="p-4">
                   <button
                     onClick={() => remove.mutate(h.id)}
                     className="text-red-500 hover:text-red-700 text-sm"
                   >
-                    Delete
+                    {t("common:delete")}
                   </button>
                 </td>
               </tr>

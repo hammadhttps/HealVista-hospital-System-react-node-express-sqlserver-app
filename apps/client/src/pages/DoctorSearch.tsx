@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { doctorSearchApi } from "../api/appointments";
 import SymptomChecker from "../components/ai/SymptomChecker";
 import { Button } from "../components/ui/button";
@@ -12,6 +13,7 @@ import { EmptyState } from "../components/primitives/EmptyState";
 import { FavouriteToggle } from "../components/doctors/FavouriteToggle";
 
 export default function DoctorSearch() {
+  const { t } = useTranslation(["common", "nav", "doctors"]);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   // Seeded so the page lists doctors on first load rather than showing a false
@@ -41,18 +43,18 @@ export default function DoctorSearch() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Find a Doctor</h1>
+      <h1 className="text-2xl font-bold">{t("nav:findDoctor")}</h1>
 
       <SymptomChecker onMatchDepartment={applyDepartment} />
 
       <div className="flex gap-2">
         <Input
-          placeholder="Search by name, specialty..."
+          placeholder={t("doctors:searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSearch()}
         />
-        <Button onClick={handleSearch}>Search</Button>
+        <Button onClick={handleSearch}>{t("common:search")}</Button>
       </div>
 
       {filters.departmentId && (
@@ -63,7 +65,7 @@ export default function DoctorSearch() {
             setFilters(rest);
           }}
         >
-          Clear department filter
+          {t("doctors:clearDepartmentFilter")}
         </button>
       )}
 
@@ -76,7 +78,7 @@ export default function DoctorSearch() {
       )}
 
       {!isLoading && doctors.length === 0 && (
-        <EmptyState title="No doctors found" description="Try a different search term." />
+        <EmptyState title={t("doctors:empty")} description={t("doctors:emptyHint")} />
       )}
 
       {!isLoading && doctors.length > 0 && (
@@ -101,8 +103,8 @@ export default function DoctorSearch() {
                   ))}
                 </div>
                 <p className="text-sm">
-                  Fee: ${Number(doc.consultationFee).toFixed(2)} &middot; {doc.experienceYears}{" "}
-                  years exp
+                  {t("doctors:fee", { amount: Number(doc.consultationFee).toFixed(2) })} &middot;{" "}
+                  {t("doctors:yearsExp", { years: doc.experienceYears })}
                 </p>
               </CardContent>
             </Card>

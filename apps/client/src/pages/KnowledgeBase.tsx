@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { kbArticleSchema } from "@healvista/shared";
 import { useKbArticle, useKbArticles } from "../hooks/queries/useAi";
@@ -40,6 +41,7 @@ import { CardSkeleton } from "../components/primitives/Skeleton";
  * is why the selected article lives in the URL (`/kb/:id`).
  */
 export default function KnowledgeBase() {
+  const { t } = useTranslation(["common", "nav", "knowledgeBase"]);
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const role = useAuthStore((s) => s.user?.role);
@@ -59,18 +61,18 @@ export default function KnowledgeBase() {
 
   function confirmDelete() {
     if (!article) return;
-    if (!window.confirm(`Unpublish "${article.title}"? It will leave the knowledge base.`)) return;
+    if (!window.confirm(t("knowledgeBase:confirmUnpublish", { title: article.title }))) return;
     del.mutate(article.id, { onSuccess: () => navigate("/kb") });
   }
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: "Knowledge Base" }]} />
+      <Breadcrumbs items={[{ label: t("nav:knowledgeBase") }]} />
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Knowledge Base</h1>
+        <h1 className="text-2xl font-bold">{t("nav:knowledgeBase")}</h1>
         {isAdmin && (
           <Button size="sm" onClick={() => setFormOpen(true)}>
-            <Plus className="h-4 w-4" /> New article
+            <Plus className="h-4 w-4" /> {t("knowledgeBase:newArticle")}
           </Button>
         )}
       </div>
@@ -81,7 +83,7 @@ export default function KnowledgeBase() {
             <Search className="absolute top-2.5 left-3 h-4 w-4 text-gray-400" />
             <Input
               className="pl-9"
-              placeholder="Search articles…"
+              placeholder={t("knowledgeBase:searchPlaceholder")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -91,7 +93,7 @@ export default function KnowledgeBase() {
           ) : isError ? (
             <Card>
               <CardContent className="p-4 text-sm text-red-600">
-                Could not load the knowledge base. Try again later.
+                {t("knowledgeBase:loadFailed")}
               </CardContent>
             </Card>
           ) : (
@@ -109,15 +111,17 @@ export default function KnowledgeBase() {
                       <p className="truncate text-sm font-medium text-gray-800">{a.title}</p>
                       <p className="mt-1 flex items-center gap-2">
                         <Badge variant="secondary">{a.category}</Badge>
-                        {!a.isPublished && <Badge variant="warning">Draft</Badge>}
+                        {!a.isPublished && (
+                          <Badge variant="warning">{t("knowledgeBase:draft")}</Badge>
+                        )}
                       </p>
                     </button>
                   ))
                 ) : (
                   <p className="p-3 text-sm text-gray-400">
                     {articles && articles.length
-                      ? "No articles match your search."
-                      : "No articles yet."}
+                      ? t("knowledgeBase:noSearchMatches")
+                      : t("knowledgeBase:noArticles")}
                   </p>
                 )}
               </CardContent>
@@ -131,8 +135,8 @@ export default function KnowledgeBase() {
               <CardSkeleton />
             ) : detailError ? (
               <EmptyState
-                title="Could not load this article"
-                description="Try again later or pick another from the list."
+                title={t("knowledgeBase:articleLoadFailed")}
+                description={t("knowledgeBase:articleLoadFailedHint")}
               />
             ) : article ? (
               <Card>
@@ -142,20 +146,22 @@ export default function KnowledgeBase() {
                       <CardTitle className="text-lg">{article.title}</CardTitle>
                       <div className="mt-1 flex items-center gap-2">
                         <Badge variant="secondary">{article.category}</Badge>
-                        {!article.isPublished && <Badge variant="warning">Draft</Badge>}
+                        {!article.isPublished && (
+                          <Badge variant="warning">{t("knowledgeBase:draft")}</Badge>
+                        )}
                       </div>
                     </div>
                     {isAdmin && (
                       <div className="flex shrink-0 gap-2">
                         <Button variant="outline" size="sm" onClick={() => setEditing(article)}>
-                          <Pencil className="h-3.5 w-3.5" /> Edit
+                          <Pencil className="h-3.5 w-3.5" /> {t("common:edit")}
                         </Button>
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={confirmDelete}
                           disabled={del.isPending}
-                          aria-label="Unpublish article"
+                          aria-label={t("knowledgeBase:unpublishArticle")}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -169,8 +175,8 @@ export default function KnowledgeBase() {
               </Card>
             ) : (
               <EmptyState
-                title="Article not found"
-                description="It may have been unpublished. Pick another from the list."
+                title={t("knowledgeBase:articleNotFound")}
+                description={t("knowledgeBase:articleNotFoundHint")}
               />
             )
           ) : (
@@ -206,6 +212,7 @@ function ArticleFormDialog({
   onClose: () => void;
   onCreated: (createdId: string) => void;
 }) {
+  const { t } = useTranslation(["common", "knowledgeBase"]);
   const create = useCreateKbArticle();
   const update = useUpdateKbArticle();
   const { data: departments } = useDepartments();
@@ -240,30 +247,30 @@ function ArticleFormDialog({
     <Dialog open onOpenChange={(o) => !o && !busy && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit article" : "New article"}</DialogTitle>
-          <DialogDescription>
-            Published articles are embedded into the knowledge assistant as soon as they save.
-          </DialogDescription>
+          <DialogTitle>
+            {isEdit ? t("knowledgeBase:editArticle") : t("knowledgeBase:newArticle")}
+          </DialogTitle>
+          <DialogDescription>{t("knowledgeBase:publishHint")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(submit)} className="space-y-4">
           <div>
-            <Label>Title</Label>
+            <Label>{t("knowledgeBase:title")}</Label>
             <Input {...register("title")} className="mt-1" />
             {errors.title && <p className="mt-1 text-xs text-red-600">{errors.title.message}</p>}
           </div>
           <div>
-            <Label>Category</Label>
+            <Label>{t("knowledgeBase:category")}</Label>
             <Input
               {...register("category")}
               className="mt-1"
-              placeholder="Policies · FAQs · Guidelines"
+              placeholder={t("knowledgeBase:categoryPlaceholder")}
             />
             {errors.category && (
               <p className="mt-1 text-xs text-red-600">{errors.category.message}</p>
             )}
           </div>
           <div>
-            <Label>Content</Label>
+            <Label>{t("knowledgeBase:content")}</Label>
             <textarea
               {...register("content")}
               rows={8}
@@ -275,15 +282,15 @@ function ArticleFormDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Slug (optional)</Label>
+              <Label>{t("knowledgeBase:slugOptional")}</Label>
               <Input
                 {...register("slug")}
                 className="mt-1"
-                placeholder="auto-generated from title"
+                placeholder={t("knowledgeBase:slugPlaceholder")}
               />
             </div>
             <div>
-              <Label>Department</Label>
+              <Label>{t("knowledgeBase:department")}</Label>
               <select
                 className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
                 defaultValue={article?.departmentId ?? ""}
@@ -291,7 +298,7 @@ function ArticleFormDialog({
                   setValue("departmentId", e.target.value || null, { shouldValidate: true })
                 }
               >
-                <option value="">General (all departments)</option>
+                <option value="">{t("knowledgeBase:general")}</option>
                 {departments?.map((d: { id: string; name: string }) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -302,14 +309,18 @@ function ArticleFormDialog({
           </div>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" {...register("isPublished")} className="h-4 w-4" />
-            Published — visible to staff and searchable by the assistant
+            {t("knowledgeBase:publishedLabel")}
           </label>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-              Cancel
+              {t("common:cancel")}
             </Button>
             <Button type="submit" disabled={busy}>
-              {busy ? "Saving…" : isEdit ? "Save changes" : "Create article"}
+              {busy
+                ? t("common:saving")
+                : isEdit
+                  ? t("knowledgeBase:saveChanges")
+                  : t("knowledgeBase:createArticle")}
             </Button>
           </DialogFooter>
         </form>
