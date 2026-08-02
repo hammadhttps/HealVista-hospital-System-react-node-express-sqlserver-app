@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { authApi } from "../api/auth";
@@ -12,15 +12,25 @@ import { authApi } from "../api/auth";
  *
  * The fragment is stripped from history immediately after it is read, so the
  * back button cannot resurface a token.
+ *
+ * The `consumed` guard makes the read one-shot. React StrictMode mounts this
+ * component twice in development (mount → cleanup → mount), and the first run
+ * strips the fragment — without the guard the second run would find no tokens
+ * and report a spurious failure. The `me()` continuation must not be cancelled
+ * in a cleanup for the same reason.
  */
 export default function OAuthCallback() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [error, setError] = useState<string | null>(null);
+  const consumed = useRef(false);
 
   // Consuming a one-time credential from the URL is imperative bootstrap work,
   // not data fetching — it must happen exactly once, on mount.
   useEffect(() => {
+    if (consumed.current) return;
+    consumed.current = true;
+
     const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const accessToken = params.get("accessToken");
     const refreshToken = params.get("refreshToken");
@@ -36,22 +46,16 @@ export default function OAuthCallback() {
     // Drop the tokens out of the address bar and history before anything else.
     window.history.replaceState(null, "", window.location.pathname);
 
-    let cancelled = false;
     authApi
       .me()
       .then((user) => {
-        if (cancelled) return;
         setAuth(user, accessToken);
         // OAuth is patients-only, so the destination is never in doubt.
         navigate("/patient", { replace: true });
       })
       .catch(() => {
-        if (!cancelled) setError("Could not load your account. Please sign in again.");
+        setError("Could not load your account. Please sign in again.");
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [navigate, setAuth]);
 
   return (

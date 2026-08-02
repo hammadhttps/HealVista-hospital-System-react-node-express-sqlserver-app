@@ -3,6 +3,7 @@ import { validate } from "../middlewares/validate.middleware.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { rateLimit } from "../middlewares/rateLimit.middleware.js";
 import passport, { isGoogleOAuthConfigured } from "../config/passport.js";
+import { env } from "../config/env.js";
 import * as authController from "../controllers/auth.controller.js";
 import {
   registerSchema,
@@ -43,7 +44,12 @@ if (isGoogleOAuthConfigured) {
 
   router.get(
     "/google/callback",
-    passport.authenticate("google", { session: false, failureRedirect: "/login?error=oauth" }),
+    passport.authenticate("google", {
+      session: false,
+      // Absolute, not relative: a relative redirect would land on the server's
+      // own /login (a 404 on this API) instead of the SPA's sign-in page.
+      failureRedirect: `${env.CLIENT_URL}/login?error=oauth`,
+    }),
     authController.googleCallback,
   );
 }

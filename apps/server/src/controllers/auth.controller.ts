@@ -184,6 +184,18 @@ export async function googleCallback(req: Request, res: Response, next: NextFunc
     const profile = req.user as unknown as GoogleProfileInput;
     const result = await handleGoogleCallback(profile, req.ip);
 
+    // Same refresh cookie as password login. Without it, `POST /auth/refresh`
+    // (which the client interceptor relies on once the access token expires)
+    // has no token to work with and an OAuth session dies after 15 minutes.
+    const isSecure = req.secure || env.NODE_ENV === "production";
+    res.cookie("refreshToken", result.refreshToken, {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: isSecure ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: "/api/auth",
+    });
+
     const params = new URLSearchParams({
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
