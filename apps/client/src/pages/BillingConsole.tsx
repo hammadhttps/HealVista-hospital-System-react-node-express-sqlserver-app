@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { getErrorMessage } from "../utils/errors";
+import StripeCheckoutDialog from "../components/billing/StripeCheckoutDialog";
 
 const STATUS_TABS = [
   { value: "", key: "common:all" },
@@ -38,6 +39,7 @@ export default function BillingConsole() {
   const { t } = useTranslation(["billing", "common", "nav"]);
   const [tab, setTab] = useState("");
   const [cashAmounts, setCashAmounts] = useState<Record<string, string>>({});
+  const [checkoutBill, setCheckoutBill] = useState<{ id: string; balance: string } | null>(null);
 
   const filters = tab ? { status: tab } : {};
   const { data, isLoading, isError } = useBills(filters);
@@ -197,7 +199,7 @@ export default function BillingConsole() {
                       </div>
                     )}
 
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex flex-wrap gap-2 pt-1">
                       <Button
                         size="sm"
                         variant="outline"
@@ -205,6 +207,15 @@ export default function BillingConsole() {
                       >
                         {t("billing:invoicePdf")}
                       </Button>
+                      {Number(bill.balance) > 0 &&
+                        (bill.status === "finalised" || bill.status === "partially_paid") && (
+                          <Button
+                            size="sm"
+                            onClick={() => setCheckoutBill({ id: bill.id, balance: bill.balance })}
+                          >
+                            {t("billing:payCard")}
+                          </Button>
+                        )}
                     </div>
                   </CardContent>
                 </Card>
@@ -212,6 +223,15 @@ export default function BillingConsole() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <StripeCheckoutDialog
+        open={Boolean(checkoutBill)}
+        billId={checkoutBill?.id ?? ""}
+        balance={checkoutBill?.balance ?? "0.00"}
+        onOpenChange={(open) => {
+          if (!open) setCheckoutBill(null);
+        }}
+      />
     </div>
   );
 }

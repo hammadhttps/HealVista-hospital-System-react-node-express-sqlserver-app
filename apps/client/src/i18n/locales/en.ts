@@ -381,6 +381,13 @@ const en = {
     finalise: "Finalise bill",
     cashPlaceholder: "Max {{max}}",
     invoicePdf: "Invoice PDF",
+    payCard: "Pay card",
+    paymentSubmitted: "Payment submitted. We will confirm it shortly.",
+    paymentFailed: "Could not start the payment.",
+    processing: "Processing…",
+    stripeUnavailable: "Online card payments are currently unavailable. Please use cash or contact billing.",
+    preparingCheckout: "Preparing checkout…",
+    payAmount: "Pay {{amount}} securely with card",
     paymentsLoadFailed: "Could not load payments.",
     noPayments: "No payments",
     receivedBy: "Received by {{email}}",
@@ -660,6 +667,9 @@ const en = {
     interactionDescription: "{{drugA}} + {{drugB}}: {{description}}",
     reviewWarningAck:
       "I have reviewed this warning and am prescribing anyway. This acknowledgement is recorded against my name.",
+    autosaving: "Autosaving…",
+    autosaved: "Autosaved",
+    autosaveFailed: "Autosave failed",
   },
 
   pharmacy: {

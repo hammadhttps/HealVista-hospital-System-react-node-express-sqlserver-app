@@ -390,6 +390,13 @@ const ur: DeepReadonlyShape<typeof en> = {
     finalise: "بل حتمی کریں",
     cashPlaceholder: "زیادہ سے زیادہ {{max}}",
     invoicePdf: "انوائس PDF",
+    payCard: "کارڈ سے ادائیگی",
+    paymentSubmitted: "ادائیگی جمع کر دی گئی ہے۔ ہم اسے جلد ہی تصدیق کر دیں گے۔",
+    paymentFailed: "ادائیگی شروع نہیں کی جا سکی۔",
+    processing: "عمل درآمد جاری ہے…",
+    stripeUnavailable: "آن لائن کارڈ ادائیگی فی الحال دستیاب نہیں ہے۔ براہ کرم نقد یا بلنگ سے رابطہ کریں۔",
+    preparingCheckout: "چیک آؤٹ تیار کیا جا رہا ہے…",
+    payAmount: "{{amount}} کی ادائیگی کارڈ سے محفوظ طریقے سے",
     paymentsLoadFailed: "ادائیگیاں لوڈ نہیں ہو سکیں۔",
     noPayments: "کوئی ادائیگی نہیں",
     receivedBy: "{{email}} کے ذریعے موصول ہوئی",
@@ -669,6 +676,9 @@ const ur: DeepReadonlyShape<typeof en> = {
     interactionDescription: "{{drugA}} + {{drugB}}: {{description}}",
     reviewWarningAck:
       "میں نے اس انتباہ کا جائزہ لیا ہے اور پھر بھی تجویز کر رہا ہوں۔ یہ اعتراف میرے نام پر درج ہوتا ہے۔",
+    autosaving: "خودکار محفوظ ہو رہا ہے…",
+    autosaved: "خودکار محفوظ ہو گیا",
+    autosaveFailed: "خودکار محفوظ ناکام",
   },
 
   pharmacy: {
