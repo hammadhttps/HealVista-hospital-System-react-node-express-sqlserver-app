@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import {
   allergyInputSchema,
   conditionInputSchema,
@@ -142,6 +143,7 @@ function Section({
 // ─── Allergies ──────────────────────────────────────────────────────────────
 
 function AllergyForm({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const mutation = useAddAllergy(patientId);
   const canWrite = useCanWrite();
   const {
@@ -159,7 +161,7 @@ function AllergyForm({ patientId }: { patientId: string }) {
       onSubmit={handleSubmit((data) => {
         mutation.mutate(data, {
           onSuccess: () => {
-            toast.success("Allergy recorded");
+            toast.success(t("clinical:allergyRecorded"));
             reset();
           },
           onError: (e) => toast.error(e.message),
@@ -167,28 +169,28 @@ function AllergyForm({ patientId }: { patientId: string }) {
       })}
     >
       <Field
-        label="Allergen"
-        placeholder="e.g. Penicillin"
+        label={t("clinical:allergen")}
+        placeholder={t("clinical:allergenPlaceholder")}
         error={errors.allergen?.message}
         {...register("allergen")}
       />
       <div>
-        <label className={labelCls}>Severity</label>
+        <label className={labelCls}>{t("clinical:severity")}</label>
         <select className={inputCls} {...register("severity")}>
-          <option value="MILD">Mild</option>
-          <option value="MODERATE">Moderate</option>
-          <option value="SEVERE">Severe</option>
+          <option value="MILD">{t("clinical:severityMild")}</option>
+          <option value="MODERATE">{t("clinical:severityModerate")}</option>
+          <option value="SEVERE">{t("clinical:severitySevere")}</option>
         </select>
       </div>
       <Field
-        label="Reaction"
-        placeholder="e.g. rash, anaphylaxis"
+        label={t("clinical:reaction")}
+        placeholder={t("clinical:reactionPlaceholder")}
         error={errors.reaction?.message}
         {...register("reaction")}
       />
       <div className="sm:col-span-3">
         <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Add Allergy"}
+          {mutation.isPending ? t("common:saving") : t("clinical:addAllergy")}
         </Button>
       </div>
     </form>
@@ -196,6 +198,7 @@ function AllergyForm({ patientId }: { patientId: string }) {
 }
 
 function AllergiesSection({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const { data, isLoading } = useAllergies(patientId);
   const confirm = useConfirmAllergy(patientId);
   const remove = useRemoveAllergy(patientId);
@@ -204,12 +207,12 @@ function AllergiesSection({ patientId }: { patientId: string }) {
 
   return (
     <Section
-      title="Allergies"
+      title={t("clinical:allergies")}
       addForm={<AllergyForm patientId={patientId} />}
       badge={<Badge variant="warning">{isLoading ? "…" : list.length}</Badge>}
     >
       {list.length === 0 ? (
-        <EmptyState title="No allergies recorded" />
+        <EmptyState title={t("clinical:noAllergies")} />
       ) : (
         <ul className="space-y-2">
           {list.map((a) => (
@@ -229,15 +232,21 @@ function AllergiesSection({ patientId }: { patientId: string }) {
                         : "outline"
                   }
                 >
-                  {a.severity}
+                  {a.severity === "MILD"
+                    ? t("clinical:severityMild")
+                    : a.severity === "MODERATE"
+                      ? t("clinical:severityModerate")
+                      : t("clinical:severitySevere")}
                 </Badge>
                 {a.reaction && <span className="ml-2 text-sm text-gray-600">{a.reaction}</span>}
-                {!a.confirmedAt && <span className="ml-2 text-xs text-amber-600">unconfirmed</span>}
+                {!a.confirmedAt && (
+                  <span className="ml-2 text-xs text-amber-600">{t("clinical:unconfirmed")}</span>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 {canWrite && !a.confirmedAt && (
                   <Button size="sm" variant="outline" onClick={() => confirm.mutate(a.id)}>
-                    Confirm
+                    {t("clinical:confirm")}
                   </Button>
                 )}
                 {canWrite && (
@@ -247,7 +256,7 @@ function AllergiesSection({ patientId }: { patientId: string }) {
                     className="text-red-600"
                     onClick={() => remove.mutate(a.id)}
                   >
-                    Remove
+                    {t("clinical:remove")}
                   </Button>
                 )}
               </div>
@@ -262,6 +271,7 @@ function AllergiesSection({ patientId }: { patientId: string }) {
 // ─── Conditions ─────────────────────────────────────────────────────────────
 
 function ConditionForm({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const mutation = useAddCondition(patientId);
   const canWrite = useCanWrite();
   const {
@@ -279,7 +289,7 @@ function ConditionForm({ patientId }: { patientId: string }) {
       onSubmit={handleSubmit((data) => {
         mutation.mutate(data, {
           onSuccess: () => {
-            toast.success("Condition recorded");
+            toast.success(t("clinical:conditionRecorded"));
             reset();
           },
           onError: (e) => toast.error(e.message),
@@ -287,21 +297,21 @@ function ConditionForm({ patientId }: { patientId: string }) {
       })}
     >
       <Field
-        label="Condition"
-        placeholder="e.g. Hypertension"
+        label={t("clinical:condition")}
+        placeholder={t("clinical:conditionPlaceholder")}
         error={errors.condition?.message}
         {...register("condition")}
       />
       <Field
-        label="Diagnosed date"
+        label={t("clinical:diagnosedDate")}
         type="date"
         error={errors.diagnosedAt?.message}
         {...register("diagnosedAt")}
       />
-      <Field label="Notes" error={errors.notes?.message} {...register("notes")} />
+      <Field label={t("clinical:notes")} error={errors.notes?.message} {...register("notes")} />
       <div className="sm:col-span-3">
         <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Add Condition"}
+          {mutation.isPending ? t("common:saving") : t("clinical:addCondition")}
         </Button>
       </div>
     </form>
@@ -309,6 +319,7 @@ function ConditionForm({ patientId }: { patientId: string }) {
 }
 
 function ConditionsSection({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const { data, isLoading } = useConditions(patientId);
   const resolve = useResolveCondition(patientId);
   const remove = useRemoveCondition(patientId);
@@ -317,16 +328,18 @@ function ConditionsSection({ patientId }: { patientId: string }) {
 
   return (
     <Section
-      title="Conditions"
+      title={t("clinical:conditions")}
       addForm={<ConditionForm patientId={patientId} />}
       badge={
         <Badge variant="outline">
-          {isLoading ? "…" : list.filter((c) => c.isActive).length} active
+          {isLoading
+            ? "…"
+            : t("clinical:activeCount", { count: list.filter((c) => c.isActive).length })}
         </Badge>
       }
     >
       {list.length === 0 ? (
-        <EmptyState title="No conditions recorded" />
+        <EmptyState title={t("clinical:noConditions")} />
       ) : (
         <ul className="space-y-2">
           {list.map((c) => (
@@ -338,19 +351,21 @@ function ConditionsSection({ patientId }: { patientId: string }) {
                 <span className="font-medium">{c.condition}</span>
                 {c.diagnosedAt && (
                   <span className="ml-2 text-sm text-gray-600">
-                    since {new Date(c.diagnosedAt).toLocaleDateString()}
+                    {t("clinical:since", {
+                      date: new Date(c.diagnosedAt).toLocaleDateString(),
+                    })}
                   </span>
                 )}
                 {!c.isActive && (
                   <Badge className="ml-2 text-xs" variant="outline">
-                    resolved
+                    {t("clinical:resolved")}
                   </Badge>
                 )}
               </div>
               <div className="flex items-center gap-1">
                 {canWrite && c.isActive && (
                   <Button size="sm" variant="outline" onClick={() => resolve.mutate(c.id)}>
-                    Resolve
+                    {t("clinical:resolve")}
                   </Button>
                 )}
                 {canWrite && (
@@ -360,7 +375,7 @@ function ConditionsSection({ patientId }: { patientId: string }) {
                     className="text-red-600"
                     onClick={() => remove.mutate(c.id)}
                   >
-                    Remove
+                    {t("clinical:remove")}
                   </Button>
                 )}
               </div>
@@ -375,6 +390,7 @@ function ConditionsSection({ patientId }: { patientId: string }) {
 // ─── Vaccinations ───────────────────────────────────────────────────────────
 
 function VaccinationForm({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const mutation = useAddVaccination(patientId);
   const canWrite = useCanWrite();
   const {
@@ -394,7 +410,7 @@ function VaccinationForm({ patientId }: { patientId: string }) {
       onSubmit={handleSubmit((data) => {
         mutation.mutate(data, {
           onSuccess: () => {
-            toast.success("Vaccination recorded");
+            toast.success(t("clinical:vaccinationRecorded"));
             reset();
           },
           onError: (e) => toast.error(e.message),
@@ -402,38 +418,42 @@ function VaccinationForm({ patientId }: { patientId: string }) {
       })}
     >
       <Field
-        label="Vaccine"
-        placeholder="e.g. Influenza"
+        label={t("clinical:vaccine")}
+        placeholder={t("clinical:vaccinePlaceholder")}
         error={errors.vaccineName?.message}
         {...register("vaccineName")}
       />
       <Field
-        label="Dose #"
+        label={t("clinical:doseNumber")}
         type="number"
         error={errors.doseNumber?.message}
         {...register("doseNumber")}
       />
       <Field
-        label="Date"
+        label={t("clinical:date")}
         type="date"
         error={errors.administeredAt?.message}
         {...register("administeredAt")}
       />
-      <Field label="Batch no." error={errors.batchNumber?.message} {...register("batchNumber")} />
       <Field
-        label="Administered by"
+        label={t("clinical:batchNumber")}
+        error={errors.batchNumber?.message}
+        {...register("batchNumber")}
+      />
+      <Field
+        label={t("clinical:administeredBy")}
         error={errors.administeredBy?.message}
         {...register("administeredBy")}
       />
       <Field
-        label="Next due"
+        label={t("clinical:nextDue")}
         type="date"
         error={errors.nextDueAt?.message}
         {...register("nextDueAt")}
       />
       <div className="sm:col-span-4">
         <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Add Vaccination"}
+          {mutation.isPending ? t("common:saving") : t("clinical:addVaccination")}
         </Button>
       </div>
     </form>
@@ -441,6 +461,7 @@ function VaccinationForm({ patientId }: { patientId: string }) {
 }
 
 function VaccinationsSection({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const { data, isLoading } = useVaccinations(patientId);
   const remove = useRemoveVaccination(patientId);
   const canWrite = useCanWrite();
@@ -448,11 +469,11 @@ function VaccinationsSection({ patientId }: { patientId: string }) {
   const list = (data ?? []) as VaccinationRow[];
 
   return (
-    <Section title="Vaccinations" addForm={<VaccinationForm patientId={patientId} />}>
+    <Section title={t("clinical:vaccinations")} addForm={<VaccinationForm patientId={patientId} />}>
       {isLoading ? (
-        <EmptyState title="Loading…" />
+        <EmptyState title={t("common:loading")} />
       ) : list.length === 0 ? (
-        <EmptyState title="No vaccinations recorded" />
+        <EmptyState title={t("clinical:noVaccinations")} />
       ) : (
         <div className="space-y-2">
           {list.map((v) => {
@@ -466,24 +487,26 @@ function VaccinationsSection({ patientId }: { patientId: string }) {
                 <div>
                   <span className="font-medium">{v.vaccineName}</span>
                   {v.doseNumber && (
-                    <span className="ml-1 text-sm text-gray-600">(dose {v.doseNumber})</span>
+                    <span className="ml-1 text-sm text-gray-600">
+                      {t("clinical:dose", { n: v.doseNumber })}
+                    </span>
                   )}
                   <span className="ml-2 text-sm text-gray-600">
                     {new Date(v.administeredAt).toLocaleDateString()}
                   </span>
                   {v.batchNumber && (
                     <span className="ml-2 font-mono text-xs text-gray-500">
-                      batch {v.batchNumber}
+                      {t("clinical:batch", { n: v.batchNumber })}
                     </span>
                   )}
                   {due &&
                     (overdue ? (
                       <Badge className="ml-2 text-xs" variant="destructive">
-                        due {due.toLocaleDateString()}
+                        {t("clinical:due", { date: due.toLocaleDateString() })}
                       </Badge>
                     ) : (
                       <Badge className="ml-2 text-xs" variant="outline">
-                        next {due.toLocaleDateString()}
+                        {t("clinical:next", { date: due.toLocaleDateString() })}
                       </Badge>
                     ))}
                 </div>
@@ -494,7 +517,7 @@ function VaccinationsSection({ patientId }: { patientId: string }) {
                     className="text-red-600"
                     onClick={() => remove.mutate(v.id)}
                   >
-                    Remove
+                    {t("clinical:remove")}
                   </Button>
                 )}
               </li>
@@ -509,6 +532,7 @@ function VaccinationsSection({ patientId }: { patientId: string }) {
 // ─── Surgeries ──────────────────────────────────────────────────────────────
 
 function SurgeryForm({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const mutation = useAddSurgery(patientId);
   const canWrite = useCanWrite();
   const {
@@ -526,26 +550,38 @@ function SurgeryForm({ patientId }: { patientId: string }) {
       onSubmit={handleSubmit((data) => {
         mutation.mutate(data, {
           onSuccess: () => {
-            toast.success("Surgery recorded");
+            toast.success(t("clinical:surgeryRecorded"));
             reset();
           },
           onError: (e) => toast.error(e.message),
         });
       })}
     >
-      <Field label="Procedure" error={errors.procedure?.message} {...register("procedure")} />
       <Field
-        label="Date"
+        label={t("clinical:procedure")}
+        error={errors.procedure?.message}
+        {...register("procedure")}
+      />
+      <Field
+        label={t("clinical:date")}
         type="date"
         error={errors.performedAt?.message}
         {...register("performedAt")}
       />
-      <Field label="Hospital" error={errors.hospital?.message} {...register("hospital")} />
-      <Field label="Surgeon" error={errors.surgeon?.message} {...register("surgeon")} />
-      <Field label="Notes" error={errors.notes?.message} {...register("notes")} />
+      <Field
+        label={t("clinical:hospital")}
+        error={errors.hospital?.message}
+        {...register("hospital")}
+      />
+      <Field
+        label={t("clinical:surgeon")}
+        error={errors.surgeon?.message}
+        {...register("surgeon")}
+      />
+      <Field label={t("clinical:notes")} error={errors.notes?.message} {...register("notes")} />
       <div className="sm:col-span-3">
         <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Add Surgery"}
+          {mutation.isPending ? t("common:saving") : t("clinical:addSurgery")}
         </Button>
       </div>
     </form>
@@ -553,17 +589,18 @@ function SurgeryForm({ patientId }: { patientId: string }) {
 }
 
 function SurgeriesSection({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const { data, isLoading } = useSurgeries(patientId);
   const remove = useRemoveSurgery(patientId);
   const canWrite = useCanWrite();
   const list = (data ?? []) as SurgeryRow[];
 
   return (
-    <Section title="Surgical history" addForm={<SurgeryForm patientId={patientId} />}>
+    <Section title={t("clinical:surgicalHistory")} addForm={<SurgeryForm patientId={patientId} />}>
       {isLoading ? (
-        <EmptyState title="Loading…" />
+        <EmptyState title={t("common:loading")} />
       ) : list.length === 0 ? (
-        <EmptyState title="No surgeries recorded" />
+        <EmptyState title={t("clinical:noSurgeries")} />
       ) : (
         <ul className="space-y-2">
           {list.map((s) => (
@@ -587,7 +624,7 @@ function SurgeriesSection({ patientId }: { patientId: string }) {
                   className="text-red-600"
                   onClick={() => remove.mutate(s.id)}
                 >
-                  Remove
+                  {t("clinical:remove")}
                 </Button>
               )}
             </li>
@@ -601,6 +638,7 @@ function SurgeriesSection({ patientId }: { patientId: string }) {
 // ─── Family history ─────────────────────────────────────────────────────────
 
 function FamilyHistoryForm({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const mutation = useAddFamilyHistory(patientId);
   const canWrite = useCanWrite();
   const {
@@ -618,7 +656,7 @@ function FamilyHistoryForm({ patientId }: { patientId: string }) {
       onSubmit={handleSubmit((data) => {
         mutation.mutate(data, {
           onSuccess: () => {
-            toast.success("Family history recorded");
+            toast.success(t("clinical:familyHistoryRecorded"));
             reset();
           },
           onError: (e) => toast.error(e.message),
@@ -626,16 +664,20 @@ function FamilyHistoryForm({ patientId }: { patientId: string }) {
       })}
     >
       <Field
-        label="Relationship"
-        placeholder="e.g. Father"
+        label={t("clinical:relationship")}
+        placeholder={t("clinical:relationshipPlaceholder")}
         error={errors.relationship?.message}
         {...register("relationship")}
       />
-      <Field label="Condition" error={errors.condition?.message} {...register("condition")} />
-      <Field label="Notes" error={errors.notes?.message} {...register("notes")} />
+      <Field
+        label={t("clinical:condition")}
+        error={errors.condition?.message}
+        {...register("condition")}
+      />
+      <Field label={t("clinical:notes")} error={errors.notes?.message} {...register("notes")} />
       <div className="sm:col-span-3">
         <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Add Entry"}
+          {mutation.isPending ? t("common:saving") : t("clinical:addEntry")}
         </Button>
       </div>
     </form>
@@ -643,17 +685,21 @@ function FamilyHistoryForm({ patientId }: { patientId: string }) {
 }
 
 function FamilyHistorySection({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const { data, isLoading } = useFamilyHistory(patientId);
   const remove = useRemoveFamilyHistory(patientId);
   const canWrite = useCanWrite();
   const list = (data ?? []) as FamilyRow[];
 
   return (
-    <Section title="Family history" addForm={<FamilyHistoryForm patientId={patientId} />}>
+    <Section
+      title={t("clinical:familyHistory")}
+      addForm={<FamilyHistoryForm patientId={patientId} />}
+    >
       {isLoading ? (
-        <EmptyState title="Loading…" />
+        <EmptyState title={t("common:loading")} />
       ) : list.length === 0 ? (
-        <EmptyState title="No family history recorded" />
+        <EmptyState title={t("clinical:noFamilyHistory")} />
       ) : (
         <ul className="space-y-2">
           {list.map((f) => (
@@ -673,7 +719,7 @@ function FamilyHistorySection({ patientId }: { patientId: string }) {
                   className="text-red-600"
                   onClick={() => remove.mutate(f.id)}
                 >
-                  Remove
+                  {t("clinical:remove")}
                 </Button>
               )}
             </li>
@@ -687,6 +733,7 @@ function FamilyHistorySection({ patientId }: { patientId: string }) {
 // ─── Lifestyle ──────────────────────────────────────────────────────────────
 
 function LifestyleSection({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const { data } = useLifestyle(patientId);
   const mutation = useUpsertLifestyle(patientId);
   const canWrite = useCanWrite();
@@ -705,32 +752,40 @@ function LifestyleSection({ patientId }: { patientId: string }) {
   });
 
   return (
-    <Section title="Lifestyle">
+    <Section title={t("clinical:lifestyle")}>
       <form
         className="grid grid-cols-1 gap-3 sm:grid-cols-2"
         onSubmit={handleSubmit((values) => {
           mutation.mutate(values, {
-            onSuccess: () => toast.success("Lifestyle profile updated"),
+            onSuccess: () => toast.success(t("clinical:lifestyleUpdated")),
             onError: (e) => toast.error(e.message),
           });
         })}
       >
         <Field
-          label="Smoking"
+          label={t("clinical:smoking")}
           error={errors.smokingStatus?.message}
           {...register("smokingStatus")}
         />
-        <Field label="Alcohol use" error={errors.alcoholUse?.message} {...register("alcoholUse")} />
         <Field
-          label="Exercise frequency"
+          label={t("clinical:alcoholUse")}
+          error={errors.alcoholUse?.message}
+          {...register("alcoholUse")}
+        />
+        <Field
+          label={t("clinical:exerciseFrequency")}
           error={errors.exerciseFreq?.message}
           {...register("exerciseFreq")}
         />
-        <Field label="Diet notes" error={errors.dietNotes?.message} {...register("dietNotes")} />
+        <Field
+          label={t("clinical:dietNotes")}
+          error={errors.dietNotes?.message}
+          {...register("dietNotes")}
+        />
         {canWrite && (
           <div className="sm:col-span-2">
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving…" : "Save Lifestyle"}
+              {mutation.isPending ? t("common:saving") : t("clinical:saveLifestyle")}
             </Button>
           </div>
         )}
@@ -742,14 +797,16 @@ function LifestyleSection({ patientId }: { patientId: string }) {
 // ─── Panel ──────────────────────────────────────────────────────────────────
 
 export default function HistoryPanel({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["clinical", "common"]);
   const { data: summary } = usePatientHistory(patientId);
 
   return (
     <div className="space-y-4">
       {summary && summary.severeAllergies && summary.severeAllergies.length > 0 && (
         <div className="rounded-lg border border-red-400 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900">
-          ⚠ {summary.severeAllergies.length} severe allerg
-          {summary.severeAllergies.length === 1 ? "y" : "ies"} — see allergy banner
+          {summary.severeAllergies.length === 1
+            ? t("clinical:severeAllergyOne", { count: summary.severeAllergies.length })
+            : t("clinical:severeAllergyMany", { count: summary.severeAllergies.length })}
         </div>
       )}
       <AllergiesSection patientId={patientId} />

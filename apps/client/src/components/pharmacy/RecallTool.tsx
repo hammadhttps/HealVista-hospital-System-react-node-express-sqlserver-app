@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Phone } from "lucide-react";
 import { useMedicines, useRecallPreview, useRecalls } from "../../hooks/queries/useLabAndPharmacy";
 import { useRecallBatch } from "../../hooks/mutations/useLabPharmacyMutations";
@@ -28,6 +29,7 @@ interface AffectedPatient {
  * pharmacist commits, because a recall notifies real patients.
  */
 export default function RecallTool() {
+  const { t } = useTranslation(["pharmacy", "common"]);
   const [medicineId, setMedicineId] = useState("");
   const [batchNumber, setBatchNumber] = useState("");
   const [reason, setReason] = useState("");
@@ -41,14 +43,14 @@ export default function RecallTool() {
 
   const confirmRecall = () => {
     if (!reason.trim()) {
-      toast.error("A recall needs a reason");
+      toast.error(t("pharmacy:recallNeedsReason"));
       return;
     }
     recall.mutate(
       { medicineId, batchNumber: batchNumber.trim(), reason: reason.trim() },
       {
         onSuccess: () => {
-          toast.success(`Recall sent — ${preview.data?.patientsAffected ?? 0} patient(s) notified`);
+          toast.success(t("pharmacy:recallSent", { count: preview.data?.patientsAffected ?? 0 }));
           setBatchNumber("");
           setReason("");
         },
@@ -65,17 +67,17 @@ export default function RecallTool() {
       <Card>
         <CardContent className="space-y-3 p-4">
           <h2 className="flex items-center gap-2 font-semibold">
-            <AlertTriangle className="h-4 w-4 text-amber-600" /> Recall a batch
+            <AlertTriangle className="h-4 w-4 text-amber-600" /> {t("pharmacy:batchRecall")}
           </h2>
 
           <div>
-            <label className="mb-1 block text-sm text-gray-600">Medicine</label>
+            <label className="mb-1 block text-sm text-gray-600">{t("pharmacy:medicine")}</label>
             <select
               className={inputClass}
               value={medicineId}
               onChange={(e) => setMedicineId(e.target.value)}
             >
-              <option value="">Select medicine…</option>
+              <option value="">{t("pharmacy:selectMedicine")}</option>
               {((medicines as unknown as { items: MedicineOption[] } | undefined)?.items ?? []).map(
                 (m) => (
                   <option key={m.id} value={m.id}>
@@ -87,20 +89,20 @@ export default function RecallTool() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-gray-600">Batch number</label>
+            <label className="mb-1 block text-sm text-gray-600">{t("pharmacy:batchNumber")}</label>
             <input
               className={inputClass}
-              placeholder="e.g. AMX-2026-A"
+              placeholder={t("pharmacy:batchNumberPlaceholder")}
               value={batchNumber}
               onChange={(e) => setBatchNumber(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-gray-600">Reason</label>
+            <label className="mb-1 block text-sm text-gray-600">{t("pharmacy:reason")}</label>
             <textarea
               className={`${inputClass} min-h-16`}
-              placeholder="Why is this batch being recalled?"
+              placeholder={t("pharmacy:recallReasonPlaceholder")}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
             />
@@ -108,13 +110,15 @@ export default function RecallTool() {
 
           <div className="flex items-center justify-between pt-1">
             <p className="text-xs text-gray-500">
-              {preview.isFetching ? "Checking ledger…" : `${affected.length} patient(s) affected`}
+              {preview.isFetching
+                ? t("pharmacy:checkingLedger")
+                : t("pharmacy:patientsAffected", { count: affected.length })}
             </p>
             <Button
               onClick={confirmRecall}
               disabled={!medicineId || !batchNumber.trim() || !affected.length || recall.isPending}
             >
-              {recall.isPending ? "Sending…" : "Confirm recall"}
+              {recall.isPending ? t("pharmacy:sending") : t("pharmacy:confirmRecall")}
             </Button>
           </div>
 
@@ -127,14 +131,16 @@ export default function RecallTool() {
                 >
                   <div>
                     <span className="font-medium">{p.fullName}</span>
-                    <span className="ml-2 text-xs text-gray-500">MRN {p.mrn}</span>
+                    <span className="ml-2 text-xs text-gray-500">
+                      {t("pharmacy:mrn", { mrn: p.mrn })}
+                    </span>
                   </div>
                   {p.user?.phone ? (
                     <span className="flex items-center gap-1 text-xs text-gray-500">
                       <Phone className="h-3 w-3" /> {p.user.phone}
                     </span>
                   ) : (
-                    <Badge variant="outline">No phone</Badge>
+                    <Badge variant="outline">{t("pharmacy:noPhone")}</Badge>
                   )}
                 </div>
               ))}
@@ -145,10 +151,13 @@ export default function RecallTool() {
 
       <Card>
         <CardContent className="p-4">
-          <h2 className="mb-3 font-semibold">Past recalls</h2>
+          <h2 className="mb-3 font-semibold">{t("pharmacy:pastRecalls")}</h2>
           {isLoading && <Skeleton className="h-40" />}
           {!isLoading && (!recalls || recalls.length === 0) && (
-            <EmptyState title="No recalls yet" description="Recalled batches appear here." />
+            <EmptyState
+              title={t("pharmacy:noRecallsYet")}
+              description={t("pharmacy:noRecallsYetHint")}
+            />
           )}
           {!isLoading && recalls && recalls.length > 0 && (
             <div className="max-h-96 space-y-2 overflow-y-auto">
@@ -156,14 +165,18 @@ export default function RecallTool() {
                 <div key={r.id} className="rounded-md border px-3 py-2 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="font-medium">
-                      {r.medicine?.name ?? "Medicine"} · batch {r.batchNumber}
+                      {r.medicine?.name ?? t("pharmacy:medicine")} ·{" "}
+                      {t("pharmacy:batchPrefix", { batch: r.batchNumber })}
                     </span>
                     <span className="text-xs text-gray-500">
                       {format(new Date(r.recalledAt), "yyyy-MM-dd")}
                     </span>
                   </div>
                   <div className="mt-1 text-xs text-gray-500">
-                    {r.reason} — {r.patientsNotified} patient(s) notified
+                    {t("pharmacy:patientsNotified", {
+                      reason: r.reason,
+                      count: r.patientsNotified,
+                    })}
                   </div>
                 </div>
               ))}

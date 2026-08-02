@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { UploadCloud, FileText, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { useUploadRecord } from "../../hooks/mutations/useLabPharmacyMutations";
@@ -9,13 +10,13 @@ const ALLOWED_EXTENSIONS = new Set(["pdf", "png", "jpeg", "jpg"]);
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB — matches the server cap.
 
 export const RECORD_CATEGORIES = [
-  { value: "lab_report", label: "Lab report" },
-  { value: "imaging", label: "Imaging" },
-  { value: "prescription", label: "Prescription" },
-  { value: "discharge_summary", label: "Discharge summary" },
-  { value: "referral", label: "Referral" },
-  { value: "insurance", label: "Insurance" },
-  { value: "other", label: "Other" },
+  { value: "lab_report", labelKey: "records:catLabReport" },
+  { value: "imaging", labelKey: "records:catImaging" },
+  { value: "prescription", labelKey: "records:catPrescription" },
+  { value: "discharge_summary", labelKey: "records:catDischargeSummary" },
+  { value: "referral", labelKey: "records:catReferral" },
+  { value: "insurance", labelKey: "records:catInsurance" },
+  { value: "other", labelKey: "records:catOther" },
 ] as const;
 
 interface PendingFile {
@@ -44,6 +45,7 @@ export default function ReportUploader({
   patientId: string;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation(["records", "common"]);
   const upload = useUploadRecord(patientId);
   const [category, setCategory] = useState<string>("other");
   const [dragOver, setDragOver] = useState(false);
@@ -51,8 +53,8 @@ export default function ReportUploader({
 
   function validate(file: File): string | null {
     const ext = (file.name.split(".").pop() ?? "").toLowerCase();
-    if (!ALLOWED_EXTENSIONS.has(ext)) return "Only PDF, PNG and JPEG files are allowed.";
-    if (file.size > MAX_BYTES) return "Files are limited to 10 MB.";
+    if (!ALLOWED_EXTENSIONS.has(ext)) return t("records:onlyPdfPngJpeg");
+    if (file.size > MAX_BYTES) return t("records:sizeLimit");
     return null;
   }
 
@@ -83,11 +85,11 @@ export default function ReportUploader({
       {
         onSuccess: () => {
           update(pf.id, { state: "done" });
-          toast.success(`Uploaded ${pf.file.name}`);
+          toast.success(t("records:uploaded", { name: pf.file.name }));
         },
         onError: () => {
           update(pf.id, { state: "failed" });
-          toast.error(`Failed to upload ${pf.file.name}`);
+          toast.error(t("records:uploadFailed", { name: pf.file.name }));
         },
       },
     );
@@ -126,8 +128,8 @@ export default function ReportUploader({
           aria-disabled={disabled}
         >
           <UploadCloud className="h-8 w-8 text-gray-400" />
-          <p className="text-sm text-gray-600">Drag reports here, or click to choose files</p>
-          <p className="text-xs text-gray-400">PDF, PNG or JPEG — up to 10 MB each</p>
+          <p className="text-sm text-gray-600">{t("records:dragDrop")}</p>
+          <p className="text-xs text-gray-400">{t("records:dragHint")}</p>
           <input
             id="record-file-input"
             type="file"
@@ -174,20 +176,20 @@ export default function ReportUploader({
                     <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                   ) : pf.state === "failed" ? (
                     <Button size="xs" variant="outline" onClick={() => uploadOne(pf)}>
-                      Retry
+                      {t("records:retry")}
                     </Button>
                   ) : (
                     <>
                       {!uploading && (
                         <Button size="xs" variant="outline" onClick={() => uploadOne(pf)}>
-                          Upload
+                          {t("records:upload")}
                         </Button>
                       )}
                       <Button
                         size="icon-xs"
                         variant="ghost"
                         onClick={() => removePending(pf.id)}
-                        aria-label={`Remove ${pf.file.name}`}
+                        aria-label={t("records:removeFile", { name: pf.file.name })}
                       >
                         <X className="h-3.5 w-3.5" />
                       </Button>
@@ -200,7 +202,7 @@ export default function ReportUploader({
         )}
 
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">Category</label>
+          <label className="text-sm text-gray-600">{t("records:category")}</label>
           <select
             className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
             value={category}
@@ -209,13 +211,13 @@ export default function ReportUploader({
           >
             {RECORD_CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
-                {c.label}
+                {t(c.labelKey)}
               </option>
             ))}
           </select>
           {remaining > 0 && (
             <Button size="sm" onClick={uploadAll} disabled={uploading || disabled}>
-              {uploading ? "Uploading…" : `Upload ${remaining}`}
+              {uploading ? t("records:uploading") : t("records:uploadCount", { count: remaining })}
             </Button>
           )}
         </div>

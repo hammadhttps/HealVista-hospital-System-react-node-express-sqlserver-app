@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { CheckCircle2, Lock, ScrollText, Sparkles, Undo2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAppointment } from "../hooks/queries/useAppointments";
 import {
   useConsultationNote,
@@ -54,28 +55,17 @@ const textareaCls =
 
 const SOAP_FIELDS: {
   key: "subjective" | "objective" | "assessment" | "plan";
-  label: string;
-  hint: string;
+  labelKey: string;
+  hintKey: string;
 }[] = [
-  {
-    key: "subjective",
-    label: "Subjective",
-    hint: "Patient's own words — symptoms, history of present illness.",
-  },
-  {
-    key: "objective",
-    label: "Objective",
-    hint: "Observations — vitals, exam findings, test results.",
-  },
-  {
-    key: "assessment",
-    label: "Assessment",
-    hint: "Clinical assessment and differentials. Required to sign.",
-  },
-  { key: "plan", label: "Plan", hint: "Treatment plan, tests, follow-up. Required to sign." },
+  { key: "subjective", labelKey: "soap:soapSubjective", hintKey: "soap:soapSubjectiveHint" },
+  { key: "objective", labelKey: "soap:soapObjective", hintKey: "soap:soapObjectiveHint" },
+  { key: "assessment", labelKey: "soap:soapAssessment", hintKey: "soap:soapAssessmentHint" },
+  { key: "plan", labelKey: "soap:soapPlan", hintKey: "soap:soapPlanHint" },
 ];
 
 export default function SOAPNoteEditor() {
+  const { t } = useTranslation(["soap", "common"]);
   const { appointmentId } = useParams<{ appointmentId: string }>();
 
   const { data: appointment } = useAppointment(appointmentId!);
@@ -176,7 +166,7 @@ export default function SOAPNoteEditor() {
           onSuccess: () => setAutosaveState("saved"),
           onError: () => {
             setAutosaveState("idle");
-            toast.error("Autosave failed");
+            toast.error(t("soap:autosaveFailed"));
           },
         },
       );
@@ -188,13 +178,13 @@ export default function SOAPNoteEditor() {
   const templateList = useMemo(() => (templates ?? []) as NoteTemplateRow[], [templates]);
 
   function applyTemplate(templateId: string) {
-    const t = templateList.find((x) => x.id === templateId);
-    if (!t) return;
-    if (t.subjective) setValue("subjective", t.subjective);
-    if (t.objective) setValue("objective", t.objective);
-    if (t.assessment) setValue("assessment", t.assessment);
-    if (t.plan) setValue("plan", t.plan);
-    toast.success(`Template "${t.name}" applied`);
+    const tmpl = templateList.find((x) => x.id === templateId);
+    if (!tmpl) return;
+    if (tmpl.subjective) setValue("subjective", tmpl.subjective);
+    if (tmpl.objective) setValue("objective", tmpl.objective);
+    if (tmpl.assessment) setValue("assessment", tmpl.assessment);
+    if (tmpl.plan) setValue("plan", tmpl.plan);
+    toast.success(t("soap:templateApplied", { name: tmpl.name }));
   }
 
   function onDraftWithAi() {
@@ -205,9 +195,7 @@ export default function SOAPNoteEditor() {
         setValue("assessment", result.draft.assessment);
         setValue("plan", result.draft.plan);
         setAiDraft(result.draft);
-        toast.success(
-          result.fallback ? "Draft applied (rule-based — AI unavailable)" : "AI draft applied",
-        );
+        toast.success(result.fallback ? t("soap:draftAppliedFallback") : t("soap:draftApplied"));
       },
     });
   }
@@ -222,32 +210,32 @@ export default function SOAPNoteEditor() {
       plan: note?.plan ?? "",
       diagnosisCodes: (note?.diagnosisCodes ?? []).join(", "),
     });
-    toast.info("AI draft discarded");
+    toast.info(t("soap:draftDiscarded"));
   }
 
   function onSign() {
     const { assessment, plan } = values;
     if (isUneditedAiDraft()) {
-      toast.error("Edit the AI draft before signing — an unedited draft cannot become your note");
+      toast.error(t("soap:signEditDraftRequired"));
       return;
     }
     if (!assessment.trim() || !plan.trim()) {
-      toast.error("Assessment and plan are required before signing");
+      toast.error(t("soap:signRequiresAssessmentPlan"));
       return;
     }
     signMutation.mutate(undefined, {
-      onSuccess: () => toast.success("Note signed"),
+      onSuccess: () => toast.success(t("soap:noteSigned")),
       onError: (e) => toast.error(e.message),
     });
   }
 
   function onAddendum(content: string) {
     if (!content.trim()) {
-      toast.error("An addendum needs content");
+      toast.error(t("soap:addendumNeedsContent"));
       return;
     }
     addendumMutation.mutate(content, {
-      onSuccess: () => toast.success("Addendum added"),
+      onSuccess: () => toast.success(t("soap:addendumAdded")),
       onError: (e) => toast.error(e.message),
     });
   }
@@ -262,14 +250,16 @@ export default function SOAPNoteEditor() {
       {/* Appointment header */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold">{appointment?.patient?.fullName ?? "Consultation"}</h1>
+          <h1 className="text-2xl font-bold">
+            {appointment?.patient?.fullName ?? t("soap:consultationFallback")}
+          </h1>
           {appointment?.patient?.mrn && (
             <span className="font-mono text-sm text-gray-500">{appointment.patient.mrn}</span>
           )}
           {signed ? (
-            <Badge variant="default">Signed</Badge>
+            <Badge variant="default">{t("soap:signed")}</Badge>
           ) : (
-            <Badge variant="warning">Draft</Badge>
+            <Badge variant="warning">{t("soap:draft")}</Badge>
           )}
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-600">
@@ -278,10 +268,12 @@ export default function SOAPNoteEditor() {
             <span>{new Date(appointment.slot.startTime).toLocaleString()}</span>
           )}
           <span className="flex items-center gap-1">
-            {autosaveState === "saving" && <span className="text-gray-400">Saving…</span>}
+            {autosaveState === "saving" && (
+              <span className="text-gray-400">{t("soap:saving")}</span>
+            )}
             {autosaveState === "saved" && (
               <span className="flex items-center gap-1 text-emerald-600">
-                <CheckCircle2 className="h-4 w-4" /> Saved
+                <CheckCircle2 className="h-4 w-4" /> {t("soap:saved")}
               </span>
             )}
           </span>
@@ -290,14 +282,13 @@ export default function SOAPNoteEditor() {
 
       {!note && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
-          No note yet — start typing; drafts autosave.
+          {t("soap:noNoteYet")}
         </div>
       )}
 
       {locked && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800">
-          <Lock className="h-4 w-4" /> This note is locked. Add an addendum below — a signed note is
-          not edited after 24 hours.
+          <Lock className="h-4 w-4" /> {t("soap:lockedHint")}
         </div>
       )}
 
@@ -307,7 +298,7 @@ export default function SOAPNoteEditor() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between gap-2 text-base">
               <span className="flex items-center gap-2">
-                <ScrollText className="h-4 w-4" /> SOAP note
+                <ScrollText className="h-4 w-4" /> {t("soap:title")}
               </span>
               <span className="flex items-center gap-2">
                 {aiDraft && (
@@ -316,9 +307,9 @@ export default function SOAPNoteEditor() {
                     variant="outline"
                     onClick={discardAiDraft}
                     disabled={locked}
-                    title="Remove the AI draft and revert to the saved note"
+                    title={t("soap:discardTitle")}
                   >
-                    <Undo2 className="h-3.5 w-3.5" /> Discard
+                    <Undo2 className="h-3.5 w-3.5" /> {t("soap:discard")}
                   </Button>
                 )}
                 {templateList.length > 0 && (
@@ -327,10 +318,10 @@ export default function SOAPNoteEditor() {
                     value=""
                     onChange={(e) => e.target.value && applyTemplate(e.target.value)}
                   >
-                    <option value="">Apply template…</option>
-                    {templateList.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
+                    <option value="">{t("soap:applyTemplate")}</option>
+                    {templateList.map((tmpl) => (
+                      <option key={tmpl.id} value={tmpl.id}>
+                        {tmpl.name}
                       </option>
                     ))}
                   </select>
@@ -342,16 +333,11 @@ export default function SOAPNoteEditor() {
                   disabled={locked || draftMutation.isPending}
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  {draftMutation.isPending ? "Drafting…" : "Draft with AI"}
+                  {draftMutation.isPending ? t("soap:drafting") : t("soap:draftWithAi")}
                 </Button>
               </span>
             </CardTitle>
-            {aiDraft && (
-              <p className="text-xs text-blue-700">
-                AI draft applied — sections you haven't edited are highlighted. The note is not
-                saved until you edit and it autosaves.
-              </p>
-            )}
+            {aiDraft && <p className="text-xs text-blue-700">{t("soap:aiDraftAppliedHint")}</p>}
           </CardHeader>
           <CardContent className="space-y-4">
             <form id="soap-form" onSubmit={handleSubmit(() => {})}>
@@ -360,11 +346,11 @@ export default function SOAPNoteEditor() {
                 return (
                   <div key={f.key} className="space-y-1">
                     <label className={labelCls}>
-                      {f.label}{" "}
-                      <span className="text-xs font-normal text-gray-400">— {f.hint}</span>
+                      {t(f.labelKey)}{" "}
+                      <span className="text-xs font-normal text-gray-400">— {t(f.hintKey)}</span>
                       {aiUnedited && (
                         <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-                          <Sparkles className="h-3 w-3" /> AI
+                          <Sparkles className="h-3 w-3" /> {t("soap:aiBadge")}
                         </span>
                       )}
                     </label>
@@ -373,18 +359,18 @@ export default function SOAPNoteEditor() {
                         aiUnedited ? "border-blue-300 bg-blue-50/60 focus:border-blue-500" : ""
                       }`}
                       disabled={locked}
-                      placeholder={f.label}
+                      placeholder={t(f.labelKey)}
                       {...register(f.key)}
                     />
                   </div>
                 );
               })}
               <div className="space-y-1">
-                <label className={labelCls}>Diagnosis codes</label>
+                <label className={labelCls}>{t("soap:diagnosisCodes")}</label>
                 <input
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
                   disabled={locked}
-                  placeholder="Comma separated, e.g. I10, E11.9"
+                  placeholder={t("soap:diagnosisCodesPlaceholder")}
                   {...register("diagnosisCodes")}
                 />
               </div>
@@ -392,7 +378,7 @@ export default function SOAPNoteEditor() {
 
             {draftMutation.isPending && (
               <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
-                Assembling a draft from this visit's complaint, vitals, and recent labs…
+                {t("soap:draftingNotice")}
               </div>
             )}
 
@@ -401,17 +387,17 @@ export default function SOAPNoteEditor() {
             {!locked && (
               <div className="flex items-center justify-between">
                 <Button form="soap-form" type="submit" disabled={saveMutation.isPending}>
-                  Save draft
+                  {t("soap:saveDraft")}
                 </Button>
                 <Button onClick={onSign} disabled={signMutation.isPending}>
-                  {signMutation.isPending ? "Signing…" : "Sign note"}
+                  {signMutation.isPending ? t("soap:signing") : t("soap:signNote")}
                 </Button>
               </div>
             )}
 
             {noteRow && noteRow.addenda && noteRow.addenda.length > 0 && (
               <div className="space-y-2 border-t border-gray-100 pt-4">
-                <p className="text-sm font-semibold text-gray-700">Addenda</p>
+                <p className="text-sm font-semibold text-gray-700">{t("soap:addenda")}</p>
                 {noteRow.addenda.map((a) => (
                   <div
                     key={a.id}
@@ -435,11 +421,11 @@ export default function SOAPNoteEditor() {
           {patientId && <LatestVitalsCard patientId={patientId} />}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Previous visit</CardTitle>
+              <CardTitle className="text-base">{t("soap:previousVisit")}</CardTitle>
             </CardHeader>
             <CardContent>
               {!prevNote ? (
-                <EmptyState title="No previous note" />
+                <EmptyState title={t("soap:noPreviousNote")} />
               ) : (
                 <div className="space-y-3 text-sm">
                   {(["subjective", "objective", "assessment", "plan"] as const).map((k) => (
@@ -459,13 +445,14 @@ export default function SOAPNoteEditor() {
 }
 
 function AddendumForm({ onSubmit, pending }: { onSubmit: (c: string) => void; pending: boolean }) {
+  const { t } = useTranslation(["soap"]);
   const [content, setContent] = useState("");
   return (
     <div className="space-y-2 border-t border-gray-100 pt-4">
-      <p className="text-sm font-semibold text-gray-700">Add addendum</p>
+      <p className="text-sm font-semibold text-gray-700">{t("soap:addAddendum")}</p>
       <textarea
         className={textareaCls}
-        placeholder="Correction or follow-up note…"
+        placeholder={t("soap:addendumPlaceholder")}
         value={content}
         onChange={(e) => setContent(e.target.value)}
       />
@@ -477,7 +464,7 @@ function AddendumForm({ onSubmit, pending }: { onSubmit: (c: string) => void; pe
           setContent("");
         }}
       >
-        {pending ? "Adding…" : "Add addendum"}
+        {pending ? t("soap:adding") : t("soap:addAddendum")}
       </Button>
     </div>
   );

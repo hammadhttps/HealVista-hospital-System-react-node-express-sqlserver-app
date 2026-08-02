@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { Download } from "lucide-react";
 import { usePatientRecords, useMyRecords } from "../../hooks/queries/useLabAndPharmacy";
@@ -27,6 +28,7 @@ export default function RecordsPanel({
   canUpload?: boolean;
   canDelete?: boolean;
 }) {
+  const { t } = useTranslation(["records", "common"]);
   const [category, setCategory] = useState<string>("");
   const [exporting, setExporting] = useState(false);
 
@@ -55,9 +57,9 @@ export default function RecordsPanel({
       a.download = "health-vault.pdf";
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Health vault downloaded");
+      toast.success(t("records:vaultDownloaded"));
     } catch (e) {
-      toast.error((e as Error).message || "Export failed");
+      toast.error((e as Error).message || t("records:exportFailed"));
     } finally {
       setExporting(false);
     }
@@ -67,22 +69,22 @@ export default function RecordsPanel({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">Filter</label>
+          <label className="text-sm text-gray-600">{t("common:filter")}</label>
           <select
             className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
-            <option value="">All categories</option>
+            <option value="">{t("records:allCategories")}</option>
             {RECORD_CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>
-                {c.label}
+                {t(c.labelKey)}
               </option>
             ))}
           </select>
         </div>
         <Button variant="outline" size="sm" onClick={exportVault} disabled={exporting}>
-          <Download className="h-4 w-4" /> Export vault (PDF)
+          <Download className="h-4 w-4" /> {t("records:exportVault")}
         </Button>
       </div>
 
@@ -95,9 +97,9 @@ export default function RecordsPanel({
             isLoading={isLoading}
             canDelete={canDelete}
             onDelete={(id, title) => {
-              if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
+              if (!window.confirm(t("records:deleteConfirm", { title }))) return;
               deleteRecord.mutate(id, {
-                onSuccess: () => toast.success("Record deleted"),
+                onSuccess: () => toast.success(t("records:deleted")),
                 onError: (e) => toast.error(e.message),
               });
             }}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useMyAppointments } from "../hooks/queries/useAppointments";
 import { useCancelAppointment, useCheckIn } from "../hooks/mutations/useAppointmentMutations";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
@@ -11,13 +12,6 @@ import { AppointmentQR } from "../components/appointments/AppointmentQR";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-const STATUS_TABS = [
-  { value: "", label: "All" },
-  { value: "CONFIRMED", label: "Upcoming" },
-  { value: "COMPLETED", label: "Completed" },
-  { value: "CANCELLED", label: "Cancelled" },
-];
-
 const statusColor: Record<string, string> = {
   PENDING_PAYMENT: "warning",
   CONFIRMED: "default",
@@ -29,9 +23,17 @@ const statusColor: Record<string, string> = {
 };
 
 export default function MyAppointments() {
+  const { t } = useTranslation(["appointments", "common", "nav"]);
   const [tab, setTab] = useState("");
   const cancelMutation = useCancelAppointment();
   const checkInMutation = useCheckIn();
+
+  const STATUS_TABS = [
+    { value: "", label: t("common:all") },
+    { value: "CONFIRMED", label: t("appointments:upcoming") },
+    { value: "COMPLETED", label: t("appointments:completed") },
+    { value: "CANCELLED", label: t("appointments:cancelled") },
+  ];
 
   const filters: Record<string, unknown> = {};
   if (tab) filters.status = tab;
@@ -41,36 +43,36 @@ export default function MyAppointments() {
   const meta = data?.meta;
 
   const handleCancel = (id: string) => {
-    const reason = prompt("Reason for cancellation:");
+    const reason = prompt(t("appointments:cancelReasonPrompt"));
     if (!reason) return;
     cancelMutation.mutate(
       { id, reason },
-      { onSuccess: () => toast.success("Appointment cancelled") },
+      { onSuccess: () => toast.success(t("appointments:cancelledToast")) },
     );
   };
 
   const handleCheckIn = (qrToken: string) => {
     checkInMutation.mutate(qrToken, {
-      onSuccess: () => toast.success("Checked in!"),
-      onError: (err: any) => toast.error(err?.message || "Check-in failed"),
+      onSuccess: () => toast.success(t("appointments:checkedInToast")),
+      onError: (err: any) => toast.error(err?.message || t("appointments:checkInFailed")),
     });
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">My Appointments</h1>
+      <h1 className="text-2xl font-bold">{t("nav:myAppointments")}</h1>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          {STATUS_TABS.map((t) => (
-            <TabsTrigger key={t.value} value={t.value}>
-              {t.label}
+          {STATUS_TABS.map((tabItem) => (
+            <TabsTrigger key={tabItem.value} value={tabItem.value}>
+              {tabItem.label}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {STATUS_TABS.map((t) => (
-          <TabsContent key={t.value} value={t.value}>
+        {STATUS_TABS.map((tabItem) => (
+          <TabsContent key={tabItem.value} value={tabItem.value}>
             {isLoading && (
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -81,8 +83,8 @@ export default function MyAppointments() {
 
             {!isLoading && appointments.length === 0 && (
               <EmptyState
-                title="No appointments"
-                description="Book your first appointment to get started."
+                title={t("appointments:emptyTitle")}
+                description={t("appointments:emptyDescription")}
               />
             )}
 
@@ -91,12 +93,14 @@ export default function MyAppointments() {
                 {appointments.map((apt: any) => (
                   <Card key={apt.id}>
                     <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="text-lg">Dr. {apt.doctor?.fullName}</CardTitle>
+                      <CardTitle className="text-lg">
+                        {t("appointments:doctor", { name: apt.doctor?.fullName })}
+                      </CardTitle>
                       <Badge variant={statusColor[apt.status] as any}>{apt.status}</Badge>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       <p className="text-sm text-muted-foreground">
-                        Appointment #{apt.appointmentNo}
+                        {t("appointments:number", { no: apt.appointmentNo })}
                       </p>
                       {apt.slot && (
                         <p className="text-sm">
@@ -112,7 +116,7 @@ export default function MyAppointments() {
                               onClick={() => handleCheckIn(apt.qrToken)}
                               disabled={checkInMutation.isPending}
                             >
-                              Check In
+                              {t("appointments:checkIn")}
                             </Button>
                             <Button
                               size="sm"
@@ -120,13 +124,17 @@ export default function MyAppointments() {
                               onClick={() => handleCancel(apt.id)}
                               disabled={cancelMutation.isPending}
                             >
-                              Cancel
+                              {t("common:cancel")}
                             </Button>
                           </>
                         )}
-                        {apt.qrToken && (apt.status === "CONFIRMED" || apt.status === "CHECKED_IN") && (
-                          <AppointmentQR qrToken={apt.qrToken} appointmentNo={apt.appointmentNo} />
-                        )}
+                        {apt.qrToken &&
+                          (apt.status === "CONFIRMED" || apt.status === "CHECKED_IN") && (
+                            <AppointmentQR
+                              qrToken={apt.qrToken}
+                              appointmentNo={apt.appointmentNo}
+                            />
+                          )}
                       </div>
                     </CardContent>
                   </Card>

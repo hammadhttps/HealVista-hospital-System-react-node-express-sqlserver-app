@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { LogIn, HeartPulse } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useLogin } from "../hooks/mutations/useAuthMutations";
 import { getErrorMessage } from "../utils/errors";
 import { API_URL } from "../api/axiosClient";
@@ -9,6 +10,7 @@ import { API_URL } from "../api/axiosClient";
 const GOOGLE_AUTH_URL = `${API_URL}/auth/google`;
 
 export default function LoginPage() {
+  const { t } = useTranslation(["auth", "common"]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const login = useLogin();
@@ -28,43 +30,47 @@ export default function LoginPage() {
       <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
           <HeartPulse className="w-12 h-12 text-green-600 mb-2" />
-          <h1 className="text-3xl font-bold text-green-800">HealVista</h1>
-          <p className="text-green-600 text-sm mt-1">Hospital Management System</p>
+          <h1 className="text-3xl font-bold text-green-800">{t("common:appName")}</h1>
+          <p className="text-green-600 text-sm mt-1">{t("common:tagline")}</p>
         </div>
 
         {oauthError && (
           <div role="alert" className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-            {oauthError === "oauth" ? "Google sign-in was cancelled or failed." : oauthError}
+            {oauthError === "oauth" ? t("auth:oauthCancelled") : oauthError}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-600 mb-1">
+              {t("auth:email")}
+            </label>
             <input
               type="email"
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="you@example.com"
+              placeholder={t("auth:emailPlaceholder")}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-600 mb-1">
+              {t("auth:password")}
+            </label>
             <input
               type="password"
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Enter password"
+              placeholder={t("auth:passwordPlaceholder")}
             />
           </div>
 
           {login.isError && (
             <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg">
-              {getErrorMessage(login.error, "Login failed")}
+              {getErrorMessage(login.error, t("auth:loginFailed"))}
             </div>
           )}
 
@@ -77,7 +83,7 @@ export default function LoginPage() {
               <span className="animate-spin">⏳</span>
             ) : (
               <>
-                <LogIn className="w-5 h-5" /> Sign In
+                <LogIn className="w-5 h-5" /> {t("auth:signIn")}
               </>
             )}
           </button>
@@ -94,7 +100,9 @@ export default function LoginPage() {
               className="absolute inset-x-0 top-1/2 border-t border-gray-200"
               aria-hidden="true"
             />
-            <span className="relative bg-white px-3 text-xs text-gray-400">Patients can also</span>
+            <span className="relative bg-white px-3 text-xs text-gray-400">
+              {t("auth:patientsCanAlso")}
+            </span>
           </div>
 
           <a
@@ -102,12 +110,10 @@ export default function LoginPage() {
             className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 py-3 font-medium text-gray-700 transition hover:bg-gray-50"
           >
             <GoogleMark />
-            Continue with Google
+            {t("auth:continueWithGoogle")}
           </a>
 
-          <p className="mt-3 text-center text-xs text-gray-400">
-            Staff members must sign in with their hospital credentials above.
-          </p>
+          <p className="mt-3 text-center text-xs text-gray-400">{t("auth:staffUseCredentials")}</p>
         </div>
       </div>
     </div>

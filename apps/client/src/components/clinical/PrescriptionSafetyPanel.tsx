@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Badge } from "../ui/badge";
 import { Card, CardContent } from "../ui/card";
 
@@ -12,6 +13,12 @@ export interface SafetyWarning {
   drugB?: string;
   description?: string;
 }
+
+const SEVERITY_KEYS: Record<string, string> = {
+  MILD: "prescription:severityMild",
+  MODERATE: "prescription:severityModerate",
+  SEVERE: "prescription:severitySevere",
+};
 
 export function warningKey(w: SafetyWarning): string {
   return w.kind === "allergy"
@@ -37,11 +44,13 @@ export function PrescriptionSafetyPanel({
   acknowledged: Set<string>;
   onToggleAcknowledge: (key: string) => void;
 }) {
+  const { t } = useTranslation(["prescription", "common"]);
+
   if (warnings.length === 0) {
     return (
       <Card className="border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950">
         <CardContent className="p-4 text-sm text-emerald-900 dark:text-emerald-100">
-          No allergy conflicts or known interactions found for these medicines.
+          {t("prescription:noConflicts")}
         </CardContent>
       </Card>
     );
@@ -59,19 +68,22 @@ export function PrescriptionSafetyPanel({
         >
           <CardContent className="space-y-1 p-4">
             <div className="flex items-center gap-2">
-              <Badge variant="destructive">Blocked</Badge>
-              <Badge variant="destructive">{w.severity}</Badge>
+              <Badge variant="destructive">{t("prescription:blocked")}</Badge>
+              <Badge variant="destructive">{t(SEVERITY_KEYS[w.severity] ?? w.severity)}</Badge>
             </div>
             <p className="font-semibold text-red-900 dark:text-red-100">
-              {w.medicineName} conflicts with a recorded severe allergy to {w.allergen}
+              {t("prescription:conflictsWithAllergy", {
+                medicine: w.medicineName,
+                allergen: w.allergen,
+              })}
             </p>
             {w.reaction && (
               <p className="text-sm text-red-800 dark:text-red-200">
-                Recorded reaction: {w.reaction}
+                {t("prescription:recordedReaction", { reaction: w.reaction })}
               </p>
             )}
             <p className="text-sm text-red-800 dark:text-red-200">
-              This cannot be overridden. Remove the medicine or choose an alternative.
+              {t("prescription:cannotOverride")}
             </p>
           </CardContent>
         </Card>
@@ -86,20 +98,31 @@ export function PrescriptionSafetyPanel({
           >
             <CardContent className="space-y-2 p-4">
               <div className="flex items-center gap-2">
-                <Badge variant="warning">{w.severity}</Badge>
+                <Badge variant="warning">{t(SEVERITY_KEYS[w.severity] ?? w.severity)}</Badge>
                 <span className="text-xs uppercase tracking-wide text-amber-800 dark:text-amber-200">
-                  {w.kind}
+                  {t(
+                    w.kind === "allergy"
+                      ? "prescription:kindAllergy"
+                      : "prescription:kindInteraction",
+                  )}
                 </span>
               </div>
 
               {w.kind === "allergy" ? (
                 <p className="font-medium text-amber-900 dark:text-amber-100">
-                  {w.medicineName} may conflict with a recorded allergy to {w.allergen}
-                  {w.reaction ? ` (${w.reaction})` : ""}
+                  {t("prescription:mayConflictWithAllergy", {
+                    medicine: w.medicineName,
+                    allergen: w.allergen,
+                    reaction: w.reaction ? ` (${w.reaction})` : "",
+                  })}
                 </p>
               ) : (
                 <p className="font-medium text-amber-900 dark:text-amber-100">
-                  {w.drugA} + {w.drugB}: {w.description}
+                  {t("prescription:interactionDescription", {
+                    drugA: w.drugA,
+                    drugB: w.drugB,
+                    description: w.description,
+                  })}
                 </p>
               )}
 
@@ -110,10 +133,7 @@ export function PrescriptionSafetyPanel({
                   checked={acknowledged.has(key)}
                   onChange={() => onToggleAcknowledge(key)}
                 />
-                <span>
-                  I have reviewed this warning and am prescribing anyway. This
-                  acknowledgement is recorded against my name.
-                </span>
+                <span>{t("prescription:reviewWarningAck")}</span>
               </label>
             </CardContent>
           </Card>

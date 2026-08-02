@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -21,16 +22,22 @@ import { useLatestVitals, useVitals } from "../../hooks/queries/useClinical";
 import { useRecordVitals } from "../../hooks/mutations/useClinicalMutations";
 import { useAuthStore } from "../../store/authStore";
 
-export const VITAL_META: Record<string, { label: string; unit: string }> = {
-  height_cm: { label: "Height", unit: "cm" },
-  weight_kg: { label: "Weight", unit: "kg" },
-  systolic_bp: { label: "Systolic BP", unit: "mmHg" },
-  diastolic_bp: { label: "Diastolic BP", unit: "mmHg" },
-  heart_rate: { label: "Heart rate", unit: "bpm" },
-  temperature_c: { label: "Temperature", unit: "°C" },
-  spo2: { label: "SpO₂", unit: "%" },
-  blood_glucose: { label: "Blood glucose", unit: "mg/dL" },
-  respiratory_rate: { label: "Respiratory rate", unit: "breaths/min" },
+export const VITAL_META: Record<string, { labelKey: string; unit: string }> = {
+  height_cm: { labelKey: "vitals:labelHeight", unit: "cm" },
+  weight_kg: { labelKey: "vitals:labelWeight", unit: "kg" },
+  systolic_bp: { labelKey: "vitals:labelSystolicBp", unit: "mmHg" },
+  diastolic_bp: { labelKey: "vitals:labelDiastolicBp", unit: "mmHg" },
+  heart_rate: { labelKey: "vitals:labelHeartRate", unit: "bpm" },
+  temperature_c: { labelKey: "vitals:labelTemperature", unit: "°C" },
+  spo2: { labelKey: "vitals:labelSpo2", unit: "%" },
+  blood_glucose: { labelKey: "vitals:labelBloodGlucose", unit: "mg/dL" },
+  respiratory_rate: { labelKey: "vitals:labelRespiratoryRate", unit: "breaths/min" },
+};
+
+const FLAG_KEYS: Record<string, string> = {
+  LOW: "vitals:flagLow",
+  NORMAL: "vitals:flagNormal",
+  HIGH: "vitals:flagHigh",
 };
 
 interface VitalRow {
@@ -50,22 +57,23 @@ function flagTone(flag?: string) {
 }
 
 export function LatestVitalsCard({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["vitals", "common"]);
   const { data, isLoading } = useLatestVitals(patientId);
 
   if (isLoading)
     return (
       <Card>
-        <CardContent className="p-4 text-sm text-gray-500">Loading latest vitals…</CardContent>
+        <CardContent className="p-4 text-sm text-gray-500">{t("vitals:loadingLatest")}</CardContent>
       </Card>
     );
   if (!data || data.vitals.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Latest vitals</CardTitle>
+          <CardTitle className="text-base">{t("vitals:latestVitals")}</CardTitle>
         </CardHeader>
         <CardContent>
-          <EmptyState title="No vitals recorded" />
+          <EmptyState title={t("vitals:noVitalsRecorded")} />
         </CardContent>
       </Card>
     );
@@ -75,10 +83,10 @@ export function LatestVitalsCard({ patientId }: { patientId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          Latest vitals
+          {t("vitals:latestVitals")}
           {data.bmi && (
             <Badge variant="outline">
-              BMI {data.bmi.value} · {data.bmi.category}
+              {t("vitals:bmiValue", { value: data.bmi.value, category: data.bmi.category })}
             </Badge>
           )}
         </CardTitle>
@@ -87,9 +95,11 @@ export function LatestVitalsCard({ patientId }: { patientId: string }) {
         {(data.vitals as VitalRow[]).map((v) => (
           <div key={v.type} className="rounded-md border border-gray-200 p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-gray-500">{VITAL_META[v.type]?.label ?? v.type}</span>
+              <span className="text-xs text-gray-500">
+                {VITAL_META[v.type] ? t(VITAL_META[v.type].labelKey) : v.type}
+              </span>
               <Badge variant={flagTone(v.flag) as "warning" | "outline"} className="text-[10px]">
-                {v.flag}
+                {v.flag ? t(FLAG_KEYS[v.flag] ?? v.flag) : ""}
               </Badge>
             </div>
             <div className="mt-1 text-lg font-semibold">
@@ -110,6 +120,7 @@ function VitalsEntryForm({
   patientId: string;
   appointmentId?: string;
 }) {
+  const { t } = useTranslation(["vitals", "common"]);
   const mutation = useRecordVitals(patientId);
   const canWrite = useAuthStore((s) => s.user?.role);
   const {
@@ -126,7 +137,7 @@ function VitalsEntryForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Record vitals</CardTitle>
+        <CardTitle className="text-base">{t("vitals:recordVitals")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form
@@ -136,14 +147,14 @@ function VitalsEntryForm({
               .filter((r) => r.type && r.value !== undefined && Number.isFinite(Number(r.value)))
               .map((r) => ({ type: r.type, value: Number(r.value) }));
             if (readings.length === 0) {
-              toast.error("Enter at least one reading");
+              toast.error(t("vitals:atLeastOneReading"));
               return;
             }
             mutation.mutate(
               { readings, appointmentId },
               {
                 onSuccess: () => {
-                  toast.success("Vitals recorded");
+                  toast.success(t("vitals:recordedToast"));
                   reset({ readings: [] });
                 },
                 onError: (e) => toast.error(e.message),
@@ -154,10 +165,10 @@ function VitalsEntryForm({
           {errors.readings && (
             <p className="col-span-full text-xs text-red-600">{errors.readings.message}</p>
           )}
-          {types.map((t, i) => (
-            <div key={t} className="flex flex-col">
+          {types.map((k, i) => (
+            <div key={k} className="flex flex-col">
               <label className="mb-1 text-xs font-medium text-gray-600">
-                {VITAL_META[t].label} ({VITAL_META[t].unit})
+                {t(VITAL_META[k].labelKey)} ({VITAL_META[k].unit})
               </label>
               <input
                 type="number"
@@ -166,12 +177,12 @@ function VitalsEntryForm({
                 placeholder="—"
                 {...register(`readings.${i}.value`, { valueAsNumber: true })}
               />
-              <input type="hidden" value={t} {...register(`readings.${i}.type`)} />
+              <input type="hidden" value={k} {...register(`readings.${i}.type`)} />
             </div>
           ))}
           <div className="col-span-full">
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? "Saving…" : "Save readings"}
+              {mutation.isPending ? t("common:saving") : t("vitals:saveReadings")}
             </Button>
           </div>
         </form>
@@ -181,6 +192,7 @@ function VitalsEntryForm({
 }
 
 function VitalsChart({ patientId }: { patientId: string }) {
+  const { t } = useTranslation(["vitals", "common"]);
   const [type, setType] = useState<string>("heart_rate");
   const { data, isLoading } = useVitals(patientId, { type });
 
@@ -194,15 +206,15 @@ function VitalsChart({ patientId }: { patientId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-2 text-base">
-          Trend
+          {t("vitals:trend")}
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
             className="rounded-md border border-gray-300 px-2 py-1 text-sm"
           >
-            {Object.keys(VITAL_META).map((t) => (
-              <option key={t} value={t}>
-                {VITAL_META[t].label}
+            {Object.keys(VITAL_META).map((k) => (
+              <option key={k} value={k}>
+                {t(VITAL_META[k].labelKey)}
               </option>
             ))}
           </select>
@@ -210,9 +222,9 @@ function VitalsChart({ patientId }: { patientId: string }) {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <EmptyState title="Loading…" />
+          <EmptyState title={t("common:loading")} />
         ) : chartData.length < 2 ? (
-          <EmptyState title="Not enough readings to chart yet" />
+          <EmptyState title={t("vitals:notEnoughReadings")} />
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>

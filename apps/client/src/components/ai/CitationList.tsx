@@ -1,19 +1,23 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { ExternalLink } from "lucide-react";
 import type { AICitation, KbCitation } from "../../api/ai";
 
 export type Citation = AICitation | KbCitation;
 
-const SOURCE_LABELS: Record<string, string> = {
-  consultation_note: "Consultation note",
-  lab_report: "Lab report",
-  prescription: "Prescription",
-  medical_record: "Medical record",
-  kb_article: "KB article",
+const SOURCE_LABEL_KEYS: Record<string, string> = {
+  consultation_note: "ai:sourceConsultationNote",
+  lab_report: "ai:sourceLabReport",
+  prescription: "ai:sourcePrescription",
+  medical_record: "ai:sourceMedicalRecord",
+  kb_article: "ai:sourceKbArticle",
 };
 
-function sourceLabel(sourceType: string): string {
-  return SOURCE_LABELS[sourceType] ?? sourceType.replace(/_/g, " ");
+function sourceLabel(sourceType: string, t: TFunction): string {
+  const key = SOURCE_LABEL_KEYS[sourceType];
+  if (key) return t(key);
+  return sourceType.replace(/_/g, " ");
 }
 
 /**
@@ -43,18 +47,21 @@ export default function CitationList({
   role?: string;
   className?: string;
 }) {
+  const { t } = useTranslation(["ai"]);
   if (!citations.length) return null;
 
   return (
     <div className={`space-y-1 ${className}`}>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Sources</p>
+      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+        {t("ai:sources")}
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {citations.map((c, i) => {
           const href = citationHref(c, role);
           const label =
             c.sourceType === "kb_article" && "title" in c && c.title
               ? c.title
-              : sourceLabel(c.sourceType);
+              : sourceLabel(c.sourceType, t);
           return (
             <Link
               key={`${c.sourceType}-${c.sourceId}-${i}`}

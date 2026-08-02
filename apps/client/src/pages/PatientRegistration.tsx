@@ -70,7 +70,7 @@ export default function PatientRegistration() {
           <div>
             <label className="block text-sm font-medium">{t("patients:bloodGroup")}</label>
             <select {...register("bloodGroup")} className="w-full border p-2 rounded">
-              <option value="">Select</option>
+              <option value="">{t("patients:select")}</option>
               {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
                 <option key={bg} value={bg}>
                   {bg}

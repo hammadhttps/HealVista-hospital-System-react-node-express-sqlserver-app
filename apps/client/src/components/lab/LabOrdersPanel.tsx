@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { FlaskConical, RotateCcw } from "lucide-react";
 import { useMyLabOrders, usePatientLabOrders } from "../../hooks/queries/useLabAndPharmacy";
@@ -51,6 +52,21 @@ const statusVariant: Record<
   CANCELLED: "destructive",
 };
 
+const STATUS_KEYS: Record<string, string> = {
+  ORDERED: "lab:statusOrdered",
+  SAMPLE_COLLECTED: "lab:statusSampleCollected",
+  TESTING: "lab:statusTesting",
+  COMPLETED: "lab:statusCompleted",
+  VERIFIED: "lab:statusVerified",
+  CANCELLED: "lab:statusCancelled",
+};
+
+const FLAG_KEYS: Record<string, string> = {
+  CRITICAL: "lab:critical",
+  HIGH: "lab:high",
+  LOW: "lab:low",
+};
+
 /** Out-of-range highlighting: flags are loud, CRITICAL is unmissable. */
 function resultClass(flag: string | null): string {
   if (flag === "CRITICAL") return "font-bold text-red-700 bg-red-50 px-1 rounded";
@@ -73,6 +89,7 @@ export default function LabOrdersPanel({
   mine?: boolean;
   canOrder?: boolean;
 }) {
+  const { t } = useTranslation(["lab", "common"]);
   const [orderOpen, setOrderOpen] = useState(false);
   const [retestReason, setRetestReason] = useState("");
   const [retestOrderId, setRetestOrderId] = useState<string | null>(null);
@@ -85,14 +102,14 @@ export default function LabOrdersPanel({
 
   const confirmRetest = (orderId: string) => {
     if (!retestReason.trim()) {
-      toast.error("A retest needs a reason");
+      toast.error(t("lab:retestNeedsReason"));
       return;
     }
     retest.mutate(
       { id: orderId, reason: retestReason.trim() },
       {
         onSuccess: () => {
-          toast.success("Retest ordered");
+          toast.success(t("lab:retestOrdered"));
           setRetestReason("");
           setRetestOrderId(null);
         },
@@ -106,7 +123,7 @@ export default function LabOrdersPanel({
       <div className="flex justify-end">
         {canOrder && (
           <Button size="sm" onClick={() => setOrderOpen(true)}>
-            <FlaskConical className="h-4 w-4" /> Order lab tests
+            <FlaskConical className="h-4 w-4" /> {t("lab:orderLabTests")}
           </Button>
         )}
       </div>
@@ -114,10 +131,7 @@ export default function LabOrdersPanel({
       {isLoading && <Skeleton className="h-64" />}
 
       {!isLoading && orders.length === 0 && (
-        <EmptyState
-          title="No lab orders"
-          description="Tests ordered for this patient appear here."
-        />
+        <EmptyState title={t("lab:emptyTitle")} description={t("lab:emptyDescription")} />
       )}
 
       {!isLoading &&
@@ -129,16 +143,20 @@ export default function LabOrdersPanel({
                   <span className="font-semibold">{order.orderNumber}</span>
                   {order.isRetest && (
                     <Badge className="ml-2" variant="warning">
-                      Retest
+                      {t("lab:retest")}
                     </Badge>
                   )}
                   <span className="ml-2 text-xs text-gray-500">
                     {format(new Date(order.orderedAt), "yyyy-MM-dd HH:mm")}
                     {order.patient ? ` · ${order.patient.fullName} (${order.patient.mrn})` : ""}
-                    {order.doctor ? ` · Dr. ${order.doctor.fullName}` : ""}
+                    {order.doctor
+                      ? ` · ${t("lab:doctorName", { name: order.doctor.fullName })}`
+                      : ""}
                   </span>
                 </div>
-                <Badge variant={statusVariant[order.status] ?? "outline"}>{order.status}</Badge>
+                <Badge variant={statusVariant[order.status] ?? "outline"}>
+                  {t(STATUS_KEYS[order.status] ?? order.status)}
+                </Badge>
               </div>
 
               <div className="divide-y divide-gray-100">
@@ -149,11 +167,11 @@ export default function LabOrdersPanel({
                       <span className="text-xs text-gray-400">{item.labTest.code}</span>
                     </span>
                     {item.resultValue === null ? (
-                      <span className="text-xs text-gray-400">pending</span>
+                      <span className="text-xs text-gray-400">{t("lab:pending")}</span>
                     ) : (
                       <span className={resultClass(item.flag)}>
                         {item.resultValue} {item.unit ?? ""}
-                        {item.flag ? ` [${item.flag}]` : ""}
+                        {item.flag ? ` [${t(FLAG_KEYS[item.flag] ?? item.flag)}]` : ""}
                       </span>
                     )}
                   </div>
@@ -163,7 +181,7 @@ export default function LabOrdersPanel({
               {canOrder && ["COMPLETED", "VERIFIED"].includes(order.status) && (
                 <div className="mt-2 flex justify-end">
                   <Button size="sm" variant="outline" onClick={() => setRetestOrderId(order.id)}>
-                    <RotateCcw className="h-3.5 w-3.5" /> Retest
+                    <RotateCcw className="h-3.5 w-3.5" /> {t("lab:retest")}
                   </Button>
                 </div>
               )}
@@ -209,27 +227,27 @@ function RetestDialog({
   onConfirm: (orderId: string) => void;
   pending: boolean;
 }) {
+  const { t } = useTranslation(["lab", "common"]);
+
   return (
     <Dialog open={!!orderId} onOpenChange={(o) => !o && !pending && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Request a retest</DialogTitle>
-          <DialogDescription>
-            A new order will be created from this one, linked back to it.
-          </DialogDescription>
+          <DialogTitle>{t("lab:requestRetest")}</DialogTitle>
+          <DialogDescription>{t("lab:retestDescription")}</DialogDescription>
         </DialogHeader>
         <textarea
           className="min-h-20 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-          placeholder="Why does this need to be re-run?"
+          placeholder={t("lab:retestReasonPlaceholder")}
           value={reason}
           onChange={(e) => onReason(e.target.value)}
         />
         <DialogFooter>
           <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-            Cancel
+            {t("common:cancel")}
           </Button>
           <Button disabled={pending} onClick={() => orderId && onConfirm(orderId)}>
-            {pending ? "Ordering…" : "Order retest"}
+            {pending ? t("lab:ordering") : t("lab:orderRetest")}
           </Button>
         </DialogFooter>
       </DialogContent>

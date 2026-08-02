@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { PackagePlus } from "lucide-react";
 import { adjustStockSchema } from "@healvista/shared";
 import { useAdjustStock } from "../../hooks/mutations/useLabPharmacyMutations";
@@ -34,6 +35,7 @@ export default function RestockDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useTranslation(["pharmacy", "common"]);
   const restock = useAdjustStock();
   const {
     register,
@@ -56,7 +58,7 @@ export default function RestockDialog({
       },
       {
         onSuccess: () => {
-          toast.success(`${medicineName} restocked`);
+          toast.success(t("pharmacy:restocked", { medicine: medicineName }));
           reset();
           onOpenChange(false);
         },
@@ -73,16 +75,17 @@ export default function RestockDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <PackagePlus className="h-4 w-4" /> Restock {medicineName}
+            <PackagePlus className="h-4 w-4" />{" "}
+            {t("pharmacy:restockTitle", { medicine: medicineName })}
           </DialogTitle>
-          <DialogDescription>
-            Records the delivery as an inventory adjustment with its batch number.
-          </DialogDescription>
+          <DialogDescription>{t("pharmacy:restockDescription")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm text-gray-600">Quantity received</label>
+            <label className="mb-1 block text-sm text-gray-600">
+              {t("pharmacy:quantityReceived")}
+            </label>
             <input
               type="number"
               min={1}
@@ -96,20 +99,22 @@ export default function RestockDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm text-gray-600">Batch number</label>
+              <label className="mb-1 block text-sm text-gray-600">
+                {t("pharmacy:batchNumber")}
+              </label>
               <input className={inputClass} {...register("batchNumber")} />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-gray-600">Expiry date</label>
+              <label className="mb-1 block text-sm text-gray-600">{t("pharmacy:expiryDate")}</label>
               <input type="date" className={inputClass} {...register("expiryDate")} />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-sm text-gray-600">Reason</label>
+            <label className="mb-1 block text-sm text-gray-600">{t("pharmacy:reason")}</label>
             <input
               className={inputClass}
-              placeholder="e.g. Purchase order #4821"
+              placeholder={t("pharmacy:restockReasonPlaceholder")}
               {...register("reason")}
             />
             {errors.reason && <p className="mt-1 text-xs text-red-600">{errors.reason.message}</p>}
@@ -122,10 +127,10 @@ export default function RestockDialog({
               disabled={restock.isPending}
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              {t("common:cancel")}
             </Button>
             <Button type="submit" disabled={restock.isPending}>
-              {restock.isPending ? "Restocking…" : "Restock"}
+              {restock.isPending ? t("pharmacy:restocking") : t("pharmacy:restock")}
             </Button>
           </DialogFooter>
         </form>

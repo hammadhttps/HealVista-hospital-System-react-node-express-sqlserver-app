@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Search } from "lucide-react";
 import { useSemanticSearchAll } from "../../hooks/mutations/useAiMutations";
 import AIDisclaimer from "./AIDisclaimer";
@@ -8,15 +10,17 @@ import { Card, CardContent } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { getErrorMessage } from "../../utils/errors";
 
-const SOURCE_LABELS: Record<string, string> = {
-  consultation_note: "Consultation note",
-  lab_report: "Lab report",
-  prescription: "Prescription",
-  medical_record: "Medical record",
+const SOURCE_LABEL_KEYS: Record<string, string> = {
+  consultation_note: "ai:sourceConsultationNote",
+  lab_report: "ai:sourceLabReport",
+  prescription: "ai:sourcePrescription",
+  medical_record: "ai:sourceMedicalRecord",
 };
 
-function sourceLabel(sourceType: string): string {
-  return SOURCE_LABELS[sourceType] ?? sourceType.replace(/_/g, " ");
+function sourceLabel(sourceType: string, t: TFunction): string {
+  const key = SOURCE_LABEL_KEYS[sourceType];
+  if (key) return t(key);
+  return sourceType.replace(/_/g, " ");
 }
 
 /**
@@ -26,6 +30,7 @@ function sourceLabel(sourceType: string): string {
  * cache) so a fresh diagnosis is found even if the embedding was just added.
  */
 export default function SemanticSearchBar() {
+  const { t } = useTranslation(["ai", "common"]);
   const searchAll = useSemanticSearchAll();
   const [query, setQuery] = useState("");
 
@@ -43,14 +48,14 @@ export default function SemanticSearchBar() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none"
-            placeholder='Search records in natural language — e.g. "patients with worsening blood sugar"'
+            placeholder={t("ai:searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             disabled={searchAll.isPending}
           />
         </div>
         <Button type="submit" disabled={searchAll.isPending || !query.trim()}>
-          {searchAll.isPending ? "Searching…" : "Search"}
+          {searchAll.isPending ? t("ai:searching") : t("common:search")}
         </Button>
       </form>
 
@@ -72,9 +77,7 @@ export default function SemanticSearchBar() {
         <Card>
           <CardContent className="space-y-3 p-4">
             {searchAll.data.results.length === 0 ? (
-              <p className="text-sm text-gray-500">
-                No matches above the relevance threshold. Try different wording.
-              </p>
+              <p className="text-sm text-gray-500">{t("ai:noMatches")}</p>
             ) : (
               searchAll.data.results.map((hit) => (
                 <div key={hit.id} className="rounded-lg border border-gray-100 p-3">
@@ -87,11 +90,13 @@ export default function SemanticSearchBar() {
                         {hit.patientName}
                       </Link>
                     ) : (
-                      <span className="text-sm font-semibold text-gray-700">Unknown patient</span>
+                      <span className="text-sm font-semibold text-gray-700">
+                        {t("ai:unknownPatient")}
+                      </span>
                     )}
-                    <Badge variant="outline">{sourceLabel(hit.sourceType)}</Badge>
+                    <Badge variant="outline">{sourceLabel(hit.sourceType, t)}</Badge>
                     <span className="text-xs text-gray-400">
-                      {(hit.similarity * 100).toFixed(0)}% match
+                      {t("ai:match", { value: (hit.similarity * 100).toFixed(0) })}
                     </span>
                   </div>
                   <p className="mt-1 line-clamp-2 text-sm text-gray-600">{hit.content}</p>
@@ -99,9 +104,7 @@ export default function SemanticSearchBar() {
               ))
             )}
             {searchAll.data.fallback && (
-              <p className="text-xs text-amber-700">
-                The AI search was unavailable — no results returned.
-              </p>
+              <p className="text-xs text-amber-700">{t("ai:searchUnavailable")}</p>
             )}
           </CardContent>
         </Card>

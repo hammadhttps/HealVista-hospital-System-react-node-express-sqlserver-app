@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChatMessages, chatKeys } from "../../hooks/queries/useChat";
 import { useSendMessage } from "../../hooks/mutations/useChatMutations";
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function ChatMessages({ threadId, onClose }: Props) {
+  const { t } = useTranslation(["chat", "common"]);
   const { data, isLoading } = useChatMessages(threadId);
   const sendMessage = useSendMessage(threadId);
   const { chatSocket } = useSocket();
@@ -118,7 +120,7 @@ export function ChatMessages({ threadId, onClose }: Props) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
-        <h3 className="font-semibold text-sm">Chat</h3>
+        <h3 className="font-semibold text-sm">{t("chat:chat")}</h3>
         <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
           &times;
         </button>
@@ -126,16 +128,16 @@ export function ChatMessages({ threadId, onClose }: Props) {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-1 bg-gray-50">
         {isLoading ? (
-          <div className="text-center text-gray-400 py-8">Loading...</div>
+          <div className="text-center text-gray-400 py-8">{t("common:loading")}</div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">No messages yet. Say hello!</div>
+          <div className="text-center text-gray-400 py-8">{t("chat:noMessages")}</div>
         ) : (
           messages.map((msg: any) => (
             <MessageBubble key={msg.id} message={msg} isOwn={msg.sender.id === currentUserId} />
           ))
         )}
         {typingUsers.length > 0 && (
-          <div className="text-xs text-gray-400 italic">Someone is typing...</div>
+          <div className="text-xs text-gray-400 italic">{t("chat:typing")}</div>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -149,7 +151,7 @@ export function ChatMessages({ threadId, onClose }: Props) {
               handleTyping();
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder={t("chat:placeholder")}
             rows={1}
             className="flex-1 resize-none border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -158,7 +160,7 @@ export function ChatMessages({ threadId, onClose }: Props) {
             disabled={!content.trim() || sendMessage.isPending}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
-            Send
+            {t("chat:send")}
           </button>
         </div>
       </div>

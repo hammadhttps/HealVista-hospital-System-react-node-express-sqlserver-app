@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useNotifications } from "../../hooks/queries/useNotifications";
 import { useMarkRead } from "../../hooks/mutations/useNotificationMutations";
 import { formatDistanceToNow } from "date-fns";
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export function NotificationPanel({ onClose, onMarkAllRead }: Props) {
+  const { t } = useTranslation(["notifications", "common"]);
   const { data, isLoading } = useNotifications({ limit: 20 });
   const markRead = useMarkRead();
   const notifications = data?.data ?? data ?? [];
@@ -38,7 +40,7 @@ export function NotificationPanel({ onClose, onMarkAllRead }: Props) {
   if (isLoading) {
     return (
       <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50">
-        <div className="p-4 text-center text-gray-500">Loading...</div>
+        <div className="p-4 text-center text-gray-500">{t("common:loading")}</div>
       </div>
     );
   }
@@ -46,14 +48,14 @@ export function NotificationPanel({ onClose, onMarkAllRead }: Props) {
   return (
     <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50 max-h-96 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b">
-        <h3 className="font-semibold text-sm">Notifications</h3>
+        <h3 className="font-semibold text-sm">{t("notifications:panelTitle")}</h3>
         <button onClick={onMarkAllRead} className="text-xs text-blue-600 hover:underline">
-          Mark all read
+          {t("notifications:markAllRead")}
         </button>
       </div>
       <div className="overflow-y-auto flex-1">
         {notifications.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">No notifications</div>
+          <div className="p-8 text-center text-gray-400">{t("notifications:noNotifications")}</div>
         ) : (
           notifications.map((n: any) => (
             <button

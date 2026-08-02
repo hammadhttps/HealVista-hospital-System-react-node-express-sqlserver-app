@@ -1,13 +1,15 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useChatThreads } from "../../hooks/queries/useChat";
 import { ChatMessages } from "./ChatMessages";
 
 export function ChatList() {
+  const { t } = useTranslation(["chat"]);
   const { data: threads, isLoading } = useChatThreads();
   const [activeThread, setActiveThread] = useState<string | null>(null);
 
   if (isLoading) {
-    return <div className="p-4 text-gray-500">Loading chats...</div>;
+    return <div className="p-4 text-gray-500">{t("chat:loading")}</div>;
   }
 
   if (activeThread) {
@@ -21,11 +23,11 @@ export function ChatList() {
   return (
     <div className="bg-white rounded-lg border h-full flex flex-col">
       <div className="px-4 py-3 border-b">
-        <h3 className="font-semibold">Chats</h3>
+        <h3 className="font-semibold">{t("chat:chats")}</h3>
       </div>
       <div className="flex-1 overflow-y-auto">
         {!threads || threads.length === 0 ? (
-          <div className="p-8 text-center text-gray-400">No conversations yet</div>
+          <div className="p-8 text-center text-gray-400">{t("chat:noConversations")}</div>
         ) : (
           (threads as any[]).map((thread: any) => (
             <button
@@ -39,7 +41,7 @@ export function ChatList() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">
-                    {thread.appointment?.patient?.fullName ?? "Chat"}
+                    {thread.appointment?.patient?.fullName ?? t("chat:chat")}
                   </p>
                   <p className="text-xs text-gray-400 truncate">
                     {thread.appointment?.appointmentNo ?? ""}
