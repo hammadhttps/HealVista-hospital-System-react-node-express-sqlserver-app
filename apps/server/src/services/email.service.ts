@@ -1,12 +1,27 @@
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
+import { logger } from "../utils/logger.js";
 
 let transporter: nodemailer.Transporter | null = null;
 
+/** True when SMTP credentials are present and a transporter can be built. */
+export function isEmailConfigured(): boolean {
+  return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS);
+}
+
+/**
+ * Whether the mailer is active at all: either real SMTP or `MAILER=log`.
+ * The email worker skips (not fails) a job when this is false, so an
+ * unconfigured server stops spamming failures instead of retrying forever.
+ */
+export function isEmailEnabled(): boolean {
+  return env.MAILER === "log" || isEmailConfigured();
+}
+
 function getTransporter(): nodemailer.Transporter | null {
   if (transporter) return transporter;
-  if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASS) {
-    console.warn("[email] SMTP not configured");
+  if (!isEmailConfigured()) {
+    logger.warn("[email] SMTP not configured");
     return null;
   }
   transporter = nodemailer.createTransport({
@@ -61,14 +76,21 @@ export async function sendEmail(
   type: string,
   data: Record<string, string>,
 ): Promise<boolean> {
-  const t = getTransporter();
-  if (!t) return false;
   const template = TEMPLATES[type];
   if (!template) {
-    console.warn(`[email] No template for type: ${type}`);
+    logger.warn({ type }, "[email] No template for type");
     return false;
   }
   const { subject, html } = template(data);
+
+  if (env.MAILER === "log") {
+    logger.info({ to, type, subject, html }, "[email] [log-mode] would send");
+    return true;
+  }
+
+  const t = getTransporter();
+  if (!t) return false;
+
   try {
     await t.sendMail({
       from: env.MAIL_FROM,
@@ -78,7 +100,7 @@ export async function sendEmail(
     });
     return true;
   } catch (err) {
-    console.error("[email] send failed:", err);
+    logger.error({ err, to, type }, "[email] send failed");
     return false;
   }
 }
