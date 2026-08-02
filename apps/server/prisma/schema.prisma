@@ -309,6 +309,7 @@ model Patient {
   guardedBy         PatientRelationship[] @relation("Dependent")
 
   @@index([fullName])
+  @@index([createdAt])
   @@map("patients")
 }
 
@@ -473,6 +474,7 @@ model AppointmentSlot {
 
   @@unique([doctorId, startTime])
   @@index([doctorId, startTime, isBooked])
+  @@index([startTime])
   @@map("appointment_slots")
 }
 
@@ -513,6 +515,7 @@ model Appointment {
 
   @@index([patientId, status])
   @@index([doctorId, status])
+  @@index([departmentId])
   @@map("appointments")
 }
 
@@ -551,6 +554,7 @@ model ConsultationNote {
 
   addenda NoteAddendum[]
 
+  @@index([signedAt, createdAt])
   @@map("consultation_notes")
 }
 
@@ -708,6 +712,7 @@ model Prescription {
 
   items PrescriptionItem[]
 
+  @@index([createdAt])
   @@map("prescriptions")
 }
 
@@ -869,6 +874,7 @@ model LabOrder {
 
   @@index([patientId, orderedAt])
   @@index([status])
+  @@index([orderedAt])
   @@map("lab_orders")
 }
 
@@ -954,6 +960,7 @@ model Payment {
   // so cash rows (provider and providerRef both null) never collide here.
   @@unique([provider, providerRef])
   @@index([billId, status])
+  @@index([status, createdAt])
   @@map("payments")
 }
 

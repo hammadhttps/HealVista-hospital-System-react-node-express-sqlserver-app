@@ -1,11 +1,12 @@
 import { Suspense, lazy } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { queryClient } from "./lib/queryClient";
 import { ProtectedRoute, RoleRoute } from "./components/ProtectedRoute";
 import { SocketProvider } from "./components/SocketProvider";
 import { AppShell } from "./components/AppShell";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import Landing from "./pages/Landing";
 import LoginPage from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -111,327 +112,340 @@ export default function App() {
       <BrowserRouter>
         <SocketProvider>
           <Toaster position="top-right" richColors />
-          {/*
-            One boundary around the whole route tree. A lazy component that
-            suspends without one throws, so this is required, not optional — and
-            keeping it here rather than per-route means a chunk that is already
-            cached swaps in with no flash at all.
-          */}
-          <Suspense fallback={<RouteFallback />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              {/* Google OAuth lands here with the token pair in the URL fragment. */}
-              <Route path="/oauth/callback" element={<OAuthCallback />} />
-
-              {/* Authenticated routes */}
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <AppShell />
-                  </ProtectedRoute>
-                }
-              >
-                <Route
-                  path="/admin"
-                  element={
-                    <RoleRoute role="ADMIN">
-                      <AdminDashboard />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/admin/analytics"
-                  element={
-                    <RoleRoute role="ADMIN">
-                      <AdminAnalytics />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/admin/departments"
-                  element={
-                    <RoleRoute role="ADMIN">
-                      <DepartmentManagement />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/admin/settings"
-                  element={
-                    <RoleRoute role="ADMIN">
-                      <HospitalSettings />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/admin/staff"
-                  element={
-                    <RoleRoute role="ADMIN">
-                      <StaffManagement />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/admin/users"
-                  element={
-                    <RoleRoute role="ADMIN">
-                      <UserManagement />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/admin/holidays"
-                  element={
-                    <RoleRoute role="ADMIN">
-                      <HolidayCalendar />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/doctor"
-                  element={
-                    <RoleRoute role="DOCTOR">
-                      <DoctorDashboard />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/doctor/schedule"
-                  element={
-                    <RoleRoute role="DOCTOR">
-                      <DoctorSchedule />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/doctor/queue"
-                  element={
-                    <RoleRoute role="DOCTOR">
-                      <LiveQueue />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/referrals"
-                  element={
-                    <RoleRoute role="DOCTOR">
-                      <Referrals />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/consultation/:appointmentId"
-                  element={
-                    <RoleRoute role="DOCTOR">
-                      <SOAPNoteEditor />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/prescriptions/:appointmentId"
-                  element={
-                    <RoleRoute role="DOCTOR">
-                      <PrescriptionEditor />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/patient"
-                  element={
-                    <RoleRoute role="PATIENT">
-                      <PatientDashboard />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/patient/appointments"
-                  element={
-                    <RoleRoute role="PATIENT">
-                      <MyAppointments />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/patient/favourites"
-                  element={
-                    <RoleRoute role="PATIENT">
-                      <FavouriteDoctors />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/patient/bills"
-                  element={
-                    <RoleRoute role="PATIENT">
-                      <MyBills />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/patient/referrals"
-                  element={
-                    <RoleRoute role="PATIENT">
-                      <MyReferrals />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/patient/records"
-                  element={
-                    <RoleRoute role="PATIENT">
-                      <MyRecords />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/patient/lab-results"
-                  element={
-                    <RoleRoute role="PATIENT">
-                      <MyLabResults />
-                    </RoleRoute>
-                  }
-                />
-                {/* Each staff role gets a KPI dashboard alongside its workspace page. */}
-                <Route
-                  path="/reception/dashboard"
-                  element={
-                    <RoleRoute role={["RECEPTIONIST", "ADMIN"]}>
-                      <ReceptionistDashboard />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/pharmacy/dashboard"
-                  element={
-                    <RoleRoute role={["PHARMACIST", "ADMIN"]}>
-                      <PharmacistDashboard />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/lab/dashboard"
-                  element={
-                    <RoleRoute role={["LAB_TECHNICIAN", "ADMIN"]}>
-                      <LabDashboard />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/billing/dashboard"
-                  element={
-                    <RoleRoute role={["ACCOUNTANT", "ADMIN"]}>
-                      <AccountantDashboard />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/reception"
-                  element={
-                    <RoleRoute role={["RECEPTIONIST", "ADMIN"]}>
-                      <ReceptionDesk />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/pharmacy"
-                  element={
-                    <RoleRoute role={["PHARMACIST", "ADMIN"]}>
-                      <Pharmacy />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/lab"
-                  element={
-                    <RoleRoute role={["LAB_TECHNICIAN", "ADMIN"]}>
-                      <Lab />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/billing"
-                  element={
-                    <RoleRoute role={["ACCOUNTANT", "RECEPTIONIST", "ADMIN"]}>
-                      <BillingConsole />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/billing/payments"
-                  element={
-                    <RoleRoute role={["ACCOUNTANT", "RECEPTIONIST", "ADMIN"]}>
-                      <PaymentHistory />
-                    </RoleRoute>
-                  }
-                />
-
-                {/* Shared routes */}
-                <Route path="/doctors" element={<DoctorSearch />} />
-                <Route path="/doctors/:id" element={<DoctorProfile />} />
-                <Route path="/booking/confirm" element={<BookingConfirm />} />
-                <Route path="/patients" element={<PatientList />} />
-                <Route path="/patients/register" element={<PatientRegistration />} />
-                <Route path="/patients/:id" element={<PatientDetail />} />
-                <Route path="/notifications/preferences" element={<NotificationPreferences />} />
-                <Route path="/chat" element={<ChatPage />} />
-                <Route path="/settings" element={<AccountSettings />} />
-
-                {/* Staff knowledge base — RAG over policies/FAQs; ADMIN writes. */}
-                <Route
-                  path="/kb"
-                  element={
-                    <RoleRoute
-                      role={[
-                        "DOCTOR",
-                        "RECEPTIONIST",
-                        "PHARMACIST",
-                        "LAB_TECHNICIAN",
-                        "ACCOUNTANT",
-                        "ADMIN",
-                      ]}
-                    >
-                      <KnowledgeBase />
-                    </RoleRoute>
-                  }
-                />
-                <Route
-                  path="/kb/:id"
-                  element={
-                    <RoleRoute
-                      role={[
-                        "DOCTOR",
-                        "RECEPTIONIST",
-                        "PHARMACIST",
-                        "LAB_TECHNICIAN",
-                        "ACCOUNTANT",
-                        "ADMIN",
-                      ]}
-                    >
-                      <KnowledgeBase />
-                    </RoleRoute>
-                  }
-                />
-              </Route>
-
-              {/* Waiting-room screen: full-bleed, no AppShell chrome. Still authenticated —
-                it renders patient information, masked but not public. */}
-              <Route
-                path="/queue/display/:doctorId"
-                element={
-                  <ProtectedRoute>
-                    <QueueDisplay />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+          {/* The boundary is keyed by route so navigating clears a caught
+              error instead of pinning the user on a dead screen. */}
+          <ErrorBoundary>
+            <RoutesWithKey />
+          </ErrorBoundary>
         </SocketProvider>
       </BrowserRouter>
     </QueryClientProvider>
+  );
+}
+
+function RoutesWithKey() {
+  const location = useLocation();
+  return (
+    <ErrorBoundary key={location.pathname}>
+      {/*
+        One boundary around the whole route tree. A lazy component that
+        suspends without one throws, so this is required, not optional — and
+        keeping it here rather than per-route means a chunk that is already
+        cached swaps in with no flash at all.
+      */}
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          {/* Google OAuth lands here with the token pair in the URL fragment. */}
+          <Route path="/oauth/callback" element={<OAuthCallback />} />
+
+          {/* Authenticated routes */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <AppShell />
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              path="/admin"
+              element={
+                <RoleRoute role="ADMIN">
+                  <AdminDashboard />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <RoleRoute role="ADMIN">
+                  <AdminAnalytics />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/admin/departments"
+              element={
+                <RoleRoute role="ADMIN">
+                  <DepartmentManagement />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <RoleRoute role="ADMIN">
+                  <HospitalSettings />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/admin/staff"
+              element={
+                <RoleRoute role="ADMIN">
+                  <StaffManagement />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <RoleRoute role="ADMIN">
+                  <UserManagement />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/admin/holidays"
+              element={
+                <RoleRoute role="ADMIN">
+                  <HolidayCalendar />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/doctor"
+              element={
+                <RoleRoute role="DOCTOR">
+                  <DoctorDashboard />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/doctor/schedule"
+              element={
+                <RoleRoute role="DOCTOR">
+                  <DoctorSchedule />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/doctor/queue"
+              element={
+                <RoleRoute role="DOCTOR">
+                  <LiveQueue />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/referrals"
+              element={
+                <RoleRoute role="DOCTOR">
+                  <Referrals />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/consultation/:appointmentId"
+              element={
+                <RoleRoute role="DOCTOR">
+                  <SOAPNoteEditor />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/prescriptions/:appointmentId"
+              element={
+                <RoleRoute role="DOCTOR">
+                  <PrescriptionEditor />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/patient"
+              element={
+                <RoleRoute role="PATIENT">
+                  <PatientDashboard />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/patient/appointments"
+              element={
+                <RoleRoute role="PATIENT">
+                  <MyAppointments />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/patient/favourites"
+              element={
+                <RoleRoute role="PATIENT">
+                  <FavouriteDoctors />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/patient/bills"
+              element={
+                <RoleRoute role="PATIENT">
+                  <MyBills />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/patient/referrals"
+              element={
+                <RoleRoute role="PATIENT">
+                  <MyReferrals />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/patient/records"
+              element={
+                <RoleRoute role="PATIENT">
+                  <MyRecords />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/patient/lab-results"
+              element={
+                <RoleRoute role="PATIENT">
+                  <MyLabResults />
+                </RoleRoute>
+              }
+            />
+            {/* Each staff role gets a KPI dashboard alongside its workspace page. */}
+            <Route
+              path="/reception/dashboard"
+              element={
+                <RoleRoute role={["RECEPTIONIST", "ADMIN"]}>
+                  <ReceptionistDashboard />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/pharmacy/dashboard"
+              element={
+                <RoleRoute role={["PHARMACIST", "ADMIN"]}>
+                  <PharmacistDashboard />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/lab/dashboard"
+              element={
+                <RoleRoute role={["LAB_TECHNICIAN", "ADMIN"]}>
+                  <LabDashboard />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/billing/dashboard"
+              element={
+                <RoleRoute role={["ACCOUNTANT", "ADMIN"]}>
+                  <AccountantDashboard />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/reception"
+              element={
+                <RoleRoute role={["RECEPTIONIST", "ADMIN"]}>
+                  <ReceptionDesk />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/pharmacy"
+              element={
+                <RoleRoute role={["PHARMACIST", "ADMIN"]}>
+                  <Pharmacy />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/lab"
+              element={
+                <RoleRoute role={["LAB_TECHNICIAN", "ADMIN"]}>
+                  <Lab />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/billing"
+              element={
+                <RoleRoute role={["ACCOUNTANT", "RECEPTIONIST", "ADMIN"]}>
+                  <BillingConsole />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/billing/payments"
+              element={
+                <RoleRoute role={["ACCOUNTANT", "RECEPTIONIST", "ADMIN"]}>
+                  <PaymentHistory />
+                </RoleRoute>
+              }
+            />
+
+            {/* Shared routes */}
+            <Route path="/doctors" element={<DoctorSearch />} />
+            <Route path="/doctors/:id" element={<DoctorProfile />} />
+            <Route path="/booking/confirm" element={<BookingConfirm />} />
+            <Route path="/patients" element={<PatientList />} />
+            <Route path="/patients/register" element={<PatientRegistration />} />
+            <Route path="/patients/:id" element={<PatientDetail />} />
+            <Route path="/notifications/preferences" element={<NotificationPreferences />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/settings" element={<AccountSettings />} />
+
+            {/* Staff knowledge base — RAG over policies/FAQs; ADMIN writes. */}
+            <Route
+              path="/kb"
+              element={
+                <RoleRoute
+                  role={[
+                    "DOCTOR",
+                    "RECEPTIONIST",
+                    "PHARMACIST",
+                    "LAB_TECHNICIAN",
+                    "ACCOUNTANT",
+                    "ADMIN",
+                  ]}
+                >
+                  <KnowledgeBase />
+                </RoleRoute>
+              }
+            />
+            <Route
+              path="/kb/:id"
+              element={
+                <RoleRoute
+                  role={[
+                    "DOCTOR",
+                    "RECEPTIONIST",
+                    "PHARMACIST",
+                    "LAB_TECHNICIAN",
+                    "ACCOUNTANT",
+                    "ADMIN",
+                  ]}
+                >
+                  <KnowledgeBase />
+                </RoleRoute>
+              }
+            />
+          </Route>
+
+          {/* Waiting-room screen: full-bleed, no AppShell chrome. Still authenticated —
+                it renders patient information, masked but not public. */}
+          <Route
+            path="/queue/display/:doctorId"
+            element={
+              <ProtectedRoute>
+                <QueueDisplay />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
+    </ErrorBoundary>
   );
 }

@@ -20,11 +20,16 @@ const router = Router();
 
 router.post(
   "/register",
-  rateLimit(20, 60 * 60 * 1000),
+  rateLimit(20, 60 * 60 * 1000, "register"),
   validate(registerSchema),
   authController.register,
 );
-router.post("/login", rateLimit(10, 15 * 60 * 1000), validate(loginSchema), authController.login);
+router.post(
+  "/login",
+  rateLimit(5, 15 * 60 * 1000, "login"),
+  validate(loginSchema),
+  authController.login,
+);
 router.post("/refresh", authController.refresh);
 router.post("/verify-email", validate(verifyEmailSchema), authController.verifyEmail);
 router.post("/resend-verify", validate(resendVerifySchema), authController.resendVerification);
@@ -38,7 +43,7 @@ router.post("/resend-verify", validate(resendVerifySchema), authController.resen
 if (isGoogleOAuthConfigured) {
   router.get(
     "/google",
-    rateLimit(20, 15 * 60 * 1000),
+    rateLimit(20, 15 * 60 * 1000, "oauth"),
     passport.authenticate("google", { session: false, scope: ["profile", "email"] }),
   );
 

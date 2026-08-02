@@ -7,6 +7,7 @@ import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import { isOriginAllowed } from "./config/cors.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
+import { rateLimit } from "./middlewares/rateLimit.middleware.js";
 import { logger } from "./utils/logger.js";
 import authRoutes from "./routes/auth.routes.js";
 import departmentRoutes from "./routes/department.routes.js";
@@ -39,7 +40,27 @@ const app = express();
 app.set("trust proxy", 1);
 
 // Security
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        // Swagger UI is served from this same origin and injects inline styles;
+        // JSON APIs need no remote sources at all.
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 app.use(
   cors({
     origin(origin, callback) {
@@ -72,6 +93,11 @@ app.post(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// General API rate limit (security.md §4: 100 req/15 min), before any route.
+// Webhook endpoints are mounted above (raw body) and auth has its own tighter
+// per-route limits, so this is the safety net for everything else.
+app.use("/api", rateLimit(100, 15 * 60 * 1000, "general"));
 
 // Correlation id
 app.use((req, _res, next) => {
