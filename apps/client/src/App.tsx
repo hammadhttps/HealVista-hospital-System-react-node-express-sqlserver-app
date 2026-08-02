@@ -31,6 +31,7 @@ const PatientDetail = lazy(() => import("./pages/PatientDetail"));
 const DepartmentManagement = lazy(() => import("./pages/DepartmentManagement"));
 const HospitalSettings = lazy(() => import("./pages/HospitalSettings"));
 const StaffManagement = lazy(() => import("./pages/StaffManagement"));
+const UserManagement = lazy(() => import("./pages/UserManagement"));
 const HolidayCalendar = lazy(() => import("./pages/HolidayCalendar"));
 const AccountSettings = lazy(() => import("./pages/AccountSettings"));
 const DoctorSearch = lazy(() => import("./pages/DoctorSearch"));
@@ -170,6 +171,14 @@ export default function App() {
                   element={
                     <RoleRoute role="ADMIN">
                       <StaffManagement />
+                    </RoleRoute>
+                  }
+                />
+                <Route
+                  path="/admin/users"
+                  element={
+                    <RoleRoute role="ADMIN">
+                      <UserManagement />
                     </RoleRoute>
                   }
                 />

@@ -6,7 +6,7 @@ import Header from "./Layout/Header";
 import ActingBanner from "./Layout/ActingBanner";
 import { CommandPalette } from "./search/CommandPalette";
 
-interface GoToMap {
+interface GoToMap { 
   [key: string]: string;
 }
 

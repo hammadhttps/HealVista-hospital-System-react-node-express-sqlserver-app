@@ -24,8 +24,19 @@ import {
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { useAuthStore } from "../../store/authStore";
 import { authApi } from "../../api/auth";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { Button } from "../ui/button";
 
 interface NavItem {
   to: string;
@@ -39,6 +50,7 @@ const roleNav: Record<string, NavItem[]> = {
     { to: "/admin", label: "Dashboard", icon: Home },
     { to: "/admin/departments", label: "Departments", icon: Building2 },
     { to: "/admin/staff", label: "Staff", icon: Users },
+    { to: "/admin/users", label: "Users", icon: UserPlus },
     { to: "/admin/holidays", label: "Holidays", icon: CalendarOff },
     { to: "/admin/settings", label: "Hospital Settings", icon: Settings },
     { to: "/patients", label: "Patients", icon: User },
@@ -102,8 +114,17 @@ export default function Sidebar() {
   const logout = useAuthStore((s) => s.logout);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { t } = useTranslation(["auth", "common"]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const links = role ? (roleNav[role] ?? []) : [];
+
+  const handleLogout = async () => {
+    await authApi.logout().catch(() => {});
+    logout();
+    queryClient.clear();
+    navigate("/login");
+  };
 
   return (
     <aside className="h-full w-64 bg-white shadow-lg flex flex-col">
@@ -135,16 +156,28 @@ export default function Sidebar() {
       </div>
 
       <button
-        onClick={async () => {
-          await authApi.logout().catch(() => {});
-          logout();
-          queryClient.clear();
-          navigate("/login");
-        }}
+        onClick={() => setConfirmOpen(true)}
         className="flex items-center gap-3 px-4 py-2 m-4 rounded-lg text-red-600 hover:bg-red-100 font-medium"
       >
-        <LogOut className="w-5 h-5" /> Logout
+        <LogOut className="w-5 h-5" /> {t("auth.signOut")}
       </button>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t("auth.confirmSignOutTitle")}</DialogTitle>
+            <DialogDescription>{t("auth.confirmSignOutBody")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={() => void handleLogout()}>
+              <LogOut className="h-4 w-4" /> {t("auth.signOut")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }

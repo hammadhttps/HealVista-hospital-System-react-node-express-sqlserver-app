@@ -30,6 +30,7 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import searchRoutes from "./routes/search.routes.js";
 import { adminComplianceRouter, meComplianceRouter } from "./routes/compliance.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 import * as paymentController from "./controllers/payment.controller.js";
 
 const app = express();
@@ -117,6 +118,7 @@ app.use("/api/holidays", holidayRoutes);
 app.use("/api/patients", patientRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/staff", staffRoutes);
+app.use("/api/users", adminRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/notifications", notificationRoutes);

@@ -65,6 +65,9 @@ const en = {
   auth: {
     signIn: "Sign In",
     signOut: "Sign out",
+    confirmSignOutTitle: "Sign out?",
+    confirmSignOutBody:
+      "Are you sure you want to sign out? You will need to sign in again to continue.",
     email: "Email",
     password: "Password",
     emailPlaceholder: "you@example.com",

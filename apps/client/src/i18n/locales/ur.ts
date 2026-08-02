@@ -74,6 +74,9 @@ const ur: DeepReadonlyShape<typeof en> = {
   auth: {
     signIn: "سائن ان",
     signOut: "سائن آؤٹ",
+    confirmSignOutTitle: "سائن آؤٹ؟",
+    confirmSignOutBody:
+      "کیا آپ واقعی سائن آؤٹ کرنا چاہتے ہیں؟ جاری رکھنے کے لیے آپ کو دوبارہ سائن ان کرنا ہوگا۔",
     email: "ای میل",
     password: "پاس ورڈ",
     emailPlaceholder: "you@example.com",
