@@ -45,6 +45,37 @@ function dayBounds(): { start: Date; end: Date } {
   return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 }
 
+/**
+ * Recently accessed patients for clinicians (Phase 6.7).
+ *
+ * Sourced from the audit trail: opening a patient's clinical chart
+ * (`getPatientHistory`) writes a `PATIENT_HISTORY_VIEWED` row, so "recently
+ * accessed" is *who the clinician actually looked at*, not who merely appeared
+ * in a queue. The section title is an i18n key resolved on the client.
+ */
+async function recentlyAccessedPatients(userId: string): Promise<DashboardSection> {
+  const rows = await prisma.$queryRaw<
+    Array<{ patientId: string; fullName: string; mrn: string; lastViewed: Date }>
+  >`SELECT al."targetId" AS "patientId", p."fullName", p.mrn, max(al."createdAt") AS "lastViewed"
+     FROM audit_logs al
+     JOIN patients p ON p.id = al."targetId" AND p."deletedAt" IS NULL
+     WHERE al."actorUserId" = ${userId} AND al.action = 'PATIENT_HISTORY_VIEWED'
+     GROUP BY al."targetId", p."fullName", p.mrn
+     ORDER BY "lastViewed" DESC
+     LIMIT 8`;
+
+  return {
+    title: "dashboard:recentPatients",
+    items: rows.map((r) => ({
+      id: r.patientId,
+      label: r.fullName,
+      subtitle: r.lastViewed.toISOString(),
+      meta: r.mrn,
+      href: `/patients/${r.patientId}`,
+    })),
+  };
+}
+
 async function patientDashboard(userId: string): Promise<DashboardData> {
   const patient = await prisma.patient.findUnique({ where: { userId } });
   if (!patient) throw new Error("Patient profile not found");
@@ -169,7 +200,7 @@ async function doctorDashboard(userId: string): Promise<DashboardData> {
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [todayRows, seenRows, consultRows, notesRows, criticalRows, todaysQueue] =
+  const [todayRows, seenRows, consultRows, notesRows, criticalRows, todaysQueue, recentPatients] =
     await Promise.all([
       prisma.$queryRaw<
         Array<{
@@ -231,6 +262,7 @@ async function doctorDashboard(userId: string): Promise<DashboardData> {
           slot: { select: { startTime: true } },
         },
       }),
+      recentlyAccessedPatients(userId),
     ]);
 
   const today = todayRows[0];
@@ -258,6 +290,8 @@ async function doctorDashboard(userId: string): Promise<DashboardData> {
       href: `/consultation/${a.id}`,
     })),
   });
+
+  sections.push(recentPatients);
 
   return { role: "DOCTOR", kpis, sections };
 }
@@ -310,13 +344,13 @@ async function receptionistDashboard(): Promise<DashboardData> {
   return { role: "RECEPTIONIST", kpis, sections };
 }
 
-async function pharmacistDashboard(): Promise<DashboardData> {
+async function pharmacistDashboard(userId: string): Promise<DashboardData> {
   const kpis: DashboardKpi[] = [];
   const sections: DashboardSection[] = [];
 
   const ninetyDays = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
-  const [dispenseRows, stockRows, lowStockItems] = await Promise.all([
+  const [dispenseRows, stockRows, lowStockItems, recentPatients] = await Promise.all([
     prisma.$queryRaw<
       Array<{ pendingDispenses: bigint }>
     >`SELECT count(*) AS "pendingDispenses" FROM prescriptions
@@ -333,6 +367,7 @@ async function pharmacistDashboard(): Promise<DashboardData> {
     >`SELECT m.name AS medicine, i.quantity, i."reorderLevel" FROM inventory i
        JOIN medicines m ON m.id = i."medicineId"
        WHERE i.quantity <= i."reorderLevel" ORDER BY i.quantity ASC LIMIT 10`,
+    recentlyAccessedPatients(userId),
   ]);
 
   kpis.push(
@@ -352,14 +387,16 @@ async function pharmacistDashboard(): Promise<DashboardData> {
     })),
   });
 
+  sections.push(recentPatients);
+
   return { role: "PHARMACIST", kpis, sections };
 }
 
-async function labDashboard(): Promise<DashboardData> {
+async function labDashboard(userId: string): Promise<DashboardData> {
   const kpis: DashboardKpi[] = [];
   const sections: DashboardSection[] = [];
 
-  const [orderStatuses, awaitingRows, overdueOrders] = await Promise.all([
+  const [orderStatuses, awaitingRows, overdueOrders, recentPatients] = await Promise.all([
     prisma.$queryRaw<
       Array<{ status: string; count: bigint }>
     >`SELECT status, count(*) AS count FROM lab_orders GROUP BY status ORDER BY count DESC`,
@@ -379,6 +416,7 @@ async function labDashboard(): Promise<DashboardData> {
              AND lo."orderedAt" + (lt."turnaroundHours" * interval '1 hour') < now()
          )
        ORDER BY hours DESC LIMIT 10`,
+    recentlyAccessedPatients(userId),
   ]);
 
   for (const row of orderStatuses) {
@@ -409,6 +447,8 @@ async function labDashboard(): Promise<DashboardData> {
       href: "/lab",
     })),
   });
+
+  sections.push(recentPatients);
 
   return { role: "LAB_TECHNICIAN", kpis, sections };
 }

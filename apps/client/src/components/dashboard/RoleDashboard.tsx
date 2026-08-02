@@ -81,9 +81,13 @@ export function RoleDashboard({ title, children }: { title: string; children?: R
 function SectionList({ section }: { section: DashboardSection }) {
   const { t } = useTranslation("common");
 
+  // Some sections are sent as i18n keys (e.g. `dashboard:recentPatients`); the
+  // legacy ones still arrive as plain English until they are migrated.
+  const title = isI18nKey(section.title) ? t(section.title) : section.title;
+
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-      <h2 className="mb-3 text-sm font-medium text-gray-500 dark:text-gray-400">{section.title}</h2>
+      <h2 className="mb-3 text-sm font-medium text-gray-500 dark:text-gray-400">{title}</h2>
       {section.items.length === 0 ? (
         <p className="py-6 text-center text-sm text-gray-400">{t("nothingHere")}</p>
       ) : (
@@ -133,4 +137,9 @@ function ItemRow({ item }: { item: DashboardSection["items"][number] }) {
 
 function isIsoDate(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}T/.test(value);
+}
+
+/** `namespace:key` — sent as a key when the server can't assume a language. */
+function isI18nKey(value: string): boolean {
+  return /^[a-z]+:[a-zA-Z0-9]+$/.test(value);
 }
