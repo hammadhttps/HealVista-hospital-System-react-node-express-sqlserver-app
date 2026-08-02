@@ -4,6 +4,8 @@ import type { EmbeddableSourceType } from "../config/bull.js";
 import { stripPII } from "./pii.js";
 import { chunkText, estimateTokens } from "./chunkText.js";
 import { getProvider } from "./index.js";
+import { Prisma } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 
 /**
  * The embedding pipeline core.
@@ -139,22 +141,30 @@ export async function embedSource(
     throw new Error(`[embeddings] Embedding count mismatch: ${vectors.length} vs ${chunks.length}`);
   }
 
+  // The vector column is `Unsupported()` in Prisma, so it is not on the client —
+  // writes go through raw SQL exactly like reads do (docs/architecture/ai-rag.md §2).
+  const values = chunks.map(
+    (chunk, i) => Prisma.sql`(
+      ${randomUUID()},
+      ${sourceType},
+      ${sourceId},
+      ${source.patientId ?? null},
+      ${source.departmentId ?? null},
+      ${chunk.index},
+      ${chunk.text},
+      ${chunk.tokenCount},
+      ${vectors[i]}::vector
+    )`,
+  );
+
   await prisma.$transaction([
     prisma.documentChunk.deleteMany({
       where: { sourceType, sourceId },
     }),
-    prisma.documentChunk.createMany({
-      data: chunks.map((chunk, i) => ({
-        sourceType,
-        sourceId,
-        patientId: source.patientId ?? null,
-        departmentId: source.departmentId ?? null,
-        chunkIndex: chunk.index,
-        content: chunk.text,
-        tokenCount: chunk.tokenCount,
-        embedding: vectors[i] as unknown as never,
-      })),
-    }),
+    prisma.$executeRaw`
+      INSERT INTO document_chunks (id, "sourceType", "sourceId", "patientId", "departmentId", "chunkIndex", content, "tokenCount", embedding)
+      VALUES ${Prisma.join(values, ",")}
+    `,
   ]);
 
   logger.info({ sourceType, sourceId, chunks: chunks.length }, "[embeddings] Embedded source");

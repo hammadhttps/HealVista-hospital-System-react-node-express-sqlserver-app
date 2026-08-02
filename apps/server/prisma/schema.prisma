@@ -1072,9 +1072,9 @@ model DocumentChunk {
   chunkIndex   Int
   content      String
   tokenCount   Int
-  // pgvector column. Unsupported() — Prisma cannot type vector(768), so all
+  // pgvector column. Unsupported() — Prisma cannot type vector(1024), so all
   // embedding reads/writes go through raw SQL (docs/architecture/ai-rag.md §2).
-  embedding    Unsupported("vector(768)")?
+  embedding    Unsupported("vector(1024)")?
   createdAt    DateTime @default(now())
 
   @@unique([sourceType, sourceId, chunkIndex])

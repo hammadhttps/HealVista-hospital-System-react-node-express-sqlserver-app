@@ -345,7 +345,7 @@ export interface OcrResult {
 const OCR_IMAGE_TYPES = ["png", "jpeg", "jpg"];
 
 /**
- * Gemini vision over a photographed report (handwritten prescription, scanned
+ * Jina vision over a photographed report (handwritten prescription, scanned
  * lab sheet). The image is downloaded server-side behind its short-lived signed
  * URL and sent inline as base64 — the signed URL never leaves the server and
  * nothing is persisted. On any failure the caller keeps the original image and
@@ -494,7 +494,7 @@ export async function summarizeRecord(recordId: string): Promise<void> {
           flags: result.flags,
           plainLanguageSummary: result.plainLanguageSummary,
           generatedAt: new Date().toISOString(),
-          model: env.GEMINI_MODEL,
+          model: env.JINA_CHAT_MODEL,
         },
       },
     });

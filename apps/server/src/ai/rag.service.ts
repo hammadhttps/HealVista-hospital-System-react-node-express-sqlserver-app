@@ -19,7 +19,7 @@ import type { Actor } from "../services/access.service.js";
  *
  * Every path here follows the pipeline in ai-rag.md §3:
  *   scope resolved first → pgvector search filtered by that scope → assemble
- *   prompt from the retrieved chunks → Gemini generates → Zod-validates → answer
+ *   prompt from the retrieved chunks → the model generates → Zod-validates → answer
  *   with citations. `retrieve` puts the scope in the SQL WHERE clause, so the
  *   vector search never even sees unauthorised rows.
  *

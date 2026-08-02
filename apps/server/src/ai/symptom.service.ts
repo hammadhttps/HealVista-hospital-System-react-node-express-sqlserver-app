@@ -11,7 +11,7 @@ import type { Actor } from "../services/access.service.js";
  *
  * Two consumers share one rule map:
  *   - `suggestDepartments` upgrades Phase 2's `POST /api/doctors/match`. It tries
- *     Gemini first and falls back to the deterministic keyword map — the rule path
+ *     the AI model first and falls back to the deterministic keyword map — the rule path
  *     stays intact so an AI outage changes nothing about a feature the front desk
  *     already depends on.
  *   - `checkSymptom` is the educational triage widget. Emergency phrases are caught

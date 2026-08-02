@@ -335,7 +335,7 @@ export interface DepartmentMatch {
 }
 
 /**
- * Symptom → department matching. Upgraded in Phase 5.4: Gemini ranks the
+ * Symptom → department matching. Upgraded in Phase 5.4: the AI provider ranks the
  * departments first, the deterministic keyword map stays as the fallback, and the
  * response states which path produced it. A provider outage or a non-configured
  * server falls straight through to the rules — the front-desk flow never depends on

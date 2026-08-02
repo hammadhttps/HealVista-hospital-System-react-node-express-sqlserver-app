@@ -13,7 +13,7 @@ import { AppError } from "../utils/AppError.js";
  * - **Concurrency throttled** (2 workers) so requests-per-minute stay under the
  *   free-tier cap even while a batch backfills.
  * - **429 backs off exponentially** — BullMQ retries the job with exponential
- *   delay, and the provider maps Gemini's quota errors to a typed 429 that
+ *   delay, and the provider maps the model's quota errors to a typed 429 that
  *   survives as a retryable failure rather than poisoning the queue.
  */
 export function startEmbeddingWorker(): Worker | null {

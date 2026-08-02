@@ -10,13 +10,12 @@ export interface GenerationImage {
 /**
  * The single way any module talks to an LLM.
  *
- * Nothing in the services layer may import `@google/genai` (or any other SDK).
- * Swapping Gemini for OpenAI — a config change, per the roadmap — must not mean
- * touching a single feature file. Tests mock this interface instead of a network
- * dependency.
+ * Nothing in the services layer may import a provider SDK (or any other SDK).
+ * Swapping Jina for OpenAI — a config change — must not mean touching a single
+ * feature file. Tests mock this interface instead of a network dependency.
  */
 export interface AIProvider {
-  /** 768-dim vectors for the pgvector store. Accepts an array; one call per document. */
+  /** 1024-dim vectors for the pgvector store. Accepts an array; one call per document. */
   embed(texts: string[]): Promise<number[][]>;
 
   /**

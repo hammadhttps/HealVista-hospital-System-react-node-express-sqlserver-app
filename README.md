@@ -2,7 +2,7 @@
 
 A production-oriented Hospital Management System built on the **PERN** stack
 (**P**ostgreSQL, **E**xpress, **R**eact, **N**ode) with an **AI** layer: front desk, clinical records,
-pharmacy, laboratory, billing, and a Gemini + pgvector RAG over patient data.
+pharmacy, laboratory, billing, and a Jina AI + pgvector RAG over patient data.
 
 ## Stack
 
@@ -12,10 +12,10 @@ pharmacy, laboratory, billing, and a Gemini + pgvector RAG over patient data.
 | Backend      | Node 20 + Express 5, TypeScript, Prisma                                       |
 | Database     | PostgreSQL (Neon) + pgvector                                                  |
 | Cache/Queues | Redis (Upstash / Docker)                                                      |
-| AI           | Google Gemini (free tier) + pgvector RAG                                      |
+| AI           | Jina AI (free tier) + pgvector RAG                                            |
 | Payments     | Stripe + Razorpay                                                             |
 
-**PERN + AI**: PostgreSQL · Express · React · Node · Gemini RAG
+**PERN + AI**: PostgreSQL · Express · React · Node · Jina AI RAG
 
 ## Getting started
 
@@ -29,7 +29,7 @@ npm install
 # 3. Configure environment
 cp apps/server/.env.example apps/server/.env
 cp apps/client/.env.example apps/client/.env
-# Fill in DATABASE_URL, JWT secrets, GEMINI_API_KEY (AI Studio), etc.
+# Fill in DATABASE_URL, JWT secrets, JINA_API_KEY (https://jina.ai), etc.
 
 # 4. Run database migration, seed, and backfill AI embeddings
 npm run db:migrate
@@ -72,7 +72,7 @@ docs/               Architecture, setup, roadmap
 
 - **Backend**: Routes → Controller → Service → Prisma. Never skip or invert.
 - **Frontend**: TanStack Query for server state, Zustand for client state. No `useEffect` fetching.
-- **AI**: Gemini behind `AIProvider` interface. RAG with pgvector. Permissions filtered before retrieval.
+- **AI**: Jina AI behind `AIProvider` interface. RAG with pgvector. Permissions filtered before retrieval.
 - **Database**: Soft deletes (`deletedAt`), audit logs for clinical/financial writes.
 
 See `docs/architecture/` for details.

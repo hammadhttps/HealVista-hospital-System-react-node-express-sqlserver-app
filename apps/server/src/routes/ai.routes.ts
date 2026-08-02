@@ -19,7 +19,7 @@ import * as ai from "../controllers/ai.controller.js";
 /**
  * AI routes (Phase 5).
  *
- * Interactive AI endpoints are rate-limited **per user** — the Gemini free tier's
+ * Interactive AI endpoints are rate-limited **per user** — the provider's
  * requests-per-minute cap is a shared resource, and one user hammering it can
  * exhaust it for everyone. Queued features (report summaries) live on BullMQ
  * workers, not here.

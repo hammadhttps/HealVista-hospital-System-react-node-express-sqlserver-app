@@ -11,8 +11,8 @@ import type { Actor } from "../services/access.service.js";
  * Analytics assistant (Phase 5.5) — ADMIN only.
  *
  * The model **never authors SQL**. A fixed registry of parameterised aggregate
- * queries is selected by classifying the question (Gemini first, keyword fallback);
- * the backend runs that query; Gemini then narrates the numbers. Every value is
+ * queries is selected by classifying the question (AI first, keyword fallback);
+ * the backend runs that query; the model then narrates the numbers. Every value is
  * parameterised via Prisma's tagged-template quoting, so `days` is injected as a
  * bound parameter, never interpolated.
  */

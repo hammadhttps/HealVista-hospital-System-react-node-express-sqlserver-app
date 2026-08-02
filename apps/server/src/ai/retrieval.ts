@@ -11,7 +11,7 @@ import { getProvider } from "./index.js";
  *
  * 1. **Scope is resolved before retrieval, never after.** `resolveRetrievalScope`
  *    returns the patient ids this caller may read, and `retrieve` puts them in the
- *    SQL `WHERE` clause (`patient_id = ANY(...)`). The vector search cannot even
+ *    SQL `WHERE` clause (`"patientId" = ANY(...)`). The vector search cannot even
  *    *see* unauthorised rows — a post-hoc filter would leave a breach waiting for
  *    one bug.
  * 2. **Admin is not unrestricted here.** The general clinical gate
@@ -49,10 +49,10 @@ export interface RetrieveOptions {
 interface ChunkRow {
   id: string;
   content: string;
-  source_type: string;
-  source_id: string;
-  patient_id: string | null;
-  chunk_index: number;
+  sourceType: string;
+  sourceId: string;
+  patientId: string | null;
+  chunkIndex: number;
   similarity: number | string;
 }
 
@@ -139,18 +139,18 @@ export async function retrieve(
 
   const rows: ChunkRow[] = clinical
     ? await prisma.$queryRaw`
-        SELECT id, content, source_type, source_id, patient_id, chunk_index,
+        SELECT id, content, "sourceType", "sourceId", "patientId", "chunkIndex",
                1 - (embedding <=> ${vector}::vector) AS similarity
         FROM document_chunks
-        WHERE patient_id = ANY(${scope.patientIds}::text[]) AND embedding IS NOT NULL
+        WHERE "patientId" = ANY(${scope.patientIds}::text[]) AND embedding IS NOT NULL
         ORDER BY embedding <=> ${vector}::vector
         LIMIT ${k}
       `
     : await prisma.$queryRaw`
-        SELECT id, content, source_type, source_id, patient_id, chunk_index,
+        SELECT id, content, "sourceType", "sourceId", "patientId", "chunkIndex",
                1 - (embedding <=> ${vector}::vector) AS similarity
         FROM document_chunks
-        WHERE patient_id IS NULL AND embedding IS NOT NULL
+        WHERE "patientId" IS NULL AND embedding IS NOT NULL
         ORDER BY embedding <=> ${vector}::vector
         LIMIT ${k}
       `;
@@ -160,10 +160,10 @@ export async function retrieve(
     .map((r) => ({
       id: r.id,
       content: r.content,
-      sourceType: r.source_type,
-      sourceId: r.source_id,
-      patientId: r.patient_id,
-      chunkIndex: r.chunk_index,
+      sourceType: r.sourceType,
+      sourceId: r.sourceId,
+      patientId: r.patientId,
+      chunkIndex: r.chunkIndex,
       similarity: Number(r.similarity),
     }));
 

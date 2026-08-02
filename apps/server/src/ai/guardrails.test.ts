@@ -1,16 +1,14 @@
 import { describe, it, expect, vi } from "vitest";
 import { z } from "zod";
 import { AiGenerationError, generateValidated } from "./guardrails.js";
-import { zodToGeminiSchema } from "./gemini.provider.js";
-import { Type } from "@google/genai";
+import { zodShapeHint } from "./jina.provider.js";
 import type { AIProvider } from "./ai.provider.js";
 
 vi.mock("../config/env.js", () => ({
   env: {
-    AI_PROVIDER: "gemini",
-    GEMINI_API_KEY: "test-key",
-    GEMINI_MODEL: "gemini-2.0-flash",
-    GEMINI_EMBED_MODEL: "text-embedding-004",
+    JINA_API_KEY: "test-key",
+    JINA_CHAT_MODEL: "jina-vlm",
+    JINA_EMBED_MODEL: "jina-embeddings-v5-text-small",
   },
 }));
 
@@ -87,28 +85,31 @@ describe("generateValidated", () => {
   });
 });
 
-describe("zodToGeminiSchema", () => {
-  it("converts an object with required and optional fields", () => {
-    const schema = zodToGeminiSchema(
+describe("zodShapeHint", () => {
+  it("renders an object with required and optional fields", () => {
+    const hint = zodShapeHint(
       z.object({ title: z.string(), notes: z.string().optional(), count: z.number() }),
     );
-    expect(schema.type).toBe(Type.OBJECT);
-    expect(schema.required).toEqual(["title", "count"]);
-    expect(schema.properties?.title.type).toBe(Type.STRING);
-    expect(schema.properties?.notes.type).toBe(Type.STRING);
-    expect(schema.properties?.count.type).toBe(Type.NUMBER);
+    expect(hint).toEqual({
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        notes: { type: "string" },
+        count: { type: "number" },
+      },
+    });
   });
 
-  it("converts enums and arrays", () => {
-    const schema = zodToGeminiSchema(
+  it("renders enums and arrays", () => {
+    const hint = zodShapeHint(
       z.object({ level: z.enum(["LOW", "HIGH"]), tags: z.array(z.string()) }),
     );
-    expect(schema.properties?.level.format).toBe("enum");
-    expect(schema.properties?.level.enum).toEqual(["LOW", "HIGH"]);
-    expect(schema.properties?.tags.type).toBe(Type.ARRAY);
-  });
-
-  it("throws on unsupported types rather than silently weakening validation", () => {
-    expect(() => zodToGeminiSchema(z.object({ when: z.date() }))).toThrow();
+    expect(hint).toEqual({
+      type: "object",
+      properties: {
+        level: { type: "string", enum: ["LOW", "HIGH"] },
+        tags: { type: "array", items: { type: "string" } },
+      },
+    });
   });
 });

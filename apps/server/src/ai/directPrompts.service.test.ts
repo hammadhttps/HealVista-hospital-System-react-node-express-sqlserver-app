@@ -15,7 +15,7 @@ import {
 
 const { mockGenerate } = vi.hoisted(() => ({ mockGenerate: vi.fn() }));
 
-vi.mock("../config/env.js", () => ({ env: { GEMINI_MODEL: "gemini-test" } }));
+vi.mock("../config/env.js", () => ({ env: { JINA_CHAT_MODEL: "jina-vlm" } }));
 
 vi.mock("../config/db.js", () => ({
   prisma: {

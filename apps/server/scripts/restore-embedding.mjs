@@ -10,7 +10,7 @@ const hasCol = await prisma.$queryRaw`
 console.log("embedding column exists:", hasCol.length > 0);
 
 if (hasCol.length === 0) {
-  await prisma.$executeRawUnsafe("ALTER TABLE document_chunks ADD COLUMN embedding vector(768)");
+  await prisma.$executeRawUnsafe("ALTER TABLE document_chunks ADD COLUMN embedding vector(1024)");
   await prisma.$executeRawUnsafe(
     "CREATE INDEX document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops)",
   );

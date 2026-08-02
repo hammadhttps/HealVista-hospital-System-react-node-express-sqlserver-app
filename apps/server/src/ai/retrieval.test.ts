@@ -32,10 +32,10 @@ function row(overrides: Partial<{ patientId: string | null; similarity: number }
   return {
     id: "chunk-1",
     content: "Sample chunk content",
-    source_type: "consultation_note",
-    source_id: "note-1",
-    patient_id: overrides.patientId ?? null,
-    chunk_index: 0,
+    sourceType: "consultation_note",
+    sourceId: "note-1",
+    patientId: overrides.patientId ?? null,
+    chunkIndex: 0,
     similarity: overrides.similarity ?? 0.9,
   };
 }
@@ -43,12 +43,12 @@ function row(overrides: Partial<{ patientId: string | null; similarity: number }
 beforeEach(() => {
   vi.clearAllMocks();
   mockEmbed.mockResolvedValue([[0.1, 0.2, 0.3]]);
-  // Simulates the real query's `WHERE patient_id = ANY(scope)` — rows for patients
+  // Simulates the real query's `WHERE "patientId" = ANY(scope)` — rows for patients
   // outside the scope array are unreachable, mirroring the DB-level isolation.
   (prisma.$queryRaw as any).mockImplementation(async (_sql: unknown, ...values: unknown[]) => {
     const scopeIds = values[1] as string[] | undefined;
     if (!Array.isArray(scopeIds)) return [];
-    return ALL_ROWS.filter((r) => scopeIds.includes(r.patient_id as string));
+    return ALL_ROWS.filter((r) => scopeIds.includes(r.patientId as string));
   });
 });
 
@@ -181,9 +181,9 @@ describe("retrieve", () => {
     expect(results).toHaveLength(1);
     expect(results[0].patientId).toBeNull();
     expect(writeAuditLog).not.toHaveBeenCalled();
-    // The KB query scopes on `patient_id IS NULL` in the WHERE — never ANY(...).
+    // The KB query scopes on `"patientId" IS NULL` in the WHERE — never ANY(...).
     const sql = (vi.mocked(prisma.$queryRaw).mock.calls[0][0] as TemplateStringsArray).join("?");
-    expect(sql).toContain("patient_id IS NULL");
-    expect(sql).not.toContain("patient_id = ANY");
+    expect(sql).toContain('"patientId" IS NULL');
+    expect(sql).not.toContain('"patientId" = ANY');
   });
 });

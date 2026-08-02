@@ -1,27 +1,21 @@
 import { env } from "../config/env.js";
-import { geminiProvider } from "./gemini.provider.js";
+import { jinaProvider } from "./jina.provider.js";
 import type { AIProvider } from "./ai.provider.js";
 
 /**
- * The provider singleton. Only Gemini is implemented today; the roadmap's
- * "swap by config" story means OpenAI arrives here as a second branch, not as
- * edits to every feature file.
+ * The provider singleton. Jina is the single AI provider: embeddings via
+ * `jina-embeddings-v5-text-small` (1024-dim) and generation via `jina-vlm`.
  */
 export function getProvider(): AIProvider {
-  if (env.AI_PROVIDER === "openai") {
-    // Not implemented in this phase; falling through keeps a misconfigured
-    // deployment on the (working) default rather than crashing at request time.
-    return geminiProvider;
-  }
-  return geminiProvider;
+  return jinaProvider;
 }
 
 /** Whether the AI layer is configured at all. Features use this to pick their fallback. */
 export function isAiConfigured(): boolean {
-  return Boolean(env.GEMINI_API_KEY);
+  return Boolean(env.JINA_API_KEY);
 }
 
-export { geminiProvider } from "./gemini.provider.js";
+export { jinaProvider } from "./jina.provider.js";
 export type { AIProvider, AiUsage, GenerationImage } from "./ai.provider.js";
 export {
   GUARDRAIL_SYSTEM_PROMPT,

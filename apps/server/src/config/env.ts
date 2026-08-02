@@ -26,11 +26,9 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
 
-  AI_PROVIDER: z.enum(["gemini", "openai"]).default("gemini"),
-  GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default("gemini-2.0-flash"),
-  GEMINI_EMBED_MODEL: z.string().default("text-embedding-004"),
-  OPENAI_API_KEY: z.string().optional(),
+  JINA_API_KEY: z.string().optional(),
+  JINA_CHAT_MODEL: z.string().default("jina-vlm"),
+  JINA_EMBED_MODEL: z.string().default("jina-embeddings-v5-text-small"),
 
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
@@ -43,6 +41,10 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default("MediCore <no-reply@medicore.app>"),
+  // "smtp" sends through the configured SMTP server; "log" writes the email to
+  // the server log instead (dev / when no SMTP credentials exist yet). Without
+  // SMTP credentials and with MAILER=smtp, email jobs are skipped, not failed.
+  MAILER: z.enum(["smtp", "log"]).default("smtp"),
 
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),

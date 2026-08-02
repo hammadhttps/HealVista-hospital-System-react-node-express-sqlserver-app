@@ -7,10 +7,10 @@ const { mockEmbed } = vi.hoisted(() => ({ mockEmbed: vi.fn() }));
 vi.mock("../config/db.js", () => ({
   prisma: {
     $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
+    $executeRaw: vi.fn().mockResolvedValue(1),
     kbArticle: { findUnique: vi.fn() },
     documentChunk: {
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
-      createMany: vi.fn().mockResolvedValue({ count: 0 }),
     },
   },
 }));
@@ -35,12 +35,12 @@ const article = {
   departmentId: null,
 };
 
-/** The `data` payloads handed to `documentChunk.createMany`, per call. */
-function createManyData(): unknown[][] {
-  const createMany = prisma.documentChunk.createMany as unknown as {
-    mock: { calls: [args: { data: unknown[] }][] };
+/** The parameter values handed to `$executeRaw`, per call — one array per row. */
+function insertValues(): unknown[][] {
+  const executeRaw = prisma.$executeRaw as unknown as {
+    mock: { calls: [strings: string[], sql: { values: unknown[] }][] };
   };
-  return createMany.mock.calls.map(([args]) => args.data);
+  return executeRaw.mock.calls.map(([, sql]) => sql.values);
 }
 
 beforeEach(() => {
@@ -57,31 +57,32 @@ describe("embedSource", () => {
     expect(prisma.documentChunk.deleteMany).toHaveBeenCalledWith({
       where: { sourceType: "kb_article", sourceId: "kb-1" },
     });
-    expect(prisma.documentChunk.createMany).toHaveBeenCalledTimes(1);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
 
-    const data = (createManyData()[0] ?? []) as Record<string, unknown>[];
-    expect(data).toHaveLength(1);
-    expect(data[0].chunkIndex).toBe(0);
-    expect(data[0].sourceType).toBe("kb_article");
-    expect(data[0].sourceId).toBe("kb-1");
-    expect(data[0].patientId).toBeNull();
-    expect(String(data[0].content)).toContain("Fire Safety Policy");
-    expect(data[0].embedding).toEqual([0.1, 0.2, 0.3]);
+    const values = insertValues()[0] ?? [];
+    expect(values).toHaveLength(9);
+    expect(values[1]).toBe("kb_article");
+    expect(values[2]).toBe("kb-1");
+    expect(values[3]).toBeNull();
+    expect(values[4]).toBeNull();
+    expect(values[5]).toBe(0);
+    expect(String(values[6])).toContain("Fire Safety Policy");
+    expect(values[8]).toEqual([0.1, 0.2, 0.3]);
   });
 
   it("is idempotent — re-embedding replaces chunks without accumulating", async () => {
     await embedSource("kb_article", "kb-1");
-    const firstCallChunks = createManyData()[0] ?? [];
+    const firstCallValues = insertValues()[0] ?? [];
 
     await embedSource("kb_article", "kb-1");
 
-    // Same source: delete-then-create each time, never appending.
+    // Same source: delete-then-insert each time, never appending.
     expect(prisma.documentChunk.deleteMany).toHaveBeenCalledTimes(2);
-    expect(prisma.documentChunk.createMany).toHaveBeenCalledTimes(2);
-    const secondCallChunks = createManyData()[1] ?? [];
-    expect(secondCallChunks).toHaveLength(firstCallChunks.length);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2);
+    const secondCallValues = insertValues()[1] ?? [];
+    expect(secondCallValues).toHaveLength(firstCallValues.length);
     // Chunk indices restart at 0 rather than continuing a sequence.
-    expect((secondCallChunks[0] as { chunkIndex: number } | undefined)?.chunkIndex).toBe(0);
+    expect(secondCallValues[5]).toBe(0);
   });
 
   it("strips PII before storing chunk content", async () => {
@@ -93,8 +94,8 @@ describe("embedSource", () => {
 
     await embedSource("kb_article", "kb-1");
 
-    const data = (createManyData()[0] ?? []) as Record<string, unknown>[];
-    const content = String(data.map((d) => d.content).join(" "));
+    const values = insertValues()[0] ?? [];
+    const content = String(values.map((v) => (typeof v === "string" ? v : "")).join(" "));
     expect(content).not.toContain("555-123-4567");
     expect(content).not.toContain("nurse@example.com");
   });
@@ -105,6 +106,6 @@ describe("embedSource", () => {
 
     expect(count).toBe(0);
     expect(mockEmbed).not.toHaveBeenCalled();
-    expect(prisma.documentChunk.createMany).not.toHaveBeenCalled();
+    expect(prisma.$executeRaw).not.toHaveBeenCalled();
   });
 });
