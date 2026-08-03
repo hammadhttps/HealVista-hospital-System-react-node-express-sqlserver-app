@@ -394,6 +394,8 @@ const en = {
     balance: "Balance",
     discount: "Discount: {{name}}",
     applyDiscount: "Apply discount",
+    confirmDiscount: "Apply",
+    discountPreview: "New total: {{total}} · you save {{savings}}",
     finalise: "Finalise bill",
     cashPlaceholder: "Max {{max}}",
     invoicePdf: "Invoice PDF",

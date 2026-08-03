@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { getErrorMessage } from "../utils/errors";
+import { previewDiscount } from "../lib/billingPreview";
 import StripeCheckoutDialog from "../components/billing/StripeCheckoutDialog";
 
 const STATUS_TABS = [
@@ -39,6 +40,7 @@ export default function BillingConsole() {
   const { t } = useTranslation(["billing", "common", "nav"]);
   const [tab, setTab] = useState("");
   const [cashAmounts, setCashAmounts] = useState<Record<string, string>>({});
+  const [previewDiscounts, setPreviewDiscounts] = useState<Record<string, string>>({});
   const [checkoutBill, setCheckoutBill] = useState<{ id: string; balance: string } | null>(null);
 
   const filters = tab ? { status: tab } : {};
@@ -63,7 +65,10 @@ export default function BillingConsole() {
     applyDiscount.mutate(
       { id, discountId },
       {
-        onSuccess: () => toast.success(t("billing:discountApplied")),
+        onSuccess: () => {
+          toast.success(t("billing:discountApplied"));
+          setPreviewDiscounts((prev) => ({ ...prev, [id]: "" }));
+        },
         onError: (err) => toast.error(getErrorMessage(err, t("billing:applyDiscountFailed"))),
       },
     );
@@ -149,9 +154,14 @@ export default function BillingConsole() {
                       <div className="flex flex-wrap items-center gap-2">
                         <select
                           className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
-                          defaultValue=""
+                          value={previewDiscounts[bill.id] ?? ""}
                           disabled={!!bill.discountId || applyDiscount.isPending}
-                          onChange={(e) => handleDiscount(bill.id, e.target.value)}
+                          onChange={(e) =>
+                            setPreviewDiscounts((prev) => ({
+                              ...prev,
+                              [bill.id]: e.target.value,
+                            }))
+                          }
                         >
                           <option value="">
                             {bill.discountId
@@ -164,6 +174,31 @@ export default function BillingConsole() {
                             </option>
                           ))}
                         </select>
+
+                        {(() => {
+                          const picked = (discounts ?? []).find(
+                            (d: any) => d.id === (previewDiscounts[bill.id] ?? ""),
+                          );
+                          if (!picked || bill.discountId) return null;
+                          const preview = previewDiscount(bill, picked);
+                          return (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm text-muted-foreground">
+                                {t("billing:discountPreview", {
+                                  total: preview.total.toFixed(2),
+                                  savings: preview.savings.toFixed(2),
+                                })}
+                              </span>
+                              <Button
+                                size="sm"
+                                onClick={() => handleDiscount(bill.id, picked.id)}
+                                disabled={applyDiscount.isPending}
+                              >
+                                {t("billing:confirmDiscount")}
+                              </Button>
+                            </div>
+                          );
+                        })()}
 
                         <Button
                           size="sm"

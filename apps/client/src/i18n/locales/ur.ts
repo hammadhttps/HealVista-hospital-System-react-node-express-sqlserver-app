@@ -403,6 +403,8 @@ const ur: DeepReadonlyShape<typeof en> = {
     balance: "بقایا",
     discount: "رعایت: {{name}}",
     applyDiscount: "رعایت لاگو کریں",
+    confirmDiscount: "لاگو کریں",
+    discountPreview: "نیا کل: {{total}} · آپ کی بچت {{savings}}",
     finalise: "بل حتمی کریں",
     cashPlaceholder: "زیادہ سے زیادہ {{max}}",
     invoicePdf: "انوائس PDF",
