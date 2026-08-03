@@ -46,6 +46,10 @@ const en = {
     print: "Print",
     errorTitle: "Something went wrong",
     errorBody: "The page could not be loaded. Please try again.",
+    errorBoundaryBody:
+      "The page could not be loaded. Your work is safe — try again, or return to your dashboard.",
+    goHome: "Go home",
+    closeToast: "Close toast",
     nothingHere: "Nothing here right now.",
   },
 
@@ -88,6 +92,9 @@ const en = {
     sendVerification: "Send Verification",
     sending: "Sending…",
     verificationSendFailed: "Failed to send verification",
+    emailVerified: "Email verified!",
+    verificationFailed: "Verification failed",
+    verifyingEmail: "Verifying your email...",
   },
 
   dashboard: {
@@ -259,6 +266,10 @@ const en = {
   profile: {
     actingProfile: "Acting profile",
     me: "Me",
+    actingFor: "Acting for {{name}}",
+    actingContext: "Records, appointments and bills now use this profile.",
+    switchBackToMe: "Switch back to me",
+    dependantFallback: "dependant",
   },
 
   appointments: {
@@ -274,6 +285,11 @@ const en = {
     cancelledToast: "Appointment cancelled",
     checkedInToast: "Checked in!",
     checkInFailed: "Check-in failed",
+    showQr: "Show QR",
+    checkInCode: "Check-in code",
+    qrError: "Could not render the code. Show this reference to reception instead:",
+    qrAlt: "QR check-in code for appointment {{no}}",
+    qrShowHint: "Show this at the front desk to check in.",
   },
 
   landing: {
@@ -385,7 +401,8 @@ const en = {
     paymentSubmitted: "Payment submitted. We will confirm it shortly.",
     paymentFailed: "Could not start the payment.",
     processing: "Processing…",
-    stripeUnavailable: "Online card payments are currently unavailable. Please use cash or contact billing.",
+    stripeUnavailable:
+      "Online card payments are currently unavailable. Please use cash or contact billing.",
     preparingCheckout: "Preparing checkout…",
     payAmount: "Pay {{amount}} securely with card",
     paymentsLoadFailed: "Could not load payments.",
@@ -455,6 +472,12 @@ const en = {
     loadFailedHint: "Check your connection and try again.",
     empty: "No favourites yet",
     emptyHint: "Tap the heart on a doctor's profile to save them here.",
+    added: "Added to favourites",
+    addFailed: "Could not add favourite",
+    removed: "Removed from favourites",
+    removeFailed: "Could not remove favourite",
+    addLabel: "Add to favourites",
+    removeLabel: "Remove from favourites",
   },
 
   holidays: {
@@ -539,6 +562,13 @@ const en = {
     retestReasonPlaceholder: "Why does this need to be re-run?",
     ordering: "Ordering…",
     orderRetest: "Order retest",
+    selectTest: "Select at least one test",
+    orderCreated: "Lab order created",
+    chargesFlow: "Charges flow to the patient's bill automatically.",
+    noTestsInCatalogue: "No tests in the catalogue",
+    noTestsHint: "Ask an admin to seed the lab catalogue.",
+    orderTests: "Order {{count}} test",
+    orderTests_other: "Order {{count}} tests",
   },
 
   labResults: {
@@ -722,6 +752,15 @@ const en = {
     stockHistoryTitle: "Stock history — {{medicine}}",
     noMovementsYet: "No movements yet",
     noMovementsYetHint: "Stock changes will appear here.",
+    nothingToDispense: "Nothing left to dispense",
+    dispensedToast: "Dispensed",
+    queueClear: "Dispense queue is clear",
+    queueClearHint: "No issued prescriptions are waiting on the pharmacy.",
+    dispensedCount: "{{count}} dispensed",
+    leftCount: "{{count}} left",
+    batchPlaceholder: "Batch",
+    dispensing: "Dispensing…",
+    dispense: "Dispense",
   },
 
   queue: {
@@ -790,6 +829,9 @@ const en = {
     category: "Category",
     uploading: "Uploading…",
     uploadCount: "Upload {{count}}",
+    noDocuments: "No documents",
+    noDocumentsHint: "Uploaded reports and records will appear here.",
+    open: "Open",
   },
 
   clinical: {
@@ -857,6 +899,11 @@ const en = {
     saveLifestyle: "Save Lifestyle",
     severeAllergyOne: "{{count}} severe allergy — see allergy banner",
     severeAllergyMany: "{{count}} severe allergies — see allergy banner",
+    checkingAllergies: "Checking allergy record…",
+    noKnownAllergies: "No known allergies on record",
+    allergiesHeader: "Allergies — {{state}}",
+    allergyStateSevere: "severe",
+    allergyStateReview: "review before prescribing",
   },
 
   vitals: {
@@ -898,6 +945,49 @@ const en = {
     unknownPatient: "Unknown patient",
     match: "{{value}}% match",
     searchUnavailable: "The AI search was unavailable — no results returned.",
+    disclaimer:
+      "AI-generated — for guidance only. Not a diagnosis and not a substitute for professional medical advice. A clinician reviews everything before it becomes part of your record.",
+    assistantForPatient: "Assistant for this patient",
+    timelineSummary: "Timeline summary",
+    timelineLoadFailed: "Could not load the timeline summary.",
+    explaining: "Explaining…",
+    explainThis: "Explain this to me",
+    explanationTitle: "Plain-language explanation",
+    explainUnavailable:
+      "The AI explanation is unavailable right now — the values above are the report's own numbers.",
+    thinking: "Thinking…",
+    chatPlaceholder: "Ask about the records…",
+    askAboutRecords: "Ask about your records (or your dependants') and get a cited answer.",
+    askAboutPatient:
+      "Ask about this patient's records (or your dependants') and get a cited answer.",
+    promptMedicinesPatient: "What medicines am I currently on?",
+    promptLastVisit: "What happened at my last visit?",
+    promptLabsPatient: "Summarise my recent lab results",
+    promptVisitsDoctor: "Summarise this patient's last three visits",
+    promptMedicinesDoctor: "What medicines is this patient on?",
+    promptFlagsDoctor: "Are there any flagged lab values recently?",
+    kbAssistantTitle: "Knowledge assistant",
+    kbPromptPolicy: "What is the cancellation policy for appointments?",
+    kbPromptIncident: "How do I report a safety incident?",
+    kbPromptVisitingHours: "What are the visiting hours?",
+    kbAskHint: "Ask about hospital policies, FAQs, and guidelines.",
+    kbSearching: "Searching the knowledge base…",
+    kbPlaceholder: "Ask the knowledge base…",
+    analyticsAsk: "Ask your data",
+    analyticsAskHint:
+      "Ask about revenue, appointments, or departments — numbers come from real aggregates.",
+    analyticsPlaceholder: "e.g. How many appointments this month?",
+    analyticsThinking: "Analysing your data…",
+    analyticsFallback: "The AI assistant is unavailable, so this was answered without it.",
+    aiSummary: "AI summary",
+    aiAssistantTitle: "AI Assistant",
+    queuing: "Queuing…",
+    waiting: "Waiting…",
+    summarise: "Summarise with AI",
+    symptomChecker: "Symptom checker",
+    symptomPlaceholder: "Describe a symptom, e.g. persistent headache…",
+    findDoctors: "Find doctors in {{department}}",
+    showingDoctors: "Showing doctors in {{department}}.",
   },
 
   chat: {
@@ -919,6 +1009,12 @@ const en = {
     noOutgoing: "No outgoing referrals",
     empty: "Nothing here yet",
     emptyHint: "Referrals you send or receive will appear here.",
+    colleagueFallback: "a colleague",
+    patientFallback: "Patient",
+    doctorFallback: "A doctor",
+    accept: "Accept",
+    decline: "Decline",
+    markComplete: "Mark complete",
   },
 
   schedule: {

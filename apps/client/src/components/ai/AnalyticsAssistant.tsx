@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BarChart3, Send } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAnalyticsAsk } from "../../hooks/mutations/useAiMutations";
 import type { AnalyticsResult } from "../../api/ai";
 import AIDisclaimer from "./AIDisclaimer";
@@ -13,6 +14,7 @@ import { getErrorMessage } from "../../utils/errors";
  * rendered table is the raw aggregate result, so the narrative can't invent rows.
  */
 export default function AnalyticsAssistant() {
+  const { t } = useTranslation("ai");
   const ask = useAnalyticsAsk();
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<AnalyticsResult | null>(null);
@@ -35,17 +37,15 @@ export default function AnalyticsAssistant() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <BarChart3 className="h-4 w-4" /> Ask your data
+          <BarChart3 className="h-4 w-4" /> {t("analyticsAsk")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-sm text-gray-500">
-          Ask about revenue, appointments, or departments — numbers come from real aggregates.
-        </p>
+        <p className="text-sm text-gray-500">{t("analyticsAskHint")}</p>
         <form onSubmit={submit} className="flex gap-2">
           <input
             className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            placeholder="e.g. How many appointments this month?"
+            placeholder={t("analyticsPlaceholder")}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             disabled={ask.isPending}
@@ -57,7 +57,7 @@ export default function AnalyticsAssistant() {
 
         {ask.isPending && (
           <div className="flex items-center gap-2 text-sm text-gray-400">
-            <BarChart3 className="h-4 w-4 animate-pulse" /> Analysing your data…
+            <BarChart3 className="h-4 w-4 animate-pulse" /> {t("analyticsThinking")}
           </div>
         )}
 
@@ -97,9 +97,7 @@ export default function AnalyticsAssistant() {
         )}
 
         {!ask.isPending && result?.fallback && (
-          <p className="text-xs text-gray-500">
-            The AI assistant is unavailable, so this was answered without it.
-          </p>
+          <p className="text-xs text-gray-500">{t("analyticsFallback")}</p>
         )}
 
         <AIDisclaimer />

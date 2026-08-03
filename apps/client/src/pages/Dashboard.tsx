@@ -69,17 +69,20 @@ export function PatientDashboard() {
   );
 }
 
-const QUICK_LINKS = [
-  { to: "/patient/records", label: "My health records" },
-  { to: "/patient/lab-results", label: "My lab results" },
-  { to: "/patient/appointments", label: "My appointments" },
-  { to: "/patient/bills", label: "My bills" },
+const QUICK_LINKS: { to: string; key: string }[] = [
+  { to: "/patient/records", key: "myRecords" },
+  { to: "/patient/lab-results", key: "myLabResults" },
+  { to: "/patient/appointments", key: "myAppointments" },
+  { to: "/patient/bills", key: "myBills" },
 ];
 
 function QuickLinks() {
+  const { t } = useTranslation("dashboard");
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-      <h3 className="mb-3 text-sm font-medium text-gray-500 dark:text-gray-400">Quick links</h3>
+      <h3 className="mb-3 text-sm font-medium text-gray-500 dark:text-gray-400">
+        {t("quickLinks")}
+      </h3>
       <div className="space-y-2">
         {QUICK_LINKS.map((l) => (
           <Link
@@ -87,7 +90,7 @@ function QuickLinks() {
             to={l.to}
             className="block rounded-md border border-gray-100 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 dark:border-gray-700 dark:text-blue-300 dark:hover:bg-gray-700/50"
           >
-            {l.label}
+            {t(l.key)}
           </Link>
         ))}
       </div>

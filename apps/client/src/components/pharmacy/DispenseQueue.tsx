@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Pill } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useDispenseQueue } from "../../hooks/queries/useLabAndPharmacy";
 import { useDispense } from "../../hooks/mutations/useLabPharmacyMutations";
 import { format } from "date-fns";
@@ -46,6 +47,7 @@ export default function DispenseQueue() {
   const { data, isLoading } = useDispenseQueue();
   const dispense = useDispense();
   const [drafts, setDrafts] = useState<Drafts>({});
+  const { t } = useTranslation(["pharmacy", "common"]);
 
   const queue = Array.isArray(data) ? (data as QueuePrescription[]) : [];
 
@@ -87,7 +89,7 @@ export default function DispenseQueue() {
       .filter((l) => l.quantity > 0);
 
     if (lines.length === 0) {
-      toast.error("Nothing left to dispense");
+      toast.error(t("pharmacy:nothingToDispense"));
       return;
     }
 
@@ -95,7 +97,7 @@ export default function DispenseQueue() {
       { prescriptionId: prescription.id, lines },
       {
         onSuccess: () => {
-          toast.success("Dispensed");
+          toast.success(t("pharmacy:dispensedToast"));
           setDrafts((prev) => {
             const next = { ...prev };
             delete next[prescription.id];
@@ -112,10 +114,7 @@ export default function DispenseQueue() {
       {isLoading && <Skeleton className="h-64" />}
 
       {!isLoading && queue.length === 0 && (
-        <EmptyState
-          title="Dispense queue is clear"
-          description="No issued prescriptions are waiting on the pharmacy."
-        />
+        <EmptyState title={t("pharmacy:queueClear")} description={t("pharmacy:queueClearHint")} />
       )}
 
       {!isLoading &&
@@ -158,7 +157,7 @@ export default function DispenseQueue() {
                           {item.quantityDispensed > 0 && (
                             <span className="text-gray-400">
                               {" "}
-                              ({item.quantityDispensed} dispensed)
+                              ({t("pharmacy:dispensedCount", { count: item.quantityDispensed })})
                             </span>
                           )}
                         </div>
@@ -177,10 +176,12 @@ export default function DispenseQueue() {
                           }
                           className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-40"
                         />
-                        <span className="text-xs text-gray-500">/ {left} left</span>
+                        <span className="text-xs text-gray-500">
+                          / {t("pharmacy:leftCount", { count: left })} left
+                        </span>
                       </div>
                       <input
-                        placeholder="Batch"
+                        placeholder={t("pharmacy:batchPlaceholder")}
                         value={draft?.batchNumber ?? ""}
                         disabled={left === 0}
                         onChange={(e) =>
@@ -199,7 +200,7 @@ export default function DispenseQueue() {
                   onClick={() => onDispense(prescription)}
                   disabled={dispense.isPending}
                 >
-                  {dispense.isPending ? "Dispensing…" : "Dispense"}
+                  {dispense.isPending ? t("pharmacy:dispensing") : t("pharmacy:dispense")}
                 </Button>
               </div>
             </CardContent>

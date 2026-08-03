@@ -55,6 +55,10 @@ const ur: DeepReadonlyShape<typeof en> = {
     print: "پرنٹ کریں",
     errorTitle: "کچھ غلط ہو گیا",
     errorBody: "صفحہ لوڈ نہیں ہو سکا۔ براہ کرم دوبارہ کوشش کریں۔",
+    errorBoundaryBody:
+      "صفحہ لوڈ نہیں ہو سکا۔ آپ کا کام محفوظ ہے — دوبارہ کوشش کریں، یا اپنے ڈیش بورڈ پر واپس جائیں۔",
+    goHome: "ہوم پر جائیں",
+    closeToast: "ٹوسٹ بند کریں",
     nothingHere: "فی الحال یہاں کچھ نہیں ہے۔",
   },
 
@@ -97,6 +101,9 @@ const ur: DeepReadonlyShape<typeof en> = {
     sendVerification: "تصدیق بھیجیں",
     sending: "بھیجا جا رہا ہے…",
     verificationSendFailed: "تصدیق بھیجنے میں ناکامی",
+    emailVerified: "ای میل تصدیق ہو گئی!",
+    verificationFailed: "تصدیق ناکام",
+    verifyingEmail: "ای میل کی تصدیق ہو رہی ہے...",
   },
 
   dashboard: {
@@ -268,6 +275,10 @@ const ur: DeepReadonlyShape<typeof en> = {
   profile: {
     actingProfile: "ایکٹنگ پروفائل",
     me: "میں",
+    actingFor: "{{name}} کے لیے ایکٹنگ",
+    actingContext: "ریکارڈز، ملاقاتیں اور بل اب اس پروفائل کو استعمال کرتے ہیں۔",
+    switchBackToMe: "مجھ پر واپس جائیں",
+    dependantFallback: "منحصر فرد",
   },
 
   appointments: {
@@ -283,6 +294,11 @@ const ur: DeepReadonlyShape<typeof en> = {
     cancelledToast: "ملاقات منسوخ ہو گئی۔",
     checkedInToast: "چیک ان ہو گیا!",
     checkInFailed: "چیک ان ناکام",
+    showQr: "QR دکھائیں",
+    checkInCode: "چیک ان کوڈ",
+    qrError: "کوڈ بنایا نہیں جا سکا۔ یہ حوالہ ریسپشن کو دکھائیں:",
+    qrAlt: "ملاقات {{no}} کے لیے QR چیک ان کوڈ",
+    qrShowHint: "چیک ان کے لیے یہ فرنٹ ڈیسک پر دکھائیں۔",
   },
 
   landing: {
@@ -394,7 +410,8 @@ const ur: DeepReadonlyShape<typeof en> = {
     paymentSubmitted: "ادائیگی جمع کر دی گئی ہے۔ ہم اسے جلد ہی تصدیق کر دیں گے۔",
     paymentFailed: "ادائیگی شروع نہیں کی جا سکی۔",
     processing: "عمل درآمد جاری ہے…",
-    stripeUnavailable: "آن لائن کارڈ ادائیگی فی الحال دستیاب نہیں ہے۔ براہ کرم نقد یا بلنگ سے رابطہ کریں۔",
+    stripeUnavailable:
+      "آن لائن کارڈ ادائیگی فی الحال دستیاب نہیں ہے۔ براہ کرم نقد یا بلنگ سے رابطہ کریں۔",
     preparingCheckout: "چیک آؤٹ تیار کیا جا رہا ہے…",
     payAmount: "{{amount}} کی ادائیگی کارڈ سے محفوظ طریقے سے",
     paymentsLoadFailed: "ادائیگیاں لوڈ نہیں ہو سکیں۔",
@@ -464,6 +481,12 @@ const ur: DeepReadonlyShape<typeof en> = {
     loadFailedHint: "اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
     empty: "ابھی کوئی پسندیدہ نہیں",
     emptyHint: "ڈاکٹر کے پروفائل پر دل کا نشان دبا کر انہیں یہاں محفوظ کریں۔",
+    added: "پسندیدہ میں شامل کر دیا گیا",
+    addFailed: "پسندیدہ شامل نہیں ہو سکا",
+    removed: "پسندیدہ سے نکال دیا گیا",
+    removeFailed: "پسندیدہ سے نہیں ہٹایا جا سکا",
+    addLabel: "پسندیدہ میں شامل کریں",
+    removeLabel: "پسندیدہ سے ہٹائیں",
   },
 
   holidays: {
@@ -547,6 +570,13 @@ const ur: DeepReadonlyShape<typeof en> = {
     retestReasonPlaceholder: "اسے دوبارہ کیوں چلانے کی ضرورت ہے؟",
     ordering: "آرڈر ہو رہا ہے…",
     orderRetest: "دوبارہ ٹیسٹ کا آرڈر",
+    selectTest: "کم از کم ایک ٹیسٹ منتخب کریں",
+    orderCreated: "لیب آرڈر بن گیا",
+    chargesFlow: "چارجز خود بخود مریض کے بل میں شامل ہو جائیں گے۔",
+    noTestsInCatalogue: "کیٹلاگ میں کوئی ٹیسٹ نہیں",
+    noTestsHint: "ایڈمن سے کہیں کہ لیب کیٹلاگ سیٹ کریں۔",
+    orderTests: "{{count}} ٹیسٹ کا آرڈر",
+    orderTests_other: "{{count}} ٹیسٹوں کا آرڈر",
   },
 
   labResults: {
@@ -731,6 +761,15 @@ const ur: DeepReadonlyShape<typeof en> = {
     stockHistoryTitle: "اسٹاک کی تاریخ — {{medicine}}",
     noMovementsYet: "ابھی کوئی تبدیلی نہیں",
     noMovementsYetHint: "اسٹاک کی تبدیلیاں یہاں ظاہر ہوں گی۔",
+    nothingToDispense: "ڈسپینس کرنے کو کچھ نہیں بچا",
+    dispensedToast: "ڈسپینس ہو گیا",
+    queueClear: "ڈسپینس قطار صاف ہے",
+    queueClearHint: "فارمیسی میں کوئی جاری شدہ نسخہ انتظار میں نہیں۔",
+    dispensedCount: "{{count}} ڈسپینس ہوئے",
+    leftCount: "{{count}} باقی",
+    batchPlaceholder: "بیچ",
+    dispensing: "ڈسپینس ہو رہا ہے…",
+    dispense: "ڈسپینس کریں",
   },
 
   queue: {
@@ -800,6 +839,9 @@ const ur: DeepReadonlyShape<typeof en> = {
     category: "زمرہ",
     uploading: "اپ لوڈ ہو رہا ہے…",
     uploadCount: "{{count}} اپ لوڈ کریں",
+    noDocuments: "کوئی دستاویز نہیں",
+    noDocumentsHint: "اپ لوڈ کردہ رپورٹس اور ریکارڈ یہاں ظاہر ہوں گے۔",
+    open: "کھولیں",
   },
 
   clinical: {
@@ -867,6 +909,11 @@ const ur: DeepReadonlyShape<typeof en> = {
     saveLifestyle: "طرز زندگی محفوظ کریں",
     severeAllergyOne: "{{count}} شدید الرجی — الرجی بینر دیکھیں",
     severeAllergyMany: "{{count}} شدید الرجیاں — الرجی بینر دیکھیں",
+    checkingAllergies: "الرجی ریکارڈ چیک ہو رہا ہے…",
+    noKnownAllergies: "ریکارڈ پر کوئی معلوم الرجی نہیں",
+    allergiesHeader: "الرجیاں — {{state}}",
+    allergyStateSevere: "شدید",
+    allergyStateReview: "نسخے سے پہلے جائزہ لیں",
   },
 
   vitals: {
@@ -908,6 +955,48 @@ const ur: DeepReadonlyShape<typeof en> = {
     unknownPatient: "نامعلوم مریض",
     match: "{{value}}% مماثلت",
     searchUnavailable: "AI تلاش دستیاب نہیں تھی — کوئی نتیجہ نہیں ملا۔",
+    disclaimer:
+      "AI سے تیار کردہ — صرف رہنمائی کے لیے۔ یہ تشخیص نہیں اور طبی مشورے کا متبادل نہیں۔ ڈاکٹر ہر چیز کا جائزہ لیتا ہے اس سے پہلے کہ وہ آپ کے ریکارڈ کا حصہ بنے۔",
+    assistantForPatient: "اس مریض کے لیے معاون",
+    timelineSummary: "ٹائم لائن خلاصہ",
+    timelineLoadFailed: "ٹائم لائن کا خلاصہ لوڈ نہیں ہو سکا۔",
+    explaining: "وضاحت ہو رہی ہے…",
+    explainThis: "مجھے اس کی وضاحت کریں",
+    explanationTitle: "سادہ الفاظ میں وضاحت",
+    explainUnavailable: "AI وضاحت فی الحال دستیاب نہیں — اوپر دی گئی قدریں رپورٹ کے اپنے نمبر ہیں۔",
+    thinking: "سوچا جا رہا ہے…",
+    chatPlaceholder: "ریکارڈ کے بارے میں پوچھیں…",
+    askAboutRecords:
+      "اپنے ریکارڈ (یا اپنے زیرِ کفالت افراد) کے بارے میں پوچھیں اور حوالہ جات کے ساتھ جواب پائیں۔",
+    askAboutPatient:
+      "اس مریض کے ریکارڈ (یا اپنے زیرِ کفالت افراد) کے بارے میں پوچھیں اور حوالہ جات کے ساتھ جواب پائیں۔",
+    promptMedicinesPatient: "میں فی الحال کون سی دوائیں لے رہا/رہی ہوں؟",
+    promptLastVisit: "میرے آخری دورے پر کیا ہوا؟",
+    promptLabsPatient: "میرے حالیہ لیب نتائج کا خلاصہ دیں",
+    promptVisitsDoctor: "اس مریض کے آخری تین دوروں کا خلاصہ دیں",
+    promptMedicinesDoctor: "یہ مریض کون سی دوائیں لے رہا ہے؟",
+    promptFlagsDoctor: "کیا حال ہی میں کوئی نمایاں لیب ویلیو ہے؟",
+    kbAssistantTitle: "نالج معاون",
+    kbPromptPolicy: "ملاقاتوں کی منسوخی کی پالیسی کیا ہے؟",
+    kbPromptIncident: "میں حفاظتی واقعے کی اطلاع کیسے دوں؟",
+    kbPromptVisitingHours: "وزٹ کے اوقات کیا ہیں؟",
+    kbAskHint: "ہسپتال کی پالیسیوں، FAQs اور رہنمائی کے بارے میں پوچھیں۔",
+    kbSearching: "نالج بیس تلاش ہو رہی ہے…",
+    kbPlaceholder: "نالج بیس سے پوچھیں…",
+    analyticsAsk: "اپنے ڈیٹا سے پوچھیں",
+    analyticsAskHint: "آمدنی، ملاقاتوں یا محکموں کے بارے میں پوچھیں — نمبر حقیقی اعداد سے آتے ہیں۔",
+    analyticsPlaceholder: "مثلاً اس مہینے کتنی ملاقاتیں ہوئیں؟",
+    analyticsThinking: "آپ کے ڈیٹا کا تجزیہ ہو رہا ہے…",
+    analyticsFallback: "AI معاون دستیاب نہیں تھا، اس لیے اس کے بغیر جواب دیا گیا۔",
+    aiSummary: "AI خلاصہ",
+    aiAssistantTitle: "AI معاون",
+    queuing: "قطار میں…",
+    waiting: "انتظار…",
+    summarise: "AI سے خلاصہ بنائیں",
+    symptomChecker: "علامات جانچنے والا",
+    symptomPlaceholder: "علامت بیان کریں، مثلاً مسلسل سر درد…",
+    findDoctors: "{{department}} میں ڈاکٹر تلاش کریں",
+    showingDoctors: "{{department}} میں ڈاکٹر دکھائے جا رہے ہیں۔",
   },
 
   chat: {
@@ -929,6 +1018,12 @@ const ur: DeepReadonlyShape<typeof en> = {
     noOutgoing: "کوئی ارسال شدہ ریفرل نہیں",
     empty: "ابھی یہاں کچھ نہیں",
     emptyHint: "آپ کے بھیجے یا موصول ہونے والے ریفرل یہاں ظاہر ہوں گے۔",
+    colleagueFallback: "ایک ساتھی ڈاکٹر",
+    patientFallback: "مریض",
+    doctorFallback: "ایک ڈاکٹر",
+    accept: "قبول کریں",
+    decline: "مسترد کریں",
+    markComplete: "مکمل نشان زد کریں",
   },
 
   schedule: {

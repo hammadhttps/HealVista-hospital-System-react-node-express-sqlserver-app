@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Badge } from "../ui/badge";
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
@@ -41,8 +42,9 @@ export default function ReferralCard({
   referral: ReferralRow;
   actions?: "incoming" | "none";
 }) {
+  const { t } = useTranslation("referrals");
   const respond = useRespondToReferral();
-  const destination = referral.toDoctorName ?? referral.toDepartmentName ?? "a colleague";
+  const destination = referral.toDoctorName ?? referral.toDepartmentName ?? t("colleagueFallback");
 
   return (
     <Card>
@@ -54,13 +56,13 @@ export default function ReferralCard({
           </span>
         </div>
         <p className="text-sm">
-          <span className="font-medium">{referral.patientName ?? "Patient"}</span>
+          <span className="font-medium">{referral.patientName ?? t("patientFallback")}</span>
           {referral.patientMrn && (
             <span className="ml-2 font-mono text-xs text-gray-500">{referral.patientMrn}</span>
           )}
         </p>
         <p className="text-sm text-gray-600">
-          {referral.fromDoctorName ?? "A doctor"} → {destination}
+          {referral.fromDoctorName ?? t("doctorFallback")} → {destination}
         </p>
         <p className="text-sm">{referral.reason}</p>
         {referral.notes && <p className="text-sm text-gray-500">{referral.notes}</p>}
@@ -72,7 +74,7 @@ export default function ReferralCard({
               disabled={respond.isPending}
               onClick={() => respond.mutate({ id: referral.id, status: "ACCEPTED" })}
             >
-              Accept
+              {t("accept")}
             </Button>
             <Button
               size="sm"
@@ -80,7 +82,7 @@ export default function ReferralCard({
               disabled={respond.isPending}
               onClick={() => respond.mutate({ id: referral.id, status: "DECLINED" })}
             >
-              Decline
+              {t("decline")}
             </Button>
           </div>
         )}
@@ -92,7 +94,7 @@ export default function ReferralCard({
               disabled={respond.isPending}
               onClick={() => respond.mutate({ id: referral.id, status: "COMPLETED" })}
             >
-              Mark complete
+              {t("markComplete")}
             </Button>
           </div>
         )}

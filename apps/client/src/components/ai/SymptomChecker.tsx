@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Stethoscope, Send, Loader2, Siren } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useSymptomCheck } from "../../hooks/mutations/useAiMutations";
 import { useMatchBySymptom } from "../../hooks/mutations/useAppointmentMutations";
 import AIDisclaimer from "./AIDisclaimer";
@@ -18,6 +19,7 @@ export default function SymptomChecker({
 }: {
   onMatchDepartment: (departmentId: string) => void;
 }) {
+  const { t } = useTranslation("ai");
   const check = useSymptomCheck();
   const match = useMatchBySymptom();
   const [symptom, setSymptom] = useState("");
@@ -54,14 +56,14 @@ export default function SymptomChecker({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Stethoscope className="h-4 w-4" /> Symptom checker
+          <Stethoscope className="h-4 w-4" /> {t("symptomChecker")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <form onSubmit={run} className="flex gap-2">
           <input
             className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            placeholder="Describe a symptom, e.g. persistent headache…"
+            placeholder={t("symptomPlaceholder")}
             value={symptom}
             onChange={(e) => setSymptom(e.target.value)}
             disabled={check.isPending}
@@ -106,12 +108,18 @@ export default function SymptomChecker({
                 {match.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <>Find doctors in {result.department.replace("-", " ")}</>
+                  <>
+                    {t("findDoctors", {
+                      department: result.department.replace("-", " "),
+                    })}
+                  </>
                 )}
               </Button>
             )}
             {matched && (
-              <p className="text-xs text-green-700">Showing doctors in {matched.departmentName}.</p>
+              <p className="text-xs text-green-700">
+                {t("showingDoctors", { department: matched.departmentName })}
+              </p>
             )}
           </div>
         )}

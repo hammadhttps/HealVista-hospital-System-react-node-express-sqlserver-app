@@ -11,6 +11,20 @@ vi.mock("../api/auth", () => ({
   authApi: { me: vi.fn() },
 }));
 
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const map: Record<string, string> = {
+        oauthIncomplete: "Sign-in did not complete. Please try again.",
+        oauthAccountLoadFailed: "Could not load your account. Please sign in again.",
+        backToSignIn: "Back to sign in",
+        signingYouIn: "Signing you in…",
+      };
+      return map[key] ?? key;
+    },
+  }),
+}));
+
 const me = vi.mocked(authApi.me);
 
 function renderPage() {

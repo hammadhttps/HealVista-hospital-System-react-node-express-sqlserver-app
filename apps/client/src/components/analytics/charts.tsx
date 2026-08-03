@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useTranslation } from "react-i18next";
 import { formatCompact, formatCurrency, formatDayTick, formatNumber } from "../../lib/format";
 
 /**
@@ -64,9 +65,12 @@ export function ChartCard({
   );
 }
 
-export function NoData({ label = "No data in this range" }: { label?: string }) {
+export function NoData({ label }: { label?: string }) {
+  const { t } = useTranslation(["analytics"]);
   return (
-    <div className="flex h-[220px] items-center justify-center text-sm text-gray-400">{label}</div>
+    <div className="flex h-[220px] items-center justify-center text-sm text-gray-400">
+      {label ?? t("analytics:noDataInRange")}
+    </div>
   );
 }
 
@@ -201,7 +205,8 @@ export function DataTable({
   columns: { key: string; label: string; align?: "left" | "right" }[];
   rows: Record<string, string | number | null>[];
 }) {
-  if (rows.length === 0) return <NoData label="Nothing to show" />;
+  const { t } = useTranslation(["analytics"]);
+  if (rows.length === 0) return <NoData label={t("analytics:nothingToShow")} />;
 
   return (
     <div className="overflow-x-auto">

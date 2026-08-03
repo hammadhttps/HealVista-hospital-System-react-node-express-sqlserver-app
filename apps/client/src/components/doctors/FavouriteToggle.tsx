@@ -1,5 +1,6 @@
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../store/authStore";
 import { useFavouriteDoctors } from "../../hooks/queries/usePatients";
 import {
@@ -16,6 +17,7 @@ interface FavouriteToggleProps {
  * own patient record, so the control is hidden for staff roles entirely.
  */
 export function FavouriteToggle({ doctorId }: FavouriteToggleProps) {
+  const { t } = useTranslation("favourites");
   const role = useAuthStore((s) => s.user?.role);
   const isPatient = role === "PATIENT";
 
@@ -37,13 +39,13 @@ export function FavouriteToggle({ doctorId }: FavouriteToggleProps) {
 
     if (isFavourite) {
       remove.mutate(doctorId, {
-        onSuccess: () => toast.success("Removed from favourites"),
-        onError: () => toast.error("Could not remove favourite"),
+        onSuccess: () => toast.success(t("removed")),
+        onError: () => toast.error(t("removeFailed")),
       });
     } else {
       add.mutate(doctorId, {
-        onSuccess: () => toast.success("Added to favourites"),
-        onError: () => toast.error("Could not add favourite"),
+        onSuccess: () => toast.success(t("added")),
+        onError: () => toast.error(t("addFailed")),
       });
     }
   };
@@ -54,7 +56,7 @@ export function FavouriteToggle({ doctorId }: FavouriteToggleProps) {
       onClick={toggle}
       disabled={pending}
       aria-pressed={isFavourite}
-      aria-label={isFavourite ? "Remove from favourites" : "Add to favourites"}
+      aria-label={isFavourite ? t("removeLabel") : t("addLabel")}
       className="rounded-full p-2 transition hover:bg-muted disabled:opacity-50"
     >
       <Heart

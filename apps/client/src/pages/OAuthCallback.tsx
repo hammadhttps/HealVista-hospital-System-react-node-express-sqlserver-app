@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../store/authStore";
 import { authApi } from "../api/auth";
 
@@ -22,6 +23,7 @@ import { authApi } from "../api/auth";
 export default function OAuthCallback() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const { t } = useTranslation("auth");
   const [error, setError] = useState<string | null>(null);
   const consumed = useRef(false);
 
@@ -36,7 +38,7 @@ export default function OAuthCallback() {
     const refreshToken = params.get("refreshToken");
 
     if (!accessToken) {
-      setError("Sign-in did not complete. Please try again.");
+      setError(t("oauthIncomplete"));
       return;
     }
 
@@ -54,9 +56,9 @@ export default function OAuthCallback() {
         navigate("/patient", { replace: true });
       })
       .catch(() => {
-        setError("Could not load your account. Please sign in again.");
+        setError(t("oauthAccountLoadFailed"));
       });
-  }, [navigate, setAuth]);
+  }, [navigate, setAuth, t]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
@@ -68,11 +70,11 @@ export default function OAuthCallback() {
             onClick={() => navigate("/login", { replace: true })}
             className="mt-4 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
           >
-            Back to sign in
+            {t("backToSignIn")}
           </button>
         </div>
       ) : (
-        <p className="text-sm text-gray-500">Signing you in…</p>
+        <p className="text-sm text-gray-500">{t("signingYouIn")}</p>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Sparkles, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useExplainLab } from "../../hooks/mutations/useAiMutations";
 import AIDisclaimer from "./AIDisclaimer";
 import { Button } from "../ui/button";
@@ -11,6 +12,7 @@ import { getErrorMessage } from "../../utils/errors";
  * separated from the raw values it describes.
  */
 export default function LabExplainButton({ orderId }: { orderId: string }) {
+  const { t } = useTranslation("ai");
   const explain = useExplainLab();
   const [open, setOpen] = useState(false);
 
@@ -28,11 +30,11 @@ export default function LabExplainButton({ orderId }: { orderId: string }) {
       <Button size="sm" variant="outline" onClick={toggle} disabled={explain.isPending}>
         {explain.isPending ? (
           <span className="flex items-center gap-1">
-            <Sparkles className="h-3.5 w-3.5 animate-pulse" /> Explaining…
+            <Sparkles className="h-3.5 w-3.5 animate-pulse" /> {t("explaining")}
           </span>
         ) : (
           <span className="flex items-center gap-1">
-            <Sparkles className="h-3.5 w-3.5" /> Explain this to me
+            <Sparkles className="h-3.5 w-3.5" /> {t("explainThis")}
           </span>
         )}
       </Button>
@@ -41,9 +43,13 @@ export default function LabExplainButton({ orderId }: { orderId: string }) {
         <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
           <div className="flex items-start justify-between gap-2">
             <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-700">
-              <Sparkles className="h-3.5 w-3.5" /> Plain-language explanation
+              <Sparkles className="h-3.5 w-3.5" /> {t("explanationTitle")}
             </span>
-            <button className="text-gray-400 hover:text-gray-600" onClick={() => setOpen(false)}>
+            <button
+              className="text-gray-400 hover:text-gray-600"
+              onClick={() => setOpen(false)}
+              aria-label={t("common:close")}
+            >
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -71,10 +77,7 @@ export default function LabExplainButton({ orderId }: { orderId: string }) {
                 </div>
               )}
               {explain.data.fallback && !explain.data.explanation && (
-                <p className="text-amber-800">
-                  The AI explanation is unavailable right now — the values above are the report's
-                  own numbers.
-                </p>
+                <p className="text-amber-800">{t("explainUnavailable")}</p>
               )}
             </div>
           )}

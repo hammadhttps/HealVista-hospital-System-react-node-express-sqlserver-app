@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Send, BookOpen, User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useKbAsk } from "../../hooks/mutations/useAiMutations";
 import AIDisclaimer from "./AIDisclaimer";
 import CitationList, { type Citation } from "./CitationList";
@@ -14,18 +15,13 @@ interface ChatMessage {
   error?: boolean;
 }
 
-const STAFF_PROMPTS = [
-  "What is the cancellation policy for appointments?",
-  "How do I report a safety incident?",
-  "What are the visiting hours?",
-];
-
 /**
  * Hospital knowledge assistant — RAG over policies, FAQs, and guidelines. Staff-only
  * (the route is role-guarded); answers are cited back to the KB articles they come
  * from, and the assistant is a single turn per question, never a chain.
  */
-export default function KbAssistant({ title = "Knowledge assistant" }: { title?: string }) {
+export default function KbAssistant({ title }: { title?: string }) {
+  const { t } = useTranslation("ai");
   const kb = useKbAsk();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -46,22 +42,22 @@ export default function KbAssistant({ title = "Knowledge assistant" }: { title?:
     });
   }
 
+  const staffPrompts = [t("kbPromptPolicy"), t("kbPromptIncident"), t("kbPromptVisitingHours")];
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <BookOpen className="h-4 w-4" /> {title}
+          <BookOpen className="h-4 w-4" /> {title ?? t("kbAssistantTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="space-y-3">
           {messages.length === 0 && (
             <div className="space-y-2">
-              <p className="text-sm text-gray-500">
-                Ask about hospital policies, FAQs, and guidelines.
-              </p>
+              <p className="text-sm text-gray-500">{t("kbAskHint")}</p>
               <div className="flex flex-wrap gap-2">
-                {STAFF_PROMPTS.map((p) => (
+                {staffPrompts.map((p) => (
                   <button
                     key={p}
                     onClick={() => ask(p)}
@@ -113,7 +109,7 @@ export default function KbAssistant({ title = "Knowledge assistant" }: { title?:
 
           {kb.isPending && (
             <div className="flex items-center gap-2 text-sm text-gray-400">
-              <BookOpen className="h-4 w-4 animate-pulse" /> Searching the knowledge base…
+              <BookOpen className="h-4 w-4 animate-pulse" /> {t("kbSearching")}
             </div>
           )}
         </div>
@@ -127,7 +123,7 @@ export default function KbAssistant({ title = "Knowledge assistant" }: { title?:
         >
           <input
             className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            placeholder="Ask the knowledge base…"
+            placeholder={t("kbPlaceholder")}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={kb.isPending}

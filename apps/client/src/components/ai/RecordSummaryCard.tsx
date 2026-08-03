@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Sparkles, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useRecordSummary } from "../../hooks/queries/useAi";
 import { useSummarizeRecord } from "../../hooks/mutations/useAiMutations";
 import { useAuthStore } from "../../store/authStore";
@@ -18,6 +19,7 @@ import { getErrorMessage } from "../../utils/errors";
  * the card offers to enqueue one and polls via a react-query refetch until it lands.
  */
 export default function RecordSummaryCard({ recordId }: { recordId: string }) {
+  const { t } = useTranslation("ai");
   const [expanded, setExpanded] = useState(false);
   const [polling, setPolling] = useState(false);
   const role = useAuthStore((s) => s.user?.role);
@@ -45,7 +47,7 @@ export default function RecordSummaryCard({ recordId }: { recordId: string }) {
         onClick={() => setExpanded(true)}
       >
         <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700">
-          <Sparkles className="h-3.5 w-3.5" /> AI summary
+          <Sparkles className="h-3.5 w-3.5" /> {t("aiSummary")}
         </span>
         <ChevronDown className="h-4 w-4 text-blue-500" />
       </button>
@@ -56,7 +58,7 @@ export default function RecordSummaryCard({ recordId }: { recordId: string }) {
     return (
       <div className="space-y-2 rounded-md border border-blue-100 bg-blue-50/50 p-3">
         <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700">
-          <Sparkles className="h-3.5 w-3.5" /> AI summary
+          <Sparkles className="h-3.5 w-3.5" /> {t("aiSummary")}
         </span>
         <Skeleton className="h-8" />
       </div>
@@ -70,7 +72,7 @@ export default function RecordSummaryCard({ recordId }: { recordId: string }) {
     <div className="rounded-md border border-blue-100 bg-blue-50/50 p-3">
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700">
-          <Sparkles className="h-3.5 w-3.5" /> AI summary
+          <Sparkles className="h-3.5 w-3.5" /> {t("aiSummary")}
         </span>
         {hasSummary && (
           <button className="text-blue-600 hover:text-blue-800" onClick={() => setExpanded(false)}>
@@ -123,7 +125,7 @@ export default function RecordSummaryCard({ recordId }: { recordId: string }) {
               ) : (
                 <Sparkles className="h-3.5 w-3.5" />
               )}
-              {summarize.isPending ? "Queuing…" : polling ? "Waiting…" : "Summarise with AI"}
+              {summarize.isPending ? t("queuing") : polling ? t("waiting") : t("summarise")}
             </Button>
           ) : null}
           {summarize.isError && (

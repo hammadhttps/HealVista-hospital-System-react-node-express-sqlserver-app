@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Send, Bot, User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAssistant } from "../../hooks/mutations/useAiMutations";
 import AIDisclaimer from "./AIDisclaimer";
 import CitationList, { type Citation } from "./CitationList";
@@ -14,18 +15,6 @@ interface ChatMessage {
   error?: boolean;
 }
 
-const PATIENT_PROMPTS = [
-  "What medicines am I currently on?",
-  "What happened at my last visit?",
-  "Summarise my recent lab results",
-];
-
-const DOCTOR_PROMPTS = [
-  "Summarise this patient's last three visits",
-  "What medicines is this patient on?",
-  "Are there any flagged lab values recently?",
-];
-
 /**
  * RAG assistant chat. One component serves both the patient dashboard (own records
  * only — no patientId) and the doctor's patient-record panel (named patient, which
@@ -35,7 +24,7 @@ const DOCTOR_PROMPTS = [
 export default function AssistantChat({
   patientId,
   role,
-  title = "AI Assistant",
+  title,
   compact = false,
 }: {
   patientId?: string;
@@ -43,11 +32,14 @@ export default function AssistantChat({
   title?: string;
   compact?: boolean;
 }) {
+  const { t } = useTranslation("ai");
   const assistant = useAssistant();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
 
-  const prompts = patientId ? DOCTOR_PROMPTS : PATIENT_PROMPTS;
+  const prompts = patientId
+    ? [t("promptVisitsDoctor"), t("promptMedicinesDoctor"), t("promptFlagsDoctor")]
+    : [t("promptMedicinesPatient"), t("promptLastVisit"), t("promptLabsPatient")];
 
   function ask(question: string) {
     const text = question.trim();
@@ -75,7 +67,7 @@ export default function AssistantChat({
     <Card>
       <CardHeader className={compact ? "pb-2" : ""}>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Bot className="h-4 w-4" /> {title}
+          <Bot className="h-4 w-4" /> {title ?? t("aiAssistantTitle")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -83,8 +75,7 @@ export default function AssistantChat({
           {messages.length === 0 && (
             <div className="space-y-2">
               <p className="text-sm text-gray-500">
-                Ask about this patient's records{patientId ? "" : " (or your dependants')"} and get
-                a cited answer.
+                {patientId ? t("askAboutPatient") : t("askAboutRecords")}
               </p>
               <div className="flex flex-wrap gap-2">
                 {prompts.map((p) => (
@@ -141,7 +132,7 @@ export default function AssistantChat({
 
           {assistant.isPending && (
             <div className="flex items-center gap-2 text-sm text-gray-400">
-              <Bot className="h-4 w-4 animate-pulse" /> Thinking…
+              <Bot className="h-4 w-4 animate-pulse" /> {t("thinking")}
             </div>
           )}
         </div>
@@ -155,7 +146,7 @@ export default function AssistantChat({
         >
           <input
             className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            placeholder="Ask about the records…"
+            placeholder={t("chatPlaceholder")}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={assistant.isPending}

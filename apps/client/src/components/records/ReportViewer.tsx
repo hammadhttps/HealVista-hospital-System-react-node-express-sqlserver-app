@@ -1,5 +1,6 @@
 import { toast } from "sonner";
 import { ExternalLink, Trash2, FileText, File } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useOpenRecord } from "../../hooks/mutations/useLabPharmacyMutations";
 import RecordSummaryCard from "../ai/RecordSummaryCard";
 import { Card, CardContent } from "../ui/card";
@@ -34,6 +35,7 @@ export default function ReportViewer({
   canDelete?: boolean;
   onDelete?: (id: string, title: string) => void;
 }) {
+  const { t } = useTranslation("records");
   const openRecord = useOpenRecord();
 
   function open(id: string) {
@@ -48,12 +50,7 @@ export default function ReportViewer({
   if (isLoading) return <Skeleton className="h-40" />;
 
   if (records.length === 0) {
-    return (
-      <EmptyState
-        title="No documents"
-        description="Uploaded reports and records will appear here."
-      />
-    );
+    return <EmptyState title={t("noDocuments")} description={t("noDocumentsHint")} />;
   }
 
   return (
@@ -83,7 +80,7 @@ export default function ReportViewer({
                 onClick={() => open(r.id)}
                 disabled={openRecord.isPending}
               >
-                <ExternalLink className="h-4 w-4" /> Open
+                <ExternalLink className="h-4 w-4" /> {t("open")}
               </Button>
               {canDelete && onDelete && (
                 <Button size="sm" variant="ghost" onClick={() => onDelete(r.id, r.title)}>

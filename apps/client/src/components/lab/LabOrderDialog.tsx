@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { FlaskConical } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useLabTests } from "../../hooks/queries/useLabAndPharmacy";
 import { useCreateLabOrder } from "../../hooks/mutations/useLabPharmacyMutations";
 import { Card, CardContent } from "../ui/card";
@@ -40,6 +41,7 @@ export default function LabOrderDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { t } = useTranslation(["lab", "common"]);
   const { data: tests, isLoading } = useLabTests();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const create = useCreateLabOrder();
@@ -53,14 +55,14 @@ export default function LabOrderDialog({
   const submit = () => {
     const labTestIds = [...selected];
     if (labTestIds.length === 0) {
-      toast.error("Select at least one test");
+      toast.error(t("selectTest"));
       return;
     }
     create.mutate(
       { patientId, appointmentId, labTestIds, notes: undefined },
       {
         onSuccess: () => {
-          toast.success("Lab order created");
+          toast.success(t("orderCreated"));
           setSelected(new Set());
           onOpenChange(false);
         },
@@ -74,17 +76,14 @@ export default function LabOrderDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FlaskConical className="h-4 w-4" /> Order lab tests
+            <FlaskConical className="h-4 w-4" /> {t("orderLabTests")}
           </DialogTitle>
-          <DialogDescription>Charges flow to the patient's bill automatically.</DialogDescription>
+          <DialogDescription>{t("chargesFlow")}</DialogDescription>
         </DialogHeader>
 
         {isLoading && <Skeleton className="h-48" />}
         {!isLoading && catalogue.length === 0 && (
-          <EmptyState
-            title="No tests in the catalogue"
-            description="Ask an admin to seed the lab catalogue."
-          />
+          <EmptyState title={t("noTestsInCatalogue")} description={t("noTestsHint")} />
         )}
 
         {!isLoading && catalogue.length > 0 && (
@@ -132,12 +131,10 @@ export default function LabOrderDialog({
             disabled={create.isPending}
             onClick={() => onOpenChange(false)}
           >
-            Cancel
+            {t("common:cancel")}
           </Button>
           <Button onClick={submit} disabled={create.isPending || selected.size === 0}>
-            {create.isPending
-              ? "Ordering…"
-              : `Order ${selected.size} test${selected.size === 1 ? "" : "s"}`}
+            {create.isPending ? t("lab:ordering") : t("lab:orderTests", { count: selected.size })}
           </Button>
         </DialogFooter>
       </DialogContent>

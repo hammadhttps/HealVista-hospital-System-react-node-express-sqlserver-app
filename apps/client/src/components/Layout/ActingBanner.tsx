@@ -1,4 +1,5 @@
 import { UserRoundCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useDependents } from "../../hooks/queries/useClinical";
 import { useActingPatientStore } from "../../store/actingPatientStore";
 
@@ -17,25 +18,27 @@ export default function ActingBanner() {
   const actingPatientId = useActingPatientStore((s) => s.actingPatientId);
   const setActingPatient = useActingPatientStore((s) => s.setActingPatient);
   const { data } = useDependents();
+  const { t } = useTranslation(["profile", "common"]);
 
   if (!actingPatientId) return null;
 
   const dependents = (data ?? []) as DependentLink[];
   const name =
-    dependents.find((d) => d.patient.id === actingPatientId)?.patient.fullName ?? "dependant";
+    dependents.find((d) => d.patient.id === actingPatientId)?.patient.fullName ??
+    t("profile:dependantFallback");
 
   return (
     <div className="flex items-center justify-between gap-3 bg-blue-600 px-8 py-2 text-sm font-medium text-white">
       <span className="flex items-center gap-2">
         <UserRoundCheck className="h-4 w-4 shrink-0" />
-        Acting for {name} — records, appointments and bills now use this profile.
+        {t("profile:actingFor", { name })} — {t("profile:actingContext")}
       </span>
       <button
         type="button"
         onClick={() => setActingPatient(null)}
         className="shrink-0 underline underline-offset-2 hover:text-blue-100"
       >
-        Switch back to me
+        {t("profile:switchBackToMe")}
       </button>
     </div>
   );

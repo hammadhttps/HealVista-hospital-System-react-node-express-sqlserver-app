@@ -1,11 +1,13 @@
 import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { authApi } from "../api/auth";
 import { toast } from "sonner";
 
 export default function VerifyEmail() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useTranslation("auth");
   const token = params.get("token");
 
   useEffect(() => {
@@ -13,18 +15,18 @@ export default function VerifyEmail() {
       authApi
         .verifyEmail(token)
         .then(() => {
-          toast.success("Email verified!");
+          toast.success(t("emailVerified"));
           navigate("/login");
         })
         .catch(() => {
-          toast.error("Verification failed");
+          toast.error(t("verificationFailed"));
         });
     }
-  }, [token, navigate]);
+  }, [token, navigate, t]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <p>Verifying your email...</p>
+      <p>{t("verifyingEmail")}</p>
     </div>
   );
 }

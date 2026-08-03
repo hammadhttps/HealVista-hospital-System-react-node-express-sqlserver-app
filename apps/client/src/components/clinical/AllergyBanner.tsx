@@ -1,4 +1,5 @@
 import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Badge } from "../ui/badge";
 
 interface Allergy {
@@ -21,11 +22,13 @@ export default function AllergyBanner({
   allergies: Allergy[] | undefined;
   isLoading?: boolean;
 }) {
+  const { t } = useTranslation("clinical");
+
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-500">
         <ShieldAlert className="h-4 w-4 shrink-0" />
-        Checking allergy record…
+        {t("checkingAllergies")}
       </div>
     );
   }
@@ -34,13 +37,18 @@ export default function AllergyBanner({
     return (
       <div className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800">
         <ShieldAlert className="h-4 w-4 shrink-0" />
-        No known allergies on record
+        {t("noKnownAllergies")}
       </div>
     );
   }
 
   const severe = allergies.filter((a) => a.severity === "SEVERE");
   const tone = severe.length > 0 ? "red" : "amber";
+  const severityLabel: Record<Allergy["severity"], string> = {
+    MILD: t("severityMild"),
+    MODERATE: t("severityModerate"),
+    SEVERE: t("severitySevere"),
+  };
 
   return (
     <div
@@ -56,7 +64,9 @@ export default function AllergyBanner({
       />
       <div className="space-y-1">
         <p className="text-sm font-bold uppercase tracking-wide">
-          Allergies — {severe.length > 0 ? "severe" : "review before prescribing"}
+          {t("allergiesHeader", {
+            state: severe.length > 0 ? t("allergyStateSevere") : t("allergyStateReview"),
+          })}
         </p>
         <div className="flex flex-wrap gap-2">
           {allergies.map((a) => (
@@ -65,9 +75,9 @@ export default function AllergyBanner({
               variant={a.severity === "SEVERE" ? "destructive" : "warning"}
               className="text-xs"
             >
-              {a.allergen} · {a.severity}
+              {a.allergen} · {severityLabel[a.severity]}
               {a.reaction ? ` · ${a.reaction}` : ""}
-              {!a.confirmedAt ? " · unconfirmed" : ""}
+              {!a.confirmedAt ? ` · ${t("unconfirmed")}` : ""}
             </Badge>
           ))}
         </div>

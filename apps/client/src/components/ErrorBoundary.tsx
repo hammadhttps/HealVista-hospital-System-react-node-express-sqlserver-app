@@ -1,4 +1,5 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, type ComponentType, type ErrorInfo, type ReactNode } from "react";
+import { withTranslation } from "react-i18next";
 import { AlertTriangle, RotateCcw, Home } from "lucide-react";
 
 interface Props {
@@ -20,7 +21,7 @@ interface State {
  * `key` is the reset mechanism: the route tree passes `location.key`, so any
  * navigation remounts the boundary fresh and clears the error.
  */
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundaryBase extends Component<Props, State> {
   state: State = { hasError: false };
 
   static getDerivedStateFromError(): State {
@@ -36,6 +37,8 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.hasError) return this.props.children;
 
+    const { t } = this.props as Props & { t: (key: string) => string };
+
     return (
       <div
         role="alert"
@@ -46,10 +49,10 @@ export class ErrorBoundary extends Component<Props, State> {
           className="h-12 w-12 text-amber-500 dark:text-amber-400"
         />
         <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50">
-          Something went wrong
+          {t("common:errorTitle")}
         </h1>
         <p className="max-w-md text-sm text-gray-600 dark:text-gray-300">
-          The page could not be loaded. Your work is safe — try again, or return to your dashboard.
+          {t("common:errorBoundaryBody")}
         </p>
         <div className="flex gap-3">
           <button
@@ -58,17 +61,22 @@ export class ErrorBoundary extends Component<Props, State> {
             className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
           >
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            Try again
+            {t("common:tryAgain")}
           </button>
           <a
             href="/"
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
             <Home className="h-4 w-4" aria-hidden="true" />
-            Go home
+            {t("common:goHome")}
           </a>
         </div>
       </div>
     );
   }
 }
+
+const ErrorBoundary = withTranslation()(ErrorBoundaryBase) as ComponentType<Props>;
+
+export { ErrorBoundary };
+export default ErrorBoundary;
