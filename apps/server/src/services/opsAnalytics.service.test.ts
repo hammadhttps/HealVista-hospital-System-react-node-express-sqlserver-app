@@ -1,5 +1,19 @@
-import { describe, it, expect } from "vitest";
-import { noShowRate } from "./opsAnalytics.service.js";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { noShowRate, getOverview } from "./opsAnalytics.service.js";
+import { prisma } from "../config/db.js";
+
+vi.mock("../config/db.js", () => ({
+  prisma: { $queryRaw: vi.fn() },
+}));
+
+vi.mock("../config/redis.js", () => ({
+  getCached: vi.fn(),
+  setCached: vi.fn(),
+}));
+
+import { getCached } from "../config/redis.js";
+
+beforeEach(() => vi.clearAllMocks());
 
 /**
  * The no-show rate is the number an administrator acts on — it drives
@@ -28,5 +42,46 @@ describe("no-show rate", () => {
 
   it("never returns a negative or non-finite rate for degenerate input", () => {
     expect(noShowRate(0, -5)).toBe(0);
+  });
+});
+
+/**
+ * The overview endpoint runs one giant SQL statement and maps its JSON columns
+ * into the typed shape the client renders. The mapping is what the service
+ * owns — the SQL itself is exercised by the integration layer — so these pin
+ * the row-to-shape conversion, including the empty-hospital defaults.
+ */
+describe("getOverview", () => {
+  it("maps an empty aggregate row into a zeroed overview with no NaN", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{}] as never);
+
+    const out = await getOverview("2026-08-01", "2026-08-03");
+
+    expect(out.range).toEqual({ from: "2026-08-01", to: "2026-08-03" });
+    expect(out.noShow).toEqual({ noShows: 0, total: 0, rate: 0 });
+    expect(out.avgWaitingTimeMins).toBeNull();
+    expect(out.avgConsultationMins).toBeNull();
+    expect(out.avgLeadTimeDays).toBeNull();
+    expect(out.appointmentsPerDay).toEqual([]);
+    expect(out.revenueByMethod).toEqual([]);
+    expect(out.doctorUtilisation).toEqual([]);
+  });
+
+  it("defaults the range to the last 30 days when no bounds are given", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValue([{}] as never);
+
+    const out = await getOverview();
+
+    expect(out.range).toEqual({ from: null, to: null });
+  });
+
+  it("serves a cached overview without re-running the aggregate", async () => {
+    const cached = { range: { from: null, to: null }, noShow: { noShows: 1, total: 4, rate: 25 } };
+    vi.mocked(getCached).mockResolvedValue(cached as never);
+
+    const out = await getOverview();
+
+    expect(out).toMatchObject(cached);
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
   });
 });

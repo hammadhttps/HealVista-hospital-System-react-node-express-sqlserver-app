@@ -38,7 +38,12 @@ vi.mock("./payments/stripe.provider", () => ({
   },
 }));
 vi.mock("./payments/razorpay.provider", () => ({
-  razorpayProvider: { name: "razorpay", createIntent: vi.fn(), refund: vi.fn(), verifyWebhook: vi.fn() },
+  razorpayProvider: {
+    name: "razorpay",
+    createIntent: vi.fn(),
+    refund: vi.fn(),
+    verifyWebhook: vi.fn(),
+  },
 }));
 
 const D = Prisma.Decimal;
@@ -218,5 +223,117 @@ describe("cash payments", () => {
         { userId: "u1", role: "RECEPTIONIST" },
       ),
     ).rejects.toThrow("already paid in full");
+  });
+});
+
+describe("refunds", () => {
+  const actor = { userId: "acc1", role: "ACCOUNTANT" };
+  const settledPayment = (over: Partial<Record<string, unknown>> = {}) =>
+    ({
+      id: "pay-1",
+      billId: "bill-1",
+      status: "SUCCEEDED",
+      amount: new D("50.00"),
+      refundedAmount: new D("0"),
+      provider: "stripe",
+      providerRef: "pi_123",
+      bill: { total: new D("50.00"), status: "finalised" },
+      ...over,
+    }) as never;
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("refuses to refund a payment that never settled", async () => {
+    vi.mocked(prisma.payment.findUnique).mockResolvedValue(settledPayment({ status: "PENDING" }));
+
+    const { refundPayment } = await import("./payment.service.js");
+    await expect(
+      refundPayment("pay-1", { amount: "10.00", reason: "overcharged" }, actor),
+    ).rejects.toThrow("settled payment");
+  });
+
+  it("refuses a second refund after the payment is fully refunded", async () => {
+    vi.mocked(prisma.payment.findUnique).mockResolvedValue(
+      settledPayment({ refundedAmount: new D("50.00") }),
+    );
+
+    const { refundPayment } = await import("./payment.service.js");
+    await expect(refundPayment("pay-1", { reason: "already refunded" }, actor)).rejects.toThrow(
+      "already been fully refunded",
+    );
+  });
+
+  it("refuses an amount larger than what remains refundable", async () => {
+    vi.mocked(prisma.payment.findUnique).mockResolvedValue(
+      settledPayment({ refundedAmount: new D("40.00") }),
+    );
+
+    const { refundPayment } = await import("./payment.service.js");
+    await expect(refundPayment("pay-1", { amount: "20.00", reason: "x" }, actor)).rejects.toThrow(
+      "exceeds the refundable amount",
+    );
+  });
+
+  it("sends card refunds back through the gateway and audits them", async () => {
+    vi.mocked(prisma.payment.findUnique).mockResolvedValue(settledPayment());
+    const { stripeProvider } = await import("./payments/stripe.provider.js");
+    vi.mocked(stripeProvider.refund).mockResolvedValue({ refundRef: "re_1", amount: "50.00" });
+
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: never) =>
+      (fn as unknown as (tx: unknown) => unknown)({
+        payment: {
+          update: vi.fn(),
+          aggregate: vi.fn().mockResolvedValue({
+            _sum: { amount: new D("50.00"), refundedAmount: new D("50.00") },
+          }),
+        },
+        bill: {
+          update: vi.fn().mockResolvedValue({ id: "bill-1", balance: new D("50.00") }),
+        },
+      }),
+    );
+
+    const { refundPayment } = await import("./payment.service.js");
+    const { writeAuditLog } = await import("../utils/audit.js");
+    await refundPayment("pay-1", { reason: "patient dispute" }, actor);
+
+    expect(stripeProvider.refund).toHaveBeenCalledWith({
+      providerRef: "pi_123",
+      amount: "50.00",
+    });
+    expect(writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "PAYMENT_REFUNDED",
+        targetId: "pay-1",
+        actorUserId: "acc1",
+      }),
+    );
+  });
+
+  it("records a cash refund without touching the gateway", async () => {
+    vi.mocked(prisma.payment.findUnique).mockResolvedValue(
+      settledPayment({ provider: null, providerRef: null }),
+    );
+
+    vi.mocked(prisma.$transaction).mockImplementation(async (fn: never) =>
+      (fn as unknown as (tx: unknown) => unknown)({
+        payment: {
+          update: vi.fn(),
+          aggregate: vi.fn().mockResolvedValue({
+            _sum: { amount: new D("50.00"), refundedAmount: new D("20.00") },
+          }),
+        },
+        bill: {
+          update: vi.fn().mockResolvedValue({ id: "bill-1", balance: new D("20.00") }),
+        },
+      }),
+    );
+
+    const { refundPayment } = await import("./payment.service.js");
+    const { stripeProvider } = await import("./payments/stripe.provider.js");
+
+    await refundPayment("pay-1", { amount: "20.00", reason: "cash" }, actor);
+
+    expect(stripeProvider.refund).not.toHaveBeenCalled();
   });
 });
