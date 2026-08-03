@@ -177,10 +177,14 @@ export default function BillingConsole() {
 
                         {(() => {
                           const picked = (discounts ?? []).find(
-                            (d: any) => d.id === (previewDiscounts[bill.id] ?? ""),
+                            (d: { id: string; type: string; value: string }) =>
+                              d.id === (previewDiscounts[bill.id] ?? ""),
                           );
                           if (!picked || bill.discountId) return null;
-                          const preview = previewDiscount(bill, picked);
+                          const preview = previewDiscount(bill, {
+                            type: picked.type === "percentage" ? "percentage" : "fixed",
+                            value: picked.value,
+                          });
                           return (
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="text-sm text-muted-foreground">
