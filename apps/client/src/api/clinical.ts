@@ -95,6 +95,10 @@ export const prescriptionApi = {
   issue: (id: string, acknowledgedWarnings: string[]) =>
     api.post(`/prescriptions/${id}/issue`, { acknowledgedWarnings }).then((r) => r.data.data),
   getById: (id: string) => api.get(`/prescriptions/${id}`).then((r) => r.data.data),
+  latestDraft: (appointmentId: string) =>
+    api.get(`/prescriptions/appointment/${appointmentId}/draft`).then((r) => r.data.data),
+  updateDraft: (id: string, data: Record<string, unknown>) =>
+    api.put(`/prescriptions/${id}`, data).then((r) => r.data.data),
   listForPatient: (patientId: string) =>
     api.get(`/patients/${patientId}/prescriptions`).then((r) => r.data.data),
   pdfUrl: (id: string) => `/api/prescriptions/${id}/pdf`,

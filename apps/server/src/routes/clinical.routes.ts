@@ -16,6 +16,7 @@ import {
   addendumInputSchema,
   prescriptionCheckSchema,
   createPrescriptionSchema,
+  updatePrescriptionSchema,
   issuePrescriptionSchema,
   favouritePrescriptionSchema,
   referralCreateSchema,
@@ -157,6 +158,19 @@ router.post(
   requireRole("DOCTOR"),
   validate(issuePrescriptionSchema),
   clinical.issuePrescription,
+);
+router.get(
+  "/prescriptions/appointment/:appointmentId/draft",
+  authenticate,
+  requireRole("DOCTOR"),
+  clinical.getLatestDraft,
+);
+router.put(
+  "/prescriptions/:id",
+  authenticate,
+  requireRole("DOCTOR"),
+  validate(updatePrescriptionSchema),
+  clinical.updatePrescription,
 );
 router.get("/prescriptions/:id", authenticate, clinical.getPrescription);
 router.get("/prescriptions/:id/pdf", authenticate, clinical.getPrescriptionPdf);

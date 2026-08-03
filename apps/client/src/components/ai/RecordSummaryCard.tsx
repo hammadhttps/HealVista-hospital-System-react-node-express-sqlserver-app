@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Sparkles, Loader2 } from "lucide-react";
 import { useRecordSummary } from "../../hooks/queries/useAi";
 import { useSummarizeRecord } from "../../hooks/mutations/useAiMutations";
+import { useAuthStore } from "../../store/authStore";
 import AIDisclaimer from "./AIDisclaimer";
 import { Button } from "../ui/button";
 import { Skeleton } from "../primitives/Skeleton";
@@ -19,6 +20,8 @@ import { getErrorMessage } from "../../utils/errors";
 export default function RecordSummaryCard({ recordId }: { recordId: string }) {
   const [expanded, setExpanded] = useState(false);
   const [polling, setPolling] = useState(false);
+  const role = useAuthStore((s) => s.user?.role);
+  const canSummarize = role === "DOCTOR" || role === "ADMIN";
   const summary = useRecordSummary(recordId, expanded);
   const summarize = useSummarizeRecord(recordId);
 
@@ -105,22 +108,24 @@ export default function RecordSummaryCard({ recordId }: { recordId: string }) {
         </div>
       ) : (
         <div className="mt-1 flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={summarize.isPending || polling}
-            onClick={() => {
-              setPolling(true);
-              summarize.mutate(undefined);
-            }}
-          >
-            {summarize.isPending || polling ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-            {summarize.isPending ? "Queuing…" : polling ? "Waiting…" : "Summarise with AI"}
-          </Button>
+          {canSummarize ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={summarize.isPending || polling}
+              onClick={() => {
+                setPolling(true);
+                summarize.mutate(undefined);
+              }}
+            >
+              {summarize.isPending || polling ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              {summarize.isPending ? "Queuing…" : polling ? "Waiting…" : "Summarise with AI"}
+            </Button>
+          ) : null}
           {summarize.isError && (
             <span className="text-xs text-red-600">{getErrorMessage(summarize.error)}</span>
           )}

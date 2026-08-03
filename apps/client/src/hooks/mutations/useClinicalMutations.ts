@@ -273,6 +273,21 @@ export function useIssuePrescription() {
   });
 }
 
+/** Autosave: writes the appointment's draft in place, so repeated saves never duplicate. */
+export function useUpdatePrescriptionDraft(appointmentId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      prescriptionApi.updateDraft(id, data),
+    onSuccess: () => {
+      if (appointmentId) {
+        queryClient.invalidateQueries({ queryKey: prescriptionKeys.latestDraft(appointmentId) });
+      }
+      queryClient.invalidateQueries({ queryKey: prescriptionKeys.all });
+    },
+  });
+}
+
 export function useSaveFavouritePrescription() {
   const queryClient = useQueryClient();
   return useMutation({

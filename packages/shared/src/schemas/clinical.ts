@@ -125,6 +125,14 @@ export const createPrescriptionSchema = z.object({
   items: z.array(prescriptionItemInputSchema).min(1),
 });
 
+/** Autosave — the appointment already owns one prescription, so a draft is
+ * updated in place (the column is `@unique` on `appointmentId`). */
+export const updatePrescriptionSchema = z.object({
+  notes: z.string().max(2000).optional(),
+  followUpAfterDays: z.coerce.number().int().min(1).max(365).optional(),
+  items: z.array(prescriptionItemInputSchema).min(1),
+});
+
 export const issuePrescriptionSchema = z.object({
   acknowledgedWarnings: z.array(z.string()).default([]),
 });

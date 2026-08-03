@@ -407,6 +407,31 @@ export async function getPrescription(req: Request, res: Response, next: NextFun
   }
 }
 
+export async function getLatestDraft(req: Request, res: Response, next: NextFunction) {
+  try {
+    const draft = await prescriptionService.getLatestDraftForAppointment(
+      req.params.appointmentId as string,
+      req.user!,
+    );
+    sendSuccess(res, draft);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updatePrescription(req: Request, res: Response, next: NextFunction) {
+  try {
+    const prescription = await prescriptionService.updateDraft(
+      req.params.id as string,
+      req.body,
+      req.user!,
+    );
+    sendSuccess(res, prescription);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function listPatientPrescriptions(req: Request, res: Response, next: NextFunction) {
   try {
     const prescriptions = await prescriptionService.listForPatient(

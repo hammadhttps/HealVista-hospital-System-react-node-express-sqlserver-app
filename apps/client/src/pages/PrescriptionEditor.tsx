@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useForm, useFieldArray } from "react-hook-form";
 import { toast } from "sonner";
@@ -6,11 +6,16 @@ import { useTranslation } from "react-i18next";
 import { FileText, Plus, Pill, Trash2 } from "lucide-react";
 import { useAppointment } from "../hooks/queries/useAppointments";
 import { useMedicines } from "../hooks/queries/useLabAndPharmacy";
-import { useFavouritePrescriptions } from "../hooks/queries/useClinical";
+import {
+  useFavouritePrescriptions,
+  useLatestPrescriptionDraft,
+} from "../hooks/queries/useClinical";
 import {
   useCheckPrescriptionSafety,
   useCreatePrescription,
   useApplyFavouritePrescription,
+  useUpdatePrescriptionDraft,
+  useIssuePrescription,
 } from "../hooks/mutations/useClinicalMutations";
 import {
   PrescriptionSafetyPanel,
@@ -61,6 +66,17 @@ interface MedicineRow {
   inventory?: { quantity: number; reorderLevel: number } | null;
 }
 
+/** An item as the server stores it (hydration source for the autosaved draft). */
+interface DraftItemRow {
+  medicineId?: string | null;
+  medicineName: string;
+  dosage: string;
+  frequency: string;
+  durationDays: number;
+  quantityPrescribed?: number | null;
+  instructions?: string | null;
+}
+
 const inputCls =
   "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none";
 const labelCls = "block text-sm font-medium text-gray-700 mb-1";
@@ -79,12 +95,29 @@ export default function PrescriptionEditor() {
   const safetyMutation = useCheckPrescriptionSafety();
   const createMutation = useCreatePrescription(appointment?.patient?.id as string | undefined);
   const applyFavourite = useApplyFavouritePrescription();
+  const updateDraft = useUpdatePrescriptionDraft(appointmentId);
+  const issueMutation = useIssuePrescription();
+  const draftQuery = useLatestPrescriptionDraft(appointmentId!);
+  const draftData = draftQuery.data as
+    | {
+        id: string;
+        isDraft: boolean;
+        items: DraftItemRow[];
+        notes?: string | null;
+        followUpAfterDays?: number | null;
+      }
+    | null
+    | undefined;
 
   const [report, setReport] = useState<SafetyReport | null>(null);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const [mode, setMode] = useState<"issue" | "draft">("issue");
   const [acknowledged, setAcknowledged] = useState<Set<string>>(new Set());
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [autosaveState, setAutosaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const hydratedRef = useRef(false);
+  const failedOnceRef = useRef(false);
 
   const {
     register,
@@ -93,15 +126,23 @@ export default function PrescriptionEditor() {
     getValues,
     setValue,
     watch,
-    formState: { errors },
+    reset,
+    formState: { errors, isDirty },
   } = useForm<PrescriptionFormValues>({
     defaultValues: { items: [emptyItem()], notes: "", followUpAfterDays: "" },
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: "items" });
   const items = watch("items");
+  const values = watch();
 
   const medicineList = Array.isArray(medicines) ? (medicines as MedicineRow[]) : [];
   const favouriteList = Array.isArray(favourites) ? favourites : [];
+
+  const busy =
+    safetyMutation.isPending ||
+    createMutation.isPending ||
+    updateDraft.isPending ||
+    issueMutation.isPending;
 
   const overridableUnacknowledged = report
     ? report.acknowledgeable.filter((w) => !acknowledged.has(warningKey(w)))
@@ -109,7 +150,7 @@ export default function PrescriptionEditor() {
   const confirmDisabled =
     Boolean(report?.blocking.length) ||
     (mode === "issue" && overridableUnacknowledged.length > 0) ||
-    createMutation.isPending;
+    busy;
 
   function medicinesOf(items: ItemRowValues[]): string[] {
     return items.map((i) => i.medicineName.trim()).filter(Boolean);
@@ -140,14 +181,8 @@ export default function PrescriptionEditor() {
     );
   }
 
-  function doCreate(submitMode: "issue" | "draft", ack: Set<string>) {
-    const current = getValues();
-    const payload = {
-      appointmentId: appointmentId!,
-      notes: current.notes || undefined,
-      isDraft: submitMode === "draft",
-      followUpAfterDays: current.followUpAfterDays ? Number(current.followUpAfterDays) : undefined,
-      acknowledgedWarnings: [...ack],
+  function buildPayload(current: PrescriptionFormValues) {
+    return {
       items: current.items
         .filter((i) => i.medicineName.trim())
         .map((i) => ({
@@ -159,20 +194,142 @@ export default function PrescriptionEditor() {
           quantityPrescribed: i.quantityPrescribed ? Number(i.quantityPrescribed) : undefined,
           instructions: i.instructions || undefined,
         })),
+      notes: current.notes || undefined,
+      followUpAfterDays: current.followUpAfterDays ? Number(current.followUpAfterDays) : undefined,
     };
-    createMutation.mutate(payload as unknown as Record<string, unknown>, {
-      onSuccess: (result: { prescription: { id: string; isDraft: boolean } }) => {
-        setSafetyOpen(false);
-        if (result.prescription.isDraft) {
-          toast.success(t("prescription:draftSaved"));
-        } else {
-          setCreatedId(result.prescription.id);
-          toast.success(t("prescription:issued"));
-        }
-      },
-      onError: (e) => toast.error(e.message),
-    });
   }
+
+  function doCreate(submitMode: "issue" | "draft", ack: Set<string>) {
+    const payload = buildPayload(getValues());
+
+    // A draft already exists for this appointment (an autosave or a saved draft).
+    // `appointmentId` is unique on the prescription, so it is updated in place —
+    // issuing flips the same row, it never creates a second one.
+    if (draftId) {
+      const draftPayload = {
+        items: payload.items,
+        notes: payload.notes,
+        followUpAfterDays: payload.followUpAfterDays,
+      };
+      updateDraft.mutate(
+        { id: draftId, data: draftPayload },
+        {
+          onSuccess: () => {
+            if (submitMode === "draft") {
+              setSafetyOpen(false);
+              toast.success(t("prescription:draftSaved"));
+              return;
+            }
+            issueMutation.mutate(
+              { id: draftId, acknowledged: [...ack] },
+              {
+                onSuccess: (issued: { id: string }) => {
+                  setCreatedId(issued.id);
+                  setSafetyOpen(false);
+                  toast.success(t("prescription:issued"));
+                },
+                onError: (e) => toast.error(e.message),
+              },
+            );
+          },
+          onError: (e) => toast.error(e.message),
+        },
+      );
+      return;
+    }
+
+    createMutation.mutate(
+      {
+        ...payload,
+        appointmentId: appointmentId!,
+        isDraft: submitMode === "draft",
+        acknowledgedWarnings: [...ack],
+      } as unknown as Record<string, unknown>,
+      {
+        onSuccess: (result: { prescription: { id: string; isDraft: boolean } }) => {
+          setSafetyOpen(false);
+          if (result.prescription.isDraft) {
+            setDraftId(result.prescription.id);
+            toast.success(t("prescription:draftSaved"));
+          } else {
+            setCreatedId(result.prescription.id);
+            toast.success(t("prescription:issued"));
+          }
+        },
+        onError: (e) => toast.error(e.message),
+      },
+    );
+  }
+
+  // Hydrate the form from an autosaved draft, or show the issued view when the
+  // appointment already has an issued prescription. Runs once per mount.
+  useEffect(() => {
+    if (!draftData || hydratedRef.current) return;
+    hydratedRef.current = true;
+    if (draftData.isDraft) {
+      setDraftId(draftData.id);
+      reset({
+        items: draftData.items.map((i) => ({
+          medicineId: i.medicineId ?? undefined,
+          medicineName: i.medicineName,
+          dosage: i.dosage,
+          frequency: i.frequency,
+          durationDays: String(i.durationDays),
+          quantityPrescribed: i.quantityPrescribed ? String(i.quantityPrescribed) : undefined,
+          instructions: i.instructions ?? undefined,
+        })),
+        notes: draftData.notes ?? "",
+        followUpAfterDays: draftData.followUpAfterDays ? String(draftData.followUpAfterDays) : "",
+      });
+    } else {
+      setCreatedId(draftData.id);
+    }
+  }, [draftData, reset]);
+
+  // Autosave on idle. A debounce timer is an allowed useEffect use (not data
+  // fetching); rows with a medicine but empty dosage/frequency/duration are left
+  // for the explicit save, which surfaces a validation error in the dialog.
+  useEffect(() => {
+    if (!appointmentId || createdId || !isDirty) return;
+    const named = values.items.filter((i) => i.medicineName.trim());
+    if (named.length === 0) return;
+    if (
+      named.some((i) => !i.dosage.trim() || !i.frequency.trim() || !(Number(i.durationDays) >= 1))
+    )
+      return;
+
+    const handler = setTimeout(() => {
+      setAutosaveState("saving");
+      const payload = buildPayload(values);
+      const onOk = () => {
+        failedOnceRef.current = false;
+        setAutosaveState("saved");
+      };
+      const onFail = () => {
+        setAutosaveState("idle");
+        if (!failedOnceRef.current) {
+          failedOnceRef.current = true;
+          toast.error(t("prescription:autosaveFailed"));
+        }
+      };
+      if (draftId) {
+        updateDraft.mutate({ id: draftId, data: payload }, { onSuccess: onOk, onError: onFail });
+      } else {
+        createMutation.mutate(
+          { ...payload, appointmentId, isDraft: true } as unknown as Record<string, unknown>,
+          {
+            onSuccess: (result: { prescription: { id: string } }) => {
+              setDraftId(result.prescription.id);
+              onOk();
+            },
+            onError: onFail,
+          },
+        );
+      }
+    }, 1500);
+    return () => clearTimeout(handler);
+    // `values` changes on every keystroke; that is the debounce trigger.
+  }, [appointmentId, createdId, isDirty, values, draftId, updateDraft, createMutation, t]);
 
   function onApplyFavourite(favouriteId: string) {
     if (!favouriteId) return;
@@ -422,7 +579,7 @@ export default function PrescriptionEditor() {
                   <Button
                     type="button"
                     className="w-full"
-                    disabled={safetyMutation.isPending || createMutation.isPending}
+                    disabled={busy}
                     onClick={() => runCheck("issue")}
                   >
                     {safetyMutation.isPending
@@ -433,11 +590,23 @@ export default function PrescriptionEditor() {
                     type="button"
                     variant="outline"
                     className="w-full"
-                    disabled={safetyMutation.isPending || createMutation.isPending}
+                    disabled={busy}
                     onClick={() => runCheck("draft")}
                   >
                     {t("prescription:saveAsDraft")}
                   </Button>
+                  {(autosaveState === "saving" || autosaveState === "saved") && (
+                    <p
+                      aria-live="polite"
+                      className={`text-center text-xs ${
+                        autosaveState === "saved" ? "text-emerald-600" : "text-gray-400"
+                      }`}
+                    >
+                      {autosaveState === "saved"
+                        ? t("prescription:autosaved")
+                        : t("prescription:autosaving")}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -445,10 +614,7 @@ export default function PrescriptionEditor() {
         </form>
       )}
 
-      <Dialog
-        open={safetyOpen}
-        onOpenChange={(o) => !o && !createMutation.isPending && setSafetyOpen(false)}
-      >
+      <Dialog open={safetyOpen} onOpenChange={(o) => !o && !busy && setSafetyOpen(false)}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>

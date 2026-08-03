@@ -37,6 +37,7 @@ export const noteKeys = {
 export const prescriptionKeys = {
   all: ["prescriptions"] as const,
   detail: (id: string) => ["prescriptions", id] as const,
+  latestDraft: (appointmentId: string) => ["prescriptions", "draft", appointmentId] as const,
   forPatient: (patientId: string) => ["prescriptions", "patient", patientId] as const,
   favourites: ["prescriptions", "favourites"] as const,
 };
@@ -165,6 +166,15 @@ export function usePrescription(id: string) {
     queryKey: prescriptionKeys.detail(id),
     queryFn: () => prescriptionApi.getById(id),
     enabled: !!id,
+  });
+}
+
+/** The appointment's autosaved draft, so a reload restores what was in progress. */
+export function useLatestPrescriptionDraft(appointmentId: string) {
+  return useQuery({
+    queryKey: prescriptionKeys.latestDraft(appointmentId),
+    queryFn: () => prescriptionApi.latestDraft(appointmentId),
+    enabled: !!appointmentId,
   });
 }
 

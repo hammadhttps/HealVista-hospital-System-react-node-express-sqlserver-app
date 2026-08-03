@@ -227,6 +227,114 @@ export async function issueDraft(prescriptionId: string, acknowledged: string[],
   return issued;
 }
 
+/**
+ * The appointment's one prescription, when it is still a draft. Used to hydrate
+ * the editor after an autosave or a page reload — `appointmentId` is unique, so
+ * there is never more than one row per appointment.
+ */
+export async function getLatestDraftForAppointment(appointmentId: string, actor: Actor) {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    select: { patientId: true, doctorId: true },
+  });
+  if (!appointment) throw new AppError("Appointment not found", 404);
+
+  const doctor = await requireDoctor(actor);
+  if (appointment.doctorId !== doctor.id) {
+    throw new AppError("You can only load drafts for your own appointments", 403);
+  }
+  await assertClinicalAccess(appointment.patientId, actor);
+
+  return prisma.prescription.findUnique({
+    where: { appointmentId },
+    include: { items: true },
+  });
+}
+
+/**
+ * Autosave: updates the appointment's draft in place.
+ *
+ * Safety is enforced exactly as on create — a draft never stores a medicine that
+ * a severe allergy blocks, and the warnings a draft carries are re-checked at
+ * issue time anyway. Items are replaced wholesale rather than diffed, which keeps
+ * a doctor's medicine list a snapshot of the last successful save.
+ */
+export async function updateDraft(
+  prescriptionId: string,
+  input: {
+    items: PrescriptionItemInput[];
+    notes?: string;
+    followUpAfterDays?: number;
+  },
+  actor: Actor,
+) {
+  const doctor = await requireDoctor(actor);
+
+  const prescription = await prisma.prescription.findUnique({
+    where: { id: prescriptionId },
+    include: { appointment: { select: { id: true, patientId: true, doctorId: true } } },
+  });
+  if (!prescription) throw new AppError("Prescription not found", 404);
+  if (!prescription.isDraft) throw new AppError("Only drafts can be edited", 409);
+  if (prescription.appointment.doctorId !== doctor.id) {
+    throw new AppError("You can only edit your own prescriptions", 403);
+  }
+  if (input.items.length === 0) {
+    throw new AppError("A prescription needs at least one item", 400);
+  }
+
+  const report = await checkPrescriptionSafety(
+    prescription.appointment.patientId,
+    input.items.map((i) => i.medicineName),
+  );
+  if (report.blocking.length > 0) {
+    const detail = report.blocking
+      .map((w) =>
+        w.kind === "allergy"
+          ? `${w.medicineName} conflicts with a SEVERE allergy to ${w.allergen}`
+          : `${w.drugA} + ${w.drugB}: ${w.description}`,
+      )
+      .join("; ");
+    throw new AppError(`Prescription blocked on patient safety grounds — ${detail}`, 409);
+  }
+
+  await prisma.prescriptionItem.deleteMany({ where: { prescriptionId } });
+
+  const updated = await prisma.prescription.update({
+    where: { id: prescriptionId },
+    data: {
+      notes: input.notes ?? null,
+      followUpAfterDays: input.followUpAfterDays ?? null,
+      items: {
+        create: input.items.map((item) => ({
+          medicineId: item.medicineId ?? null,
+          medicineName: item.medicineName.trim(),
+          dosage: item.dosage,
+          frequency: item.frequency,
+          durationDays: item.durationDays,
+          quantityPrescribed: item.quantityPrescribed ?? 1,
+          instructions: item.instructions ?? null,
+        })),
+      },
+    },
+    include: { items: true },
+  });
+
+  await writeAuditLog({
+    actorUserId: actor.userId,
+    action: "PRESCRIPTION_DRAFT_UPDATED",
+    targetType: "prescription",
+    targetId: prescriptionId,
+    metadata: {
+      patientId: prescription.appointment.patientId,
+      appointmentId: prescription.appointment.id,
+      medicines: input.items.map((i) => i.medicineName),
+    },
+  });
+
+  return updated;
+}
+
 export async function getPrescription(prescriptionId: string, actor: Actor) {
   const prescription = await prisma.prescription.findUnique({
     where: { id: prescriptionId },
