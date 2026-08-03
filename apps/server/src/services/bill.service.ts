@@ -556,6 +556,8 @@ export async function voidBill(billId: string, reason: string, actor: Actor) {
 export async function getBills(filters: ListBillsInput, actor: Actor) {
   const scope = await resolveBillScope(actor);
   const where: Prisma.BillWhereInput = { deletedAt: null };
+  const page = Number(filters.page ?? 1);
+  const limit = Number(filters.limit ?? 20);
 
   // Scope first: a caller-supplied patientId may narrow, never widen.
   if (scope.patientIds) where.patientId = { in: scope.patientIds };
@@ -573,13 +575,13 @@ export async function getBills(filters: ListBillsInput, actor: Actor) {
       where,
       include: billInclude,
       orderBy: { createdAt: "desc" },
-      skip: (filters.page - 1) * filters.limit,
-      take: filters.limit,
+      skip: (page - 1) * limit,
+      take: limit,
     }),
     prisma.bill.count({ where }),
   ]);
 
-  return { bills, total, page: filters.page, limit: filters.limit };
+  return { bills, total, page, limit };
 }
 
 export async function getBillById(billId: string, actor: Actor) {

@@ -1,6 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { Prisma } from "@prisma/client";
-import { BILL_STATUS, computeTotals, deriveStatus } from "./bill.service.js";
+import { BILL_STATUS, computeTotals, deriveStatus, getBills } from "./bill.service.js";
+import { prisma } from "../config/db.js";
+
+vi.mock("../config/db.js", () => ({
+  prisma: {
+    patient: {
+      findUnique: vi.fn(),
+    },
+    patientRelationship: {
+      findMany: vi.fn(),
+    },
+    bill: {
+      findMany: vi.fn(),
+      count: vi.fn(),
+    },
+  },
+}));
 
 const D = Prisma.Decimal;
 
@@ -102,6 +118,32 @@ describe("deriveStatus", () => {
   it("never promotes a draft or void bill on payment", () => {
     expect(deriveStatus(new D("100"), new D("100"), BILL_STATUS.DRAFT)).toBe(BILL_STATUS.DRAFT);
     expect(deriveStatus(new D("100"), new D("100"), BILL_STATUS.VOID)).toBe(BILL_STATUS.VOID);
+  });
+});
+
+describe("getBills", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("uses default pagination values when none are provided", async () => {
+    const mockFindMany = vi.mocked(prisma.bill.findMany);
+    const mockCount = vi.mocked(prisma.bill.count);
+    const mockPatientFindUnique = vi.mocked(prisma.patient.findUnique);
+    const mockPatientRelationshipFindMany = vi.mocked(prisma.patientRelationship.findMany);
+    mockPatientFindUnique.mockResolvedValue({ id: "patient-1" } as any);
+    mockPatientRelationshipFindMany.mockResolvedValue([]);
+    mockFindMany.mockResolvedValue([]);
+    mockCount.mockResolvedValue(0);
+
+    await getBills({ page: 1, limit: 20 } as any, { userId: "user-1", role: "PATIENT" });
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0,
+        take: 20,
+      }),
+    );
   });
 });
 
