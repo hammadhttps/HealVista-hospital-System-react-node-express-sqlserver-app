@@ -101,6 +101,41 @@ npm run dev
 
 Setup guides live in `docs/setup/` (Neon Postgres, Upstash Redis, payments, local development).
 
+## Production payments checklist
+
+Stripe card payments need both sides configured:
+
+| App | Variable | Purpose |
+| --- | --- | --- |
+| Client | `VITE_STRIPE_PUBLISHABLE_KEY` | Builds Stripe Elements into the production frontend. If this is missing when Vite builds, the app hides/disables card checkout. |
+| Server | `STRIPE_SECRET_KEY` | Creates PaymentIntents and refunds. |
+| Server | `STRIPE_WEBHOOK_SECRET` | Verifies Stripe webhook signatures before settling pending card payments. |
+
+Production webhook endpoint:
+
+```text
+https://<api-domain>/api/payments/webhook/stripe
+```
+
+Required Stripe events:
+
+- `payment_intent.succeeded`
+- `payment_intent.payment_failed`
+- `charge.refunded`
+
+Common production failure causes:
+
+- The frontend was deployed without `VITE_STRIPE_PUBLISHABLE_KEY`; Vite only exposes variables prefixed with `VITE_`, and they are baked in at build time.
+- The client points `VITE_API_URL` at the wrong API origin, so `/payments/create-intent` never reaches the production server.
+- The server has `STRIPE_SECRET_KEY` but not `STRIPE_WEBHOOK_SECRET`; checkout can open, but the bill stays pending/due because the webhook cannot be verified.
+- The webhook URL in Stripe Dashboard points at the frontend domain instead of the API domain.
+- Test keys and live keys are mixed. Use all test keys together or all live keys together.
+
+Card payment flow is intentionally server-truthful: creating a PaymentIntent records a `PENDING`
+payment, and only a verified Stripe webhook promotes it to `SUCCEEDED` and updates the bill balance.
+The UI invalidates billing/payment caches immediately after Stripe confirmation so the screen refreshes
+as soon as the webhook/database round trip completes.
+
 ## Project structure
 
 ```
@@ -175,6 +210,20 @@ and why none of it loses data:
 Set `REDIS_ENABLED=false` the moment you see the 500k quota warning, keep the app fully functional
 on Postgres, and turn it back on when the month resets. The app logs a clear warning at boot when
 Redis is off.
+
+## Slow reads and optimistic UI
+
+When Redis is full or switched off, reads fall through to Postgres. That is correct, but it can feel
+slower on free-tier infrastructure. The client is tuned to keep the interface responsive:
+
+- TanStack Query keeps the last successful payload visible while a refetch is in flight.
+- Billing mutations optimistically update visible bill cards for finalising and cash payments.
+- Failed mutations roll back to the previous cache snapshot.
+- Successful Stripe confirmation invalidates bill and payment queries immediately; final settlement
+  still waits for the verified webhook.
+
+This improves perceived speed without making Redis a source of truth and without pretending a Stripe
+payment is settled before the webhook confirms it.
 
 ## Roles
 

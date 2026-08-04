@@ -2,8 +2,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useCreatePaymentIntent } from "../../hooks/mutations/useBillingMutations";
+import { billKeys, paymentKeys } from "../../hooks/queries/useBilling";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { getErrorMessage } from "../../utils/errors";
@@ -82,6 +84,7 @@ export default function StripeCheckoutDialog({
 }) {
   const { t } = useTranslation(["billing", "common"]);
   const createIntent = useCreatePaymentIntent();
+  const queryClient = useQueryClient();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isPreparing, setIsPreparing] = useState(false);
 
@@ -168,7 +171,11 @@ export default function StripeCheckoutDialog({
         <Elements stripe={stripePromise} options={{ clientSecret }}>
           <CheckoutForm
             clientSecret={clientSecret}
-            onSuccess={() => handleOpenChange(false)}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: billKeys.all });
+              queryClient.invalidateQueries({ queryKey: paymentKeys.all });
+              handleOpenChange(false);
+            }}
             onCancel={() => handleOpenChange(false)}
           />
         </Elements>

@@ -20,6 +20,10 @@ export const queryClient = new QueryClient({
     queries: {
       // Navigating back to a screen inside a minute reuses what's already there.
       staleTime: 60 * 1000,
+      // When filters change or a refetch is slow, keep the last successful
+      // payload painted while the next request runs. This matters when Redis is
+      // disabled/exhausted and reads fall straight through to Postgres.
+      placeholderData: (previousData: unknown) => previousData,
       // Keep it in memory well past staleness so a revisit paints from cache and
       // revalidates behind the user, rather than flashing a spinner.
       gcTime: 15 * 60 * 1000,
