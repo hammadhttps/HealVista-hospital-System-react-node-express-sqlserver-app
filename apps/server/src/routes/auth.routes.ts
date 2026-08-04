@@ -26,7 +26,7 @@ router.post(
 );
 router.post(
   "/login",
-  rateLimit(5, 15 * 60 * 1000, "login"),
+  rateLimit(env.LOGIN_RATE_LIMIT_MAX, 15 * 60 * 1000, "login"),
   validate(loginSchema),
   authController.login,
 );

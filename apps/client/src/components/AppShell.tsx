@@ -95,7 +95,7 @@ export function AppShell() {
   }, [navigate]);
 
   return (
-    <div className="flex min-h-screen bg-muted/60">
+    <div className="flex min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(15,118,110,0.12),transparent_32rem),linear-gradient(135deg,var(--background),var(--muted))]">
       {/*
         Visible only on focus: the first Tab on any page jumps past the whole
         sidebar straight to the content.
@@ -108,11 +108,17 @@ export function AppShell() {
       </a>
 
       <Sidebar />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Header onOpenSearch={() => setPaletteOpen(true)} />
         <ActingBanner />
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6 lg:p-8">
-          <Outlet />
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-7"
+        >
+          <div className="mx-auto w-full max-w-[1500px]">
+            <Outlet />
+          </div>
         </main>
       </div>
       {/*

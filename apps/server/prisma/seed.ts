@@ -1,4 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import {
+  AppointmentStatus,
+  LabOrderStatus,
+  ReferralStatus,
+  ResultFlag,
+  Prisma,
+  PrismaClient,
+} from "@prisma/client";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -1449,6 +1456,32 @@ async function main() {
     }
   }
 
+  // ── Demo-day supplement ──────────────────────────────────────────────────
+  // See seedDemoState() below — it seeds the live-day state (appointments today,
+  // queue, pending lab/pharmacy work, chat, notifications, discounts, recalls,
+  // dependants) every role's demo needs. Idempotent and relative to "today".
+  const userEmailById = new Map<string, string>();
+  for (const [email, u] of usersByEmail) userEmailById.set(u.id, email);
+  const doctorByEmail = new Map<string, { id: string; userId: string; fullName: string }>();
+  for (const d of doctors) {
+    const email = userEmailById.get(d.userId);
+    if (email) doctorByEmail.set(email, d);
+  }
+
+  await seedDemoState({
+    patients,
+    doctors,
+    doctorByEmail,
+    doctorDeptMap,
+    medicineByName,
+    labTestByCode,
+    usersByEmail,
+    labTechUserIds,
+    accountantUserIds,
+    receptionUserId: usersByEmail.get("reception@medicore.com")?.id,
+    pharmacistUserId: usersByEmail.get("tom@medicore.com")?.id,
+  });
+
   console.log(
     "Seed complete — demo users, departments, lab tests, medicines, inventory, drug interactions, clinical records, KB articles, bills.",
   );
@@ -1465,3 +1498,1053 @@ main()
     process.exit(1);
   })
   .finally(() => prisma.$disconnect());
+
+/**
+ * Demo-day supplement (idempotent).
+ *
+ * The base seed above fills history — past appointments, verified labs, settled
+ * bills — but nothing that makes a *live* demo look alive: no appointments today,
+ * an empty pharmacy queue, no pending lab work, no chat, no notifications, no
+ * discounts. This section seeds the live-day state every role's dashboard and
+ * primary flows expect, keyed on deterministic markers so re-running the seed
+ * refreshes "today" instead of duplicating it.
+ *
+ * Run `npm run db:seed` right before a demo to re-anchor "today" to the current
+ * date. Timestamps here are built relative to the run date.
+ */
+async function seedDemoState(opts: {
+  patients: { id: string; userId: string; fullName: string; user: SeedUser }[];
+  doctors: { id: string; userId: string; fullName: string }[];
+  doctorByEmail: Map<string, { id: string; userId: string; fullName: string }>;
+  doctorDeptMap: Map<string, string>;
+  medicineByName: Map<string, { id: string; name: string }>;
+  labTestByCode: Map<string, { id: string; code: string; referenceRange: string | null }>;
+  usersByEmail: Map<string, { id: string; role: Role }>;
+  labTechUserIds: string[];
+  accountantUserIds: string[];
+  receptionUserId?: string;
+  pharmacistUserId?: string;
+}) {
+  const {
+    patients,
+    doctorByEmail,
+    doctorDeptMap,
+    medicineByName,
+    labTestByCode,
+    usersByEmail,
+    labTechUserIds,
+    accountantUserIds,
+    receptionUserId,
+    pharmacistUserId,
+  } = opts;
+
+  const patientByEmail = new Map(patients.map((p) => [p.user.email, p]));
+  const at = (day: number, hour: number, minute = 0): Date => {
+    const d = new Date();
+    d.setDate(d.getDate() + day);
+    d.setHours(hour, minute, 0, 0);
+    return d;
+  };
+  const p = (email: string) => patientByEmail.get(email)!;
+  const dr = (email: string) => doctorByEmail.get(email)!;
+
+  // ── Today + tomorrow appointments ──────────────────────────────────────
+  // Feeds the doctor, receptionist, and patient dashboards; the CONFIRMED rows
+  // also give reception a QR to scan if the demo runs near their slot time.
+  const demoAppts: {
+    no: string;
+    patientEmail: string;
+    doctorEmail: string;
+    day: number;
+    hour: number;
+    minute: number;
+    status: AppointmentStatus;
+    source: "ONLINE" | "WALK_IN";
+    checkedInAt?: Date;
+    consultStartAt?: Date;
+    consultEndAt?: Date;
+    createdAt?: Date;
+    draftNote?: boolean;
+    signedNote?: boolean;
+  }[] = [
+    {
+      no: "APT-DEMO-001",
+      patientEmail: "alex@example.com",
+      doctorEmail: "sarah@medicore.com",
+      day: 0,
+      hour: 9,
+      minute: 0,
+      status: "CHECKED_IN",
+      source: "ONLINE",
+      checkedInAt: at(0, 8, 45),
+      draftNote: true,
+    },
+    {
+      no: "APT-DEMO-002",
+      patientEmail: "amina@example.com",
+      doctorEmail: "sarah@medicore.com",
+      day: 0,
+      hour: 9,
+      minute: 30,
+      status: "CHECKED_IN",
+      source: "ONLINE",
+      checkedInAt: at(0, 9, 15),
+    },
+    {
+      no: "APT-DEMO-003",
+      patientEmail: "brian@example.com",
+      doctorEmail: "sarah@medicore.com",
+      day: 0,
+      hour: 10,
+      minute: 0,
+      status: "IN_CONSULTATION",
+      source: "ONLINE",
+      consultStartAt: at(0, 10, 0),
+    },
+    {
+      no: "APT-DEMO-004",
+      patientEmail: "carlos@example.com",
+      doctorEmail: "sarah@medicore.com",
+      day: 0,
+      hour: 10,
+      minute: 30,
+      status: "CONFIRMED",
+      source: "ONLINE",
+    },
+    {
+      no: "APT-DEMO-005",
+      patientEmail: "dina@example.com",
+      doctorEmail: "sarah@medicore.com",
+      day: 0,
+      hour: 11,
+      minute: 0,
+      status: "PENDING_PAYMENT",
+      source: "ONLINE",
+    },
+    {
+      no: "APT-DEMO-006",
+      patientEmail: "emily@example.com",
+      doctorEmail: "david@medicore.com",
+      day: 0,
+      hour: 9,
+      minute: 0,
+      status: "CHECKED_IN",
+      source: "WALK_IN",
+      checkedInAt: at(0, 8, 50),
+      createdAt: at(0, 8, 30),
+    },
+    {
+      no: "APT-DEMO-007",
+      patientEmail: "farah@example.com",
+      doctorEmail: "david@medicore.com",
+      day: 0,
+      hour: 9,
+      minute: 30,
+      status: "CONFIRMED",
+      source: "WALK_IN",
+      createdAt: at(0, 9, 0),
+    },
+    {
+      no: "APT-DEMO-008",
+      patientEmail: "alex@example.com",
+      doctorEmail: "sarah@medicore.com",
+      day: 1,
+      hour: 9,
+      minute: 0,
+      status: "CONFIRMED",
+      source: "ONLINE",
+    },
+    {
+      no: "APT-DEMO-009",
+      patientEmail: "zara@example.com",
+      doctorEmail: "sarah@medicore.com",
+      day: 0,
+      hour: 11,
+      minute: 30,
+      status: "COMPLETED",
+      source: "ONLINE",
+      consultStartAt: at(0, 11, 30),
+      consultEndAt: at(0, 12, 0),
+      signedNote: true,
+    },
+  ];
+
+  for (const a of demoAppts) {
+    const patient = p(a.patientEmail);
+    const doctor = dr(a.doctorEmail);
+    const start = at(a.day, a.hour, a.minute);
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
+
+    const slot = await prisma.appointmentSlot.upsert({
+      where: { doctorId_startTime: { doctorId: doctor.id, startTime: start } },
+      update: { endTime: end, isBooked: true },
+      create: { doctorId: doctor.id, startTime: start, endTime: end, isBooked: true },
+    });
+
+    const data: Prisma.AppointmentUncheckedCreateInput = {
+      appointmentNo: a.no,
+      patientId: patient.id,
+      doctorId: doctor.id,
+      slotId: slot.id,
+      departmentId: doctorDeptMap.get(doctor.id) ?? null,
+      status: a.status,
+      source: a.source,
+      reasonNote: "Routine consultation",
+      qrToken: `demo-${a.no.toLowerCase()}`,
+      checkedInAt: a.checkedInAt ?? null,
+      consultStartAt: a.consultStartAt ?? null,
+      consultEndAt: a.consultEndAt ?? null,
+      createdById: a.source === "WALK_IN" ? (receptionUserId ?? null) : null,
+    };
+    if (a.createdAt) data.createdAt = a.createdAt;
+
+    const appointment = await prisma.appointment.upsert({
+      where: { appointmentNo: a.no },
+      update: { ...data },
+      create: { ...data },
+    });
+
+    if (a.draftNote) {
+      await prisma.consultationNote.upsert({
+        where: { appointmentId: appointment.id },
+        update: { isDraft: true, signedAt: null },
+        create: {
+          appointmentId: appointment.id,
+          authorUserId: doctor.userId,
+          subjective:
+            "Patient reports intermittent chest tightness on exertion. Discomfort resolves with rest.",
+          objective: "BP 142/88, HR 78 regular. Cardiovascular exam unremarkable.",
+          assessment: "Angina-like chest pain; rule out coronary artery disease.",
+          plan: "Started amlodipine. Ordered lipid panel. Review in 2 weeks.",
+          diagnosisCodes: ["I20.9"],
+          isDraft: true,
+          aiAssisted: false,
+        },
+      });
+    }
+
+    if (a.signedNote) {
+      await prisma.consultationNote.upsert({
+        where: { appointmentId: appointment.id },
+        update: { isDraft: false, signedAt: at(0, 11, 5) },
+        create: {
+          appointmentId: appointment.id,
+          authorUserId: doctor.userId,
+          subjective: "Annual review. Patient feels well, no new complaints.",
+          objective: "Vitals stable. Exam within normal limits.",
+          assessment: "Routine wellness visit.",
+          plan: "Continue current management. Next review in 6 months.",
+          diagnosisCodes: ["Z00.00"],
+          isDraft: false,
+          aiAssisted: false,
+          signedAt: at(0, 11, 5),
+        },
+      });
+    }
+  }
+
+  // ── Queue tokens for today ────────────────────────────────────────────
+  const queueRows = [
+    {
+      doctorEmail: "sarah@medicore.com",
+      token: 1,
+      patientEmail: "alex@example.com",
+      status: "waiting",
+    },
+    {
+      doctorEmail: "sarah@medicore.com",
+      token: 2,
+      patientEmail: "amina@example.com",
+      status: "waiting",
+    },
+    {
+      doctorEmail: "sarah@medicore.com",
+      token: 3,
+      patientEmail: "brian@example.com",
+      status: "called",
+      calledAt: at(0, 10, 0),
+    },
+    {
+      doctorEmail: "david@medicore.com",
+      token: 1,
+      patientEmail: "emily@example.com",
+      status: "waiting",
+    },
+  ];
+  for (const q of queueRows) {
+    const doctor = dr(q.doctorEmail);
+    const patient = p(q.patientEmail);
+    await prisma.queueToken.upsert({
+      where: {
+        doctorId_date_tokenNumber: { doctorId: doctor.id, date: at(0, 0, 0), tokenNumber: q.token },
+      },
+      update: { status: q.status, calledAt: q.calledAt ?? null, patientId: patient.id },
+      create: {
+        doctorId: doctor.id,
+        date: at(0, 0, 0),
+        tokenNumber: q.token,
+        patientId: patient.id,
+        status: q.status,
+        calledAt: q.calledAt ?? null,
+      },
+    });
+  }
+
+  // ── Lab orders across every pending state ─────────────────────────────
+  const cbc = labTestByCode.get("CBC")!;
+  const bmp = labTestByCode.get("BMP")!;
+  const lipid = labTestByCode.get("LIPID")!;
+  const hba1c = labTestByCode.get("HBA1C")!;
+
+  const labOrders: {
+    orderNumber: string;
+    patientEmail: string;
+    doctorEmail: string;
+    status: LabOrderStatus;
+    orderedAt: Date;
+    sampleCollectedAt?: Date;
+    completedAt?: Date;
+    verifiedAt?: Date;
+    test: { id: string; referenceRange: string | null };
+    result?: { value: string; unit: string; flag: ResultFlag };
+  }[] = [
+    // Ordered 3 days ago, never collected → overdue + awaiting collection.
+    {
+      orderNumber: "LAB-DEMO-ORD",
+      patientEmail: "alex@example.com",
+      doctorEmail: "sarah@medicore.com",
+      status: "ORDERED",
+      orderedAt: at(-3, 9, 0),
+      test: cbc,
+    },
+    {
+      orderNumber: "LAB-DEMO-ORD2",
+      patientEmail: "dina@example.com",
+      doctorEmail: "david@medicore.com",
+      status: "ORDERED",
+      orderedAt: at(0, 9, 15),
+      test: bmp,
+    },
+    // Sample collected, results not yet entered.
+    {
+      orderNumber: "LAB-DEMO-COL",
+      patientEmail: "amina@example.com",
+      doctorEmail: "sarah@medicore.com",
+      status: "SAMPLE_COLLECTED",
+      orderedAt: at(-1, 11, 0),
+      sampleCollectedAt: at(0, 8, 30),
+      test: lipid,
+    },
+    // Completed, awaiting pathologist verification; CRITICAL flag alerts the doctor.
+    {
+      orderNumber: "LAB-DEMO-CRIT",
+      patientEmail: "alex@example.com",
+      doctorEmail: "sarah@medicore.com",
+      status: "COMPLETED",
+      orderedAt: at(-1, 14, 0),
+      completedAt: at(0, 9, 45),
+      test: cbc,
+      result: { value: "6.8", unit: "g/dL", flag: "CRITICAL" },
+    },
+    // Verified today — a finished report the patient can see, feeding RAG.
+    {
+      orderNumber: "LAB-DEMO-VER",
+      patientEmail: "brian@example.com",
+      doctorEmail: "sarah@medicore.com",
+      status: "VERIFIED",
+      orderedAt: at(-1, 9, 30),
+      sampleCollectedAt: at(-1, 9, 50),
+      completedAt: at(-1, 11, 0),
+      verifiedAt: at(-1, 12, 0),
+      test: hba1c,
+      result: { value: "7.1", unit: "%", flag: "HIGH" },
+    },
+  ];
+
+  for (const o of labOrders) {
+    const patient = p(o.patientEmail);
+    const doctor = dr(o.doctorEmail);
+    await prisma.labOrder.upsert({
+      where: { orderNumber: o.orderNumber },
+      update: {
+        patientId: patient.id,
+        doctorId: doctor.id,
+        status: o.status,
+        orderedAt: o.orderedAt,
+        sampleCollectedAt: o.sampleCollectedAt ?? null,
+        completedAt: o.completedAt ?? null,
+        verifiedAt: o.verifiedAt ?? null,
+        verifiedById: o.verifiedAt ? (labTechUserIds[0] ?? null) : null,
+        notes: "Demo order",
+      },
+      create: {
+        orderNumber: o.orderNumber,
+        patientId: patient.id,
+        doctorId: doctor.id,
+        status: o.status,
+        orderedAt: o.orderedAt,
+        sampleCollectedAt: o.sampleCollectedAt ?? null,
+        completedAt: o.completedAt ?? null,
+        verifiedAt: o.verifiedAt ?? null,
+        verifiedById: o.verifiedAt ? (labTechUserIds[0] ?? null) : null,
+        notes: "Demo order",
+        items: {
+          create: [
+            {
+              labTestId: o.test.id,
+              resultValue: o.result?.value ?? null,
+              unit: o.result?.unit ?? null,
+              referenceRange: o.test.referenceRange,
+              flag: o.result?.flag ?? null,
+            },
+          ],
+        },
+      },
+    });
+  }
+
+  // ── Pharmacy: pending dispenses + dispensed batches for recall ─────────
+  const pendingRx = [
+    {
+      appointmentNo: "APT-1025",
+      items: [
+        { name: "Amoxicillin", qty: 30 },
+        { name: "Metformin", qty: 60 },
+      ],
+    },
+    { appointmentNo: "APT-1026", items: [{ name: "Lisinopril", qty: 30 }] },
+    { appointmentNo: "APT-1027", items: [{ name: "Salbutamol Inhaler", qty: 1 }] },
+  ];
+  for (const rx of pendingRx) {
+    const appt = await prisma.appointment.findUnique({
+      where: { appointmentNo: rx.appointmentNo },
+    });
+    if (!appt) continue;
+    const exists = await prisma.prescription.findUnique({ where: { appointmentId: appt.id } });
+    if (exists) continue;
+    await prisma.prescription.create({
+      data: {
+        appointmentId: appt.id,
+        isDraft: false,
+        dispenseStatus: "PENDING",
+        notes: "Take as directed. Report any adverse reaction.",
+        followUpAfterDays: 14,
+        items: {
+          create: rx.items.map((it) => ({
+            medicineId: medicineByName.get(it.name)?.id,
+            medicineName: it.name,
+            dosage: "1 tab",
+            frequency: "Once daily",
+            durationDays: 14,
+            quantityPrescribed: it.qty,
+            instructions: "With food",
+          })),
+        },
+      },
+    });
+  }
+
+  // Dispensed on a shared batch so `recall` on that batch finds these patients.
+  const dispensedRx = [
+    { appointmentNo: "APT-1028", name: "Paracetamol", qty: 20, batch: "PCM-2026-A" },
+    { appointmentNo: "APT-1029", name: "Paracetamol", qty: 20, batch: "PCM-2026-A" },
+  ];
+  for (const rx of dispensedRx) {
+    const appt = await prisma.appointment.findUnique({
+      where: { appointmentNo: rx.appointmentNo },
+    });
+    if (!appt) continue;
+    const exists = await prisma.prescription.findUnique({ where: { appointmentId: appt.id } });
+    if (exists) continue;
+    const med = medicineByName.get(rx.name);
+    const prescription = await prisma.prescription.create({
+      data: {
+        appointmentId: appt.id,
+        isDraft: false,
+        dispenseStatus: "DISPENSED",
+        notes: "Dispensed at counter.",
+        items: {
+          create: [
+            {
+              medicineId: med?.id,
+              medicineName: rx.name,
+              dosage: "1 tab",
+              frequency: "Every 6 hours",
+              durationDays: 5,
+              quantityPrescribed: rx.qty,
+              quantityDispensed: rx.qty,
+            },
+          ],
+        },
+      },
+    });
+    if (med && pharmacistUserId) {
+      const inventory = await prisma.inventory.findUnique({ where: { medicineId: med.id } });
+      if (inventory) {
+        await prisma.inventoryTransaction.create({
+          data: {
+            inventoryId: inventory.id,
+            changeAmount: -rx.qty,
+            reason: "dispense",
+            batchNumber: rx.batch,
+            prescriptionId: prescription.id,
+            actorUserId: pharmacistUserId,
+          },
+        });
+        await prisma.inventory.update({
+          where: { id: inventory.id },
+          data: { quantity: inventory.quantity - rx.qty },
+        });
+      }
+    }
+  }
+
+  // ── Inventory extras: out of stock + expiring within 90 days ───────────
+  const extraMeds = [
+    {
+      name: "Ciprofloxacin",
+      genericName: "Ciprofloxacin HCl",
+      unit: "mg",
+      unitPrice: 0.6,
+      category: "Antibiotic",
+      quantity: 300,
+      reorderLevel: 50,
+      batchNumber: "CIP-2026-A",
+      expiryDays: 60,
+    },
+    {
+      name: "Nitroglycerin",
+      genericName: "Glyceryl trinitrate",
+      unit: "mg",
+      unitPrice: 0.25,
+      category: "Cardiac",
+      quantity: 0,
+      reorderLevel: 10,
+      batchNumber: "NTG-2026-A",
+      expiryDays: 365,
+    },
+  ];
+  for (const m of extraMeds) {
+    const med = await prisma.medicine.upsert({
+      where: { name: m.name },
+      update: {},
+      create: {
+        name: m.name,
+        genericName: m.genericName,
+        unit: m.unit,
+        unitPrice: m.unitPrice,
+        category: m.category,
+      },
+    });
+    const exp = new Date();
+    exp.setDate(exp.getDate() + m.expiryDays);
+    await prisma.inventory.upsert({
+      where: { medicineId: med.id },
+      update: {
+        quantity: m.quantity,
+        reorderLevel: m.reorderLevel,
+        batchNumber: m.batchNumber,
+        expiryDate: exp,
+      },
+      create: {
+        medicineId: med.id,
+        quantity: m.quantity,
+        reorderLevel: m.reorderLevel,
+        batchNumber: m.batchNumber,
+        expiryDate: exp,
+      },
+    });
+  }
+
+  // ── Discounts for the billing console ─────────────────────────────────
+  const discounts = [
+    { name: "Senior Citizen 10%", code: "SENIOR10", type: "percentage", value: 10 },
+    { name: "Employee 15%", code: "STAFF15", type: "percentage", value: 15 },
+    { name: "Wellness Coupon", code: "WELLNESS25", type: "fixed", value: 25 },
+  ];
+  for (const d of discounts) {
+    await prisma.discount.upsert({
+      where: { name: d.name },
+      update: { isActive: true },
+      create: {
+        name: d.name,
+        code: d.code,
+        type: d.type,
+        value: d.value,
+        category: "General",
+        isActive: true,
+      },
+    });
+  }
+
+  // ── Chat threads between patient and doctor ───────────────────────────
+  const chatPairs = [
+    {
+      appointmentNo: "APT-1000",
+      messages: [
+        "Good morning Alex, how is the chest tightness?",
+        "Much better doctor, thank you.",
+        "Glad to hear it. Keep taking the medication as prescribed.",
+      ],
+    },
+    {
+      appointmentNo: "APT-1001",
+      messages: [
+        "Hello, any fever since yesterday?",
+        "No fever today, appetite is back.",
+        "Excellent — keep hydrated and rest.",
+      ],
+    },
+  ];
+  for (const c of chatPairs) {
+    const appt = await prisma.appointment.findUnique({
+      where: { appointmentNo: c.appointmentNo },
+      include: { patient: { select: { userId: true } }, doctor: { select: { userId: true } } },
+    });
+    if (!appt) continue;
+    const thread = await prisma.chatThread.upsert({
+      where: { appointmentId: appt.id },
+      update: { lastMessageAt: at(0, 7, 30) },
+      create: { appointmentId: appt.id, lastMessageAt: at(0, 7, 30) },
+    });
+    const msgCount = await prisma.chatMessage.count({ where: { threadId: thread.id } });
+    if (msgCount === 0) {
+      for (let i = 0; i < c.messages.length; i++) {
+        const senderId = i % 2 === 0 ? appt.doctor.userId : appt.patient.userId;
+        await prisma.chatMessage.create({
+          data: {
+            threadId: thread.id,
+            senderUserId: senderId,
+            content: c.messages[i],
+            sentAt: new Date(at(0, 7, 0).getTime() + i * 10 * 60 * 1000),
+          },
+        });
+      }
+    }
+  }
+
+  // ── Notifications for the bell ────────────────────────────────────────
+  const alexPatient = p("alex@example.com");
+  const notifications = [
+    {
+      email: "alex@example.com",
+      type: "APPOINTMENT_CONFIRMED",
+      title: "Appointment Confirmed",
+      message: "Your appointment with Dr. Sarah Chen tomorrow at 09:00 is confirmed.",
+      linkUrl: "/patient/appointments",
+    },
+    {
+      email: "alex@example.com",
+      type: "LAB_RESULT_READY",
+      title: "Your lab results are ready",
+      message: "Results for order LAB-SEED-0 have been verified and are now available.",
+      linkUrl: "/patient/lab-results",
+    },
+    {
+      email: "sarah@medicore.com",
+      type: "CRITICAL_RESULT",
+      title: "CRITICAL lab result",
+      message: `${alexPatient.fullName} has 1 critical result requiring immediate review.`,
+      linkUrl: "/lab/orders",
+    },
+    {
+      email: "tom@medicore.com",
+      type: "LOW_STOCK_ALERT",
+      title: "Low stock",
+      message: "Amlodipine is down to 40 (reorder level 90).",
+      linkUrl: "/pharmacy/inventory",
+    },
+    {
+      email: "tom@medicore.com",
+      type: "EXPIRY_ALERT",
+      title: "Stock expiring soon",
+      message: "Ciprofloxacin expires in 60 days.",
+      linkUrl: "/pharmacy/inventory",
+    },
+  ];
+  for (const n of notifications) {
+    const userId = usersByEmail.get(n.email)?.id;
+    if (!userId) continue;
+    const dup = await prisma.notification.findFirst({
+      where: { userId, type: n.type, title: n.title },
+    });
+    if (dup) continue;
+    await prisma.notification.create({
+      data: {
+        userId,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        linkUrl: n.linkUrl,
+        channels: ["in_app"],
+      },
+    });
+  }
+
+  // ── Doctor conveniences: note templates + favourite prescriptions ─────
+  const sarah = dr("sarah@medicore.com");
+  const templates = [
+    {
+      name: "Chest pain workup",
+      subjective: "Patient reports exertional chest tightness.",
+      objective: "BP 140/85, HR 78 regular.",
+      assessment: "Rule out ischaemia.",
+      plan: "ECG, troponin, lipid panel. Review in 1 week.",
+    },
+    {
+      name: "Hypertension follow-up",
+      subjective: "Home BP readings 132-140/84-90 this month.",
+      objective: "BP 136/86 today. No pedal oedema.",
+      assessment: "Hypertension, controlled on current therapy.",
+      plan: "Continue lisinopril. Repeat BP check in 1 month.",
+    },
+  ];
+  for (const t of templates) {
+    await prisma.noteTemplate.upsert({
+      where: { doctorId_name: { doctorId: sarah.id, name: t.name } },
+      update: {},
+      create: {
+        doctorId: sarah.id,
+        name: t.name,
+        subjective: t.subjective,
+        objective: t.objective,
+        assessment: t.assessment,
+        plan: t.plan,
+      },
+    });
+  }
+  const favourites = [
+    {
+      name: "Metformin starter",
+      items: [
+        {
+          medicineName: "Metformin",
+          dosage: "500 mg",
+          frequency: "Twice daily",
+          durationDays: 30,
+          instructions: "With meals",
+          quantityPrescribed: 60,
+        },
+      ],
+    },
+    {
+      name: "Amlodipine + statin",
+      items: [
+        {
+          medicineName: "Amlodipine",
+          dosage: "5 mg",
+          frequency: "Once daily",
+          durationDays: 30,
+          instructions: "Morning",
+          quantityPrescribed: 30,
+        },
+        {
+          medicineName: "Atorvastatin",
+          dosage: "20 mg",
+          frequency: "Once daily",
+          durationDays: 30,
+          instructions: "Night",
+          quantityPrescribed: 30,
+        },
+      ],
+    },
+  ];
+  for (const f of favourites) {
+    await prisma.favouritePrescription.upsert({
+      where: { doctorId_name: { doctorId: sarah.id, name: f.name } },
+      update: {},
+      create: { doctorId: sarah.id, name: f.name, items: f.items as object },
+    });
+  }
+
+  // ── Referrals ─────────────────────────────────────────────────────────
+  const referrals: {
+    reason: string;
+    patientEmail: string;
+    fromEmail: string;
+    toEmail: string;
+    status: ReferralStatus;
+  }[] = [
+    {
+      reason: "DEMO-REF-1 Chronic knee pain warrants orthopaedic review",
+      patientEmail: "alex@example.com",
+      fromEmail: "sarah@medicore.com",
+      toEmail: "meera@medicore.com",
+      status: "PENDING",
+    },
+    {
+      reason: "DEMO-REF-2 Suspected disc pathology",
+      patientEmail: "brian@example.com",
+      fromEmail: "meera@medicore.com",
+      toEmail: "rafael@medicore.com",
+      status: "ACCEPTED",
+    },
+    {
+      reason: "DEMO-REF-3 Cardiology follow-up for murmur",
+      patientEmail: "amina@example.com",
+      fromEmail: "david@medicore.com",
+      toEmail: "sarah@medicore.com",
+      status: "COMPLETED",
+    },
+  ];
+  for (const r of referrals) {
+    const dup = await prisma.referral.findFirst({ where: { reason: r.reason } });
+    if (dup) continue;
+    await prisma.referral.create({
+      data: {
+        patientId: p(r.patientEmail).id,
+        fromDoctorId: dr(r.fromEmail).id,
+        toDoctorId: dr(r.toEmail).id,
+        reason: r.reason,
+        notes: "Seen in clinic.",
+        status: r.status,
+      },
+    });
+  }
+
+  // ── Medical history for the primary demo patient (Alex) ───────────────
+  const alex = p("alex@example.com");
+  const alexId = alex.id;
+  const sarahUser = dr("sarah@medicore.com").userId;
+
+  if ((await prisma.vitalReading.count({ where: { patientId: alexId } })) === 0) {
+    const vitals = [
+      { type: "blood_pressure", value: 128, unit: "mmHg", rec: at(0, 8, 50) },
+      { type: "heart_rate", value: 76, unit: "bpm", rec: at(0, 8, 50) },
+      { type: "temperature", value: 36.8, unit: "°C", rec: at(0, 8, 50) },
+      { type: "spo2", value: 98, unit: "%", rec: at(0, 8, 50) },
+      { type: "blood_pressure", value: 142, unit: "mmHg", rec: at(-30, 10, 0) },
+      { type: "blood_pressure", value: 138, unit: "mmHg", rec: at(-90, 11, 0) },
+    ];
+    for (const v of vitals) {
+      await prisma.vitalReading.create({
+        data: {
+          patientId: alexId,
+          recordedByUserId: sarahUser,
+          type: v.type,
+          value: v.value,
+          unit: v.unit,
+          recordedAt: v.rec,
+        },
+      });
+    }
+  }
+
+  if ((await prisma.vaccination.count({ where: { patientId: alexId } })) === 0) {
+    const vaccines = [
+      {
+        vaccineName: "Influenza (2025)",
+        administeredAt: at(-200, 10, 0),
+        nextDueAt: at(160, 10, 0),
+      },
+      { vaccineName: "COVID-19 Booster", administeredAt: at(-300, 11, 0), nextDueAt: null },
+      { vaccineName: "Hepatitis B (Dose 3)", administeredAt: at(-800, 9, 0), nextDueAt: null },
+    ];
+    for (const v of vaccines) {
+      await prisma.vaccination.create({
+        data: {
+          patientId: alexId,
+          vaccineName: v.vaccineName,
+          doseNumber: 1,
+          administeredAt: v.administeredAt,
+          administeredBy: "Dr. Sarah Chen",
+          nextDueAt: v.nextDueAt ?? undefined,
+        },
+      });
+    }
+  }
+
+  if ((await prisma.surgicalHistory.count({ where: { patientId: alexId } })) === 0) {
+    await prisma.surgicalHistory.create({
+      data: {
+        patientId: alexId,
+        procedure: "Laparoscopic appendectomy",
+        performedAt: new Date("2010-05-14"),
+        hospital: "St. Mary's Hospital",
+        notes: "Uncomplicated recovery",
+      },
+    });
+  }
+
+  if ((await prisma.familyHistory.count({ where: { patientId: alexId } })) === 0) {
+    await prisma.familyHistory.create({
+      data: {
+        patientId: alexId,
+        relationship: "Mother",
+        condition: "Type 2 Diabetes",
+        notes: "Diagnosed at 55",
+      },
+    });
+    await prisma.familyHistory.create({
+      data: { patientId: alexId, relationship: "Father", condition: "Hypertension" },
+    });
+  }
+
+  if ((await prisma.lifestyleProfile.count({ where: { patientId: alexId } })) === 0) {
+    await prisma.lifestyleProfile.create({
+      data: {
+        patientId: alexId,
+        smokingStatus: "Non-smoker",
+        alcoholUse: "Social (1-2/week)",
+        exerciseFreq: "3x/week",
+        dietNotes: "Balanced, low salt",
+      },
+    });
+  }
+
+  if ((await prisma.emergencyContact.count({ where: { patientId: alexId } })) === 0) {
+    await prisma.emergencyContact.create({
+      data: {
+        patientId: alexId,
+        name: "Jane Johnson",
+        relationship: "Spouse",
+        phone: "+1 555-0101",
+        isPrimary: true,
+      },
+    });
+  }
+
+  if ((await prisma.patientInsurance.count({ where: { patientId: alexId } })) === 0) {
+    await prisma.patientInsurance.create({
+      data: {
+        patientId: alexId,
+        providerName: "Blue Cross",
+        policyNumber: "BC-88412-901",
+        coveragePercentage: 80,
+        validUntil: new Date("2027-06-30"),
+        isActive: true,
+      },
+    });
+  }
+
+  // Alex as guardian of Nathan — powers the dependant booking/records demos.
+  const nathan = patientByEmail.get("nathan@example.com");
+  if (nathan) {
+    const rel = await prisma.patientRelationship.findUnique({
+      where: {
+        guardianPatientId_dependentPatientId: {
+          guardianPatientId: alexId,
+          dependentPatientId: nathan.id,
+        },
+      },
+    });
+    if (!rel) {
+      await prisma.patientRelationship.create({
+        data: {
+          guardianPatientId: alexId,
+          dependentPatientId: nathan.id,
+          relationship: "Parent",
+          canBookAppointments: true,
+          canViewRecords: true,
+        },
+      });
+    }
+  }
+
+  // ── Recent-patient audit rows for clinician dashboards ────────────────
+  const recentAudits = [
+    {
+      actorEmail: "sarah@medicore.com",
+      patientEmails: [
+        "alex@example.com",
+        "amina@example.com",
+        "brian@example.com",
+        "carlos@example.com",
+      ],
+    },
+    { actorEmail: "tom@medicore.com", patientEmails: ["alex@example.com", "brian@example.com"] },
+    { actorEmail: "lab@medicore.com", patientEmails: ["alex@example.com", "amina@example.com"] },
+  ];
+  for (const ra of recentAudits) {
+    const actorId = usersByEmail.get(ra.actorEmail)?.id;
+    if (!actorId) continue;
+    for (const patientEmail of ra.patientEmails) {
+      const patient = patientByEmail.get(patientEmail);
+      if (!patient) continue;
+      const dup = await prisma.auditLog.findFirst({
+        where: {
+          actorUserId: actorId,
+          action: "PATIENT_HISTORY_VIEWED",
+          targetType: "patient",
+          targetId: patient.id,
+        },
+      });
+      if (dup) continue;
+      await prisma.auditLog.create({
+        data: {
+          actorUserId: actorId,
+          action: "PATIENT_HISTORY_VIEWED",
+          targetType: "patient",
+          targetId: patient.id,
+          ipAddress: "127.0.0.1",
+          metadata: { seeded: true },
+        },
+      });
+    }
+  }
+
+  // ── Live billing: a payment today + a historical refund ───────────────
+  // Revenue today KPI needs a SUCCEEDED payment dated today. BL-SEED-1000 is a
+  // seeded partially-paid bill, so a cash payment here keeps a balance (and stays
+  // refundable live in the demo).
+  const partialBill = await prisma.bill.findUnique({ where: { billNumber: "BL-SEED-1000" } });
+  if (partialBill && partialBill.balance.greaterThan(0)) {
+    const todayCash = await prisma.payment.findFirst({
+      where: { billId: partialBill.id, reference: "DEMO-CASH-TODAY" },
+    });
+    if (!todayCash) {
+      await prisma.payment.create({
+        data: {
+          billId: partialBill.id,
+          amount: 25,
+          method: "CASH",
+          status: "SUCCEEDED",
+          receivedById: accountantUserIds[0] ?? null,
+          reference: "DEMO-CASH-TODAY",
+        },
+      });
+      const newPaid = Number(partialBill.amountPaid) + 25;
+      const newBalance = Number(partialBill.total) - newPaid;
+      await prisma.bill.update({
+        where: { id: partialBill.id },
+        data: {
+          amountPaid: newPaid,
+          balance: newBalance,
+          status: newBalance <= 0 ? "paid" : "partially_paid",
+        },
+      });
+    }
+  }
+
+  // A historical cash refund so the accountant's "Refunds" KPI is non-zero.
+  const paidBill = await prisma.bill.findUnique({ where: { billNumber: "BL-SEED-1002" } });
+  if (paidBill) {
+    const pay = await prisma.payment.findFirst({
+      where: { billId: paidBill.id, providerRef: null },
+    });
+    if (pay && pay.refundedAmount.equals(0)) {
+      const refundAmount = Math.min(40, Number(pay.amount));
+      await prisma.payment.update({
+        where: { id: pay.id },
+        data: {
+          refundedAmount: refundAmount,
+          refundedAt: at(-2, 16, 0),
+          status: refundAmount >= Number(pay.amount) ? "REFUNDED" : "SUCCEEDED",
+        },
+      });
+      const newPaid = Number(paidBill.amountPaid) - refundAmount;
+      await prisma.bill.update({
+        where: { id: paidBill.id },
+        data: {
+          amountPaid: newPaid,
+          balance: Number(paidBill.total) - newPaid,
+          status: newPaid >= Number(paidBill.total) ? "paid" : "partially_paid",
+        },
+      });
+    }
+  }
+
+  console.log(
+    "[seed] Demo-day state ready — appointments today, queue, pending lab/pharmacy work, chat, notifications, discounts, recalls, dependants.",
+  );
+}

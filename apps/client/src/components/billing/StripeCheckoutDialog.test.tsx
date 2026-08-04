@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import StripeCheckoutDialog from "./StripeCheckoutDialog";
 
@@ -17,6 +17,10 @@ vi.mock("react-i18next", () => ({
   }),
 }));
 
+vi.mock("@stripe/stripe-js", () => ({
+  loadStripe: vi.fn().mockResolvedValue({}),
+}));
+
 function renderWithClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -26,7 +30,12 @@ function renderWithClient(ui: React.ReactElement) {
 }
 
 describe("StripeCheckoutDialog", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("shows an unavailable state when the publishable key is not configured", () => {
+    vi.stubEnv("VITE_STRIPE_PUBLISHABLE_KEY", "");
     renderWithClient(<StripeCheckoutDialog open billId="bill-1" balance="120.00" />);
 
     expect(screen.getByText(/Online card payments are currently unavailable/i)).toBeInTheDocument();

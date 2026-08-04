@@ -27,6 +27,11 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
 
+  // Login attempts allowed per IP per 15-minute window. Defaults to the security
+  // spec's 5/15min (`security.md` §4); a local demo box raises it via .env so all
+  // seven role accounts can sign in in a row. Production keeps the default.
+  LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(5),
+
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CALLBACK_URL: z.string().url().optional(),

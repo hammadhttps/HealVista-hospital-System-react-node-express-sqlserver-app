@@ -1,4 +1,5 @@
 import {
+  Activity,
   Home,
   Users,
   User,
@@ -107,9 +108,9 @@ const staffNav: { to: string; key: string; icon: LucideIcon }[] = [
 ];
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 px-4 py-2 rounded-lg transition font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+  `group flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
     isActive
-      ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
       : ""
   }`;
 
@@ -131,39 +132,53 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="h-full w-64 bg-sidebar border-e border-sidebar-border flex flex-col">
-      <div className="p-6 text-2xl font-bold text-primary">{t("common:appName")}</div>
+    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-e border-sidebar-border bg-sidebar/95 shadow-[12px_0_32px_rgba(15,23,42,0.04)] backdrop-blur lg:w-72">
+      <div className="px-5 py-5">
+        <div className="flex items-center gap-3 rounded-lg border border-sidebar-border bg-background/70 p-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
+            <Activity className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <div className="truncate text-lg font-semibold text-primary">{t("common:appName")}</div>
+            {role && (
+              <div className="mt-0.5 truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {role.replace("_", " ")}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-      <nav className="flex-1 px-2 space-y-1">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
         {links.map(({ to, key, icon: Icon }) => (
           <NavLink key={to} to={to} end={to.split("/").length === 2} className={linkClass}>
-            <Icon className="w-5 h-5" />
-            {t(key)}
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{t(key)}</span>
           </NavLink>
         ))}
         {role !== "PATIENT" &&
           staffNav.map(({ to, key, icon: Icon }) => (
             <NavLink key={to} to={to} end className={linkClass}>
-              <Icon className="w-5 h-5" />
-              {t(key)}
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{t(key)}</span>
             </NavLink>
           ))}
       </nav>
 
-      <div className="px-2 space-y-1 mb-2 border-t border-sidebar-border pt-2">
+      <div className="mx-3 space-y-1 border-t border-sidebar-border py-3">
         {sharedNav.map(({ to, key, icon: Icon }) => (
           <NavLink key={to} to={to} className={linkClass}>
-            <Icon className="w-5 h-5" />
-            {t(key)}
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="truncate">{t(key)}</span>
           </NavLink>
         ))}
       </div>
 
       <button
         onClick={() => setConfirmOpen(true)}
-        className="flex items-center gap-3 px-4 py-2 m-4 rounded-lg text-destructive hover:bg-destructive/10 font-medium"
+        className="m-3 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive/10"
       >
-        <LogOut className="w-5 h-5" /> {t("auth:signOut")}
+        <LogOut className="h-4 w-4" /> {t("auth:signOut")}
       </button>
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
