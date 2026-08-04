@@ -40,9 +40,9 @@ export default function LabExplainButton({ orderId }: { orderId: string }) {
       </Button>
 
       {open && (
-        <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+        <div className="mt-3 rounded-lg border border-teal-100 bg-teal-50/60 p-4">
           <div className="flex items-start justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-700">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-700">
               <Sparkles className="h-3.5 w-3.5" /> {t("explanationTitle")}
             </span>
             <button

@@ -153,12 +153,12 @@ export function ChatMessages({ threadId, onClose }: Props) {
             onKeyDown={handleKeyDown}
             placeholder={t("chat:placeholder")}
             rows={1}
-            className="flex-1 resize-none border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 resize-none border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
           <button
             onClick={handleSend}
             disabled={!content.trim() || sendMessage.isPending}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm hover:bg-teal-700 disabled:opacity-50 transition-colors"
           >
             {t("chat:send")}
           </button>

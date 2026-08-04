@@ -26,12 +26,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-teal-50/70 to-cyan-100">
       <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
-          <HeartPulse className="w-12 h-12 text-green-600 mb-2" />
-          <h1 className="text-3xl font-bold text-green-800">{t("common:appName")}</h1>
-          <p className="text-green-600 text-sm mt-1">{t("common:tagline")}</p>
+          <HeartPulse className="w-12 h-12 text-teal-600 mb-2" />
+          <h1 className="text-3xl font-bold text-teal-800">{t("common:appName")}</h1>
+          <p className="text-teal-600 text-sm mt-1">{t("common:tagline")}</p>
         </div>
 
         {oauthError && (
@@ -47,7 +47,7 @@ export default function LoginPage() {
             </label>
             <input
               type="email"
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent"
+              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-transparent"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -60,7 +60,7 @@ export default function LoginPage() {
             </label>
             <input
               type="password"
-              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400 focus:border-transparent"
+              className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-400 focus:border-transparent"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -77,7 +77,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={login.isPending}
-            className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-75"
+            className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-75"
           >
             {login.isPending ? (
               <span className="animate-spin">⏳</span>

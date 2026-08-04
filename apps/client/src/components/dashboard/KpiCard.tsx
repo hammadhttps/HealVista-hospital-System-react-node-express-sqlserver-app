@@ -10,11 +10,9 @@ import { formatCurrency, formatNumber } from "../../lib/format";
  */
 export function KpiCard({ kpi }: { kpi: DashboardKpi }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-      <p className="text-sm text-gray-500 dark:text-gray-400">{kpi.label}</p>
-      <p className="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-50">
-        {formatKpiValue(kpi)}
-      </p>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="text-sm text-muted-foreground">{kpi.label}</p>
+      <p className="mt-1 text-3xl font-semibold text-card-foreground">{formatKpiValue(kpi)}</p>
     </div>
   );
 }
@@ -28,9 +26,9 @@ function formatKpiValue(kpi: DashboardKpi): string {
 
 export function KpiCardSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-      <div className="h-4 w-24 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-      <div className="mt-2 h-8 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+      <div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" />
     </div>
   );
 }

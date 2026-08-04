@@ -72,7 +72,7 @@ export default function AdminAnalytics() {
             aria-pressed={activePreset === p.key}
             className={`rounded-md border px-3 py-1.5 text-sm ${
               activePreset === p.key
-                ? "border-blue-600 bg-blue-50 font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-200"
+                ? "border-teal-600 bg-teal-50 font-medium text-teal-700 dark:bg-teal-950 dark:text-teal-200"
                 : "border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700/50"
             }`}
           >

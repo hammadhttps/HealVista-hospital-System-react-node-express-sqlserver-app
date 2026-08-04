@@ -95,12 +95,12 @@ function RouteFallback() {
     <div
       role="status"
       aria-live="polite"
-      className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-900"
+      className="flex min-h-screen items-center justify-center bg-muted/60"
     >
       <span className="sr-only">Loading</span>
       <div
         aria-hidden="true"
-        className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600 dark:border-gray-700 dark:border-t-blue-400"
+        className="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary"
       />
     </div>
   );

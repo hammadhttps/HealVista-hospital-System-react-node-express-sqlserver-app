@@ -82,7 +82,7 @@ export default function PatientRegistration() {
         <button
           type="submit"
           disabled={mutation.isPending}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="w-full bg-teal-600 text-white py-2 rounded-lg hover:bg-teal-700 disabled:opacity-50"
         >
           {mutation.isPending ? t("patients:registering") : t("patients:create")}
         </button>

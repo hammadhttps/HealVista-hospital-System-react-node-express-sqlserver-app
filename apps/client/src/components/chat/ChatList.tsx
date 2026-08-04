@@ -36,7 +36,7 @@ export function ChatList() {
               className="w-full text-left px-4 py-3 border-b hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm">
+                <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center text-teal-600 font-bold text-sm">
                   {thread.appointment?.patient?.fullName?.[0] ?? "?"}
                 </div>
                 <div className="min-w-0 flex-1">

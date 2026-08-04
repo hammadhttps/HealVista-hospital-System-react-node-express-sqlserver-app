@@ -61,20 +61,20 @@ export default function OAuthCallback() {
   }, [navigate, setAuth, t]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+    <div className="flex min-h-screen items-center justify-center bg-muted/60 p-6">
       {error ? (
         <div role="alert" className="max-w-sm text-center">
           <p className="text-sm text-red-600">{error}</p>
           <button
             type="button"
             onClick={() => navigate("/login", { replace: true })}
-            className="mt-4 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+            className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             {t("backToSignIn")}
           </button>
         </div>
       ) : (
-        <p className="text-sm text-gray-500">{t("signingYouIn")}</p>
+        <p className="text-sm text-muted-foreground">{t("signingYouIn")}</p>
       )}
     </div>
   );

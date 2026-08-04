@@ -51,7 +51,7 @@ interface NoteTemplateRow {
 
 const labelCls = "block text-sm font-medium text-gray-700 mb-1";
 const textareaCls =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none min-h-24";
+  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none min-h-24";
 
 const SOAP_FIELDS: {
   key: "subjective" | "objective" | "assessment" | "plan";
@@ -281,7 +281,7 @@ export default function SOAPNoteEditor() {
       </div>
 
       {!note && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+        <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm text-teal-800">
           {t("soap:noNoteYet")}
         </div>
       )}
@@ -337,7 +337,7 @@ export default function SOAPNoteEditor() {
                 </Button>
               </span>
             </CardTitle>
-            {aiDraft && <p className="text-xs text-blue-700">{t("soap:aiDraftAppliedHint")}</p>}
+            {aiDraft && <p className="text-xs text-teal-700">{t("soap:aiDraftAppliedHint")}</p>}
           </CardHeader>
           <CardContent className="space-y-4">
             <form id="soap-form" onSubmit={handleSubmit(() => {})}>
@@ -349,14 +349,14 @@ export default function SOAPNoteEditor() {
                       {t(f.labelKey)}{" "}
                       <span className="text-xs font-normal text-gray-400">— {t(f.hintKey)}</span>
                       {aiUnedited && (
-                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-medium text-teal-700">
                           <Sparkles className="h-3 w-3" /> {t("soap:aiBadge")}
                         </span>
                       )}
                     </label>
                     <textarea
                       className={`${textareaCls} ${
-                        aiUnedited ? "border-blue-300 bg-blue-50/60 focus:border-blue-500" : ""
+                        aiUnedited ? "border-teal-300 bg-teal-50/60 focus:border-teal-500" : ""
                       }`}
                       disabled={locked}
                       placeholder={t(f.labelKey)}
@@ -368,7 +368,7 @@ export default function SOAPNoteEditor() {
               <div className="space-y-1">
                 <label className={labelCls}>{t("soap:diagnosisCodes")}</label>
                 <input
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
                   disabled={locked}
                   placeholder={t("soap:diagnosisCodesPlaceholder")}
                   {...register("diagnosisCodes")}
@@ -377,7 +377,7 @@ export default function SOAPNoteEditor() {
             </form>
 
             {draftMutation.isPending && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-800">
+              <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-2 text-sm text-teal-800">
                 {t("soap:draftingNotice")}
               </div>
             )}

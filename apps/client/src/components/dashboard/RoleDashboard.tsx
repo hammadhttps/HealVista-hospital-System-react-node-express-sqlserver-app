@@ -33,7 +33,7 @@ export function RoleDashboard({ title, children }: { title: string; children?: R
       {isError && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+          className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
         >
           <p>
             {t("dashboard:loadFailed")} {(error as Error)?.message}
@@ -41,7 +41,7 @@ export function RoleDashboard({ title, children }: { title: string; children?: R
           <button
             type="button"
             onClick={() => refetch()}
-            className="mt-2 rounded-md border border-red-300 px-3 py-1 font-medium hover:bg-red-100 dark:border-red-800 dark:hover:bg-red-900"
+            className="mt-2 rounded-md border border-destructive/40 px-3 py-1 font-medium hover:bg-destructive/10"
           >
             {t("common:tryAgain")}
           </button>
@@ -86,10 +86,10 @@ function SectionList({ section }: { section: DashboardSection }) {
   const title = isI18nKey(section.title) ? t(section.title) : section.title;
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-      <h2 className="mb-3 text-sm font-medium text-gray-500 dark:text-gray-400">{title}</h2>
+    <section className="rounded-lg border border-border bg-card p-4">
+      <h2 className="mb-3 text-sm font-medium text-muted-foreground">{title}</h2>
       {section.items.length === 0 ? (
-        <p className="py-6 text-center text-sm text-gray-400">{t("nothingHere")}</p>
+        <p className="py-6 text-center text-sm text-muted-foreground/70">{t("nothingHere")}</p>
       ) : (
         <ul className="space-y-1">
           {section.items.map((item) => (
@@ -111,15 +111,11 @@ function ItemRow({ item }: { item: DashboardSection["items"][number] }) {
   const body = (
     <div className="flex items-center justify-between gap-3 rounded-md px-3 py-2">
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-          {item.label}
-        </p>
-        {subtitle && (
-          <p className="truncate text-xs text-gray-500 dark:text-gray-400">{subtitle}</p>
-        )}
+        <p className="truncate text-sm font-medium text-card-foreground">{item.label}</p>
+        {subtitle && <p className="truncate text-xs text-muted-foreground">{subtitle}</p>}
       </div>
       {item.meta && (
-        <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
           {item.meta}
         </span>
       )}
@@ -127,7 +123,7 @@ function ItemRow({ item }: { item: DashboardSection["items"][number] }) {
   );
 
   return item.href ? (
-    <Link to={item.href} className="block hover:bg-gray-50 dark:hover:bg-gray-700/50">
+    <Link to={item.href} className="block hover:bg-accent/60 rounded-md">
       {body}
     </Link>
   ) : (

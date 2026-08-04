@@ -47,7 +47,7 @@ export default function SemanticSearchBar() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
-            className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-teal-500 focus:outline-none"
             placeholder={t("ai:searchPlaceholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -85,7 +85,7 @@ export default function SemanticSearchBar() {
                     {hit.patientName ? (
                       <Link
                         to={`/patients/${hit.patientId}`}
-                        className="text-sm font-semibold text-blue-700 hover:underline"
+                        className="text-sm font-semibold text-teal-700 hover:underline"
                       >
                         {hit.patientName}
                       </Link>

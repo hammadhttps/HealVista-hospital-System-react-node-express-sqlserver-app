@@ -43,21 +43,21 @@ export default function RecordSummaryCard({ recordId }: { recordId: string }) {
   if (!expanded) {
     return (
       <button
-        className="flex w-full items-center justify-between gap-2 rounded-md border border-blue-100 bg-blue-50/50 px-3 py-2 text-left"
+        className="flex w-full items-center justify-between gap-2 rounded-md border border-teal-100 bg-teal-50/50 px-3 py-2 text-left"
         onClick={() => setExpanded(true)}
       >
-        <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700">
+        <span className="flex items-center gap-1.5 text-xs font-medium text-teal-700">
           <Sparkles className="h-3.5 w-3.5" /> {t("aiSummary")}
         </span>
-        <ChevronDown className="h-4 w-4 text-blue-500" />
+        <ChevronDown className="h-4 w-4 text-teal-500" />
       </button>
     );
   }
 
   if (summary.isLoading) {
     return (
-      <div className="space-y-2 rounded-md border border-blue-100 bg-blue-50/50 p-3">
-        <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700">
+      <div className="space-y-2 rounded-md border border-teal-100 bg-teal-50/50 p-3">
+        <span className="flex items-center gap-1.5 text-xs font-medium text-teal-700">
           <Sparkles className="h-3.5 w-3.5" /> {t("aiSummary")}
         </span>
         <Skeleton className="h-8" />
@@ -69,13 +69,13 @@ export default function RecordSummaryCard({ recordId }: { recordId: string }) {
   const hasSummary = data && (data.plainLanguageSummary || (data.flags && data.flags.length > 0));
 
   return (
-    <div className="rounded-md border border-blue-100 bg-blue-50/50 p-3">
+    <div className="rounded-md border border-teal-100 bg-teal-50/50 p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700">
+        <span className="flex items-center gap-1.5 text-xs font-medium text-teal-700">
           <Sparkles className="h-3.5 w-3.5" /> {t("aiSummary")}
         </span>
         {hasSummary && (
-          <button className="text-blue-600 hover:text-blue-800" onClick={() => setExpanded(false)}>
+          <button className="text-teal-600 hover:text-teal-800" onClick={() => setExpanded(false)}>
             <ChevronUp className="h-4 w-4" />
           </button>
         )}

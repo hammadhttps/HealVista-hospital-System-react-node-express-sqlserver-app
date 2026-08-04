@@ -20,7 +20,7 @@ import { useSaveSearch } from "../../hooks/mutations/useSearchMutations";
  */
 
 const TYPE_BADGES: Record<string, string> = {
-  patient: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200",
+  patient: "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200",
   doctor: "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
   appointment: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
   medicine: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
@@ -180,7 +180,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
                             onMouseEnter={() => setActiveIndex(index)}
                             className={`flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-start ${
                               index === activeIndex
-                                ? "bg-blue-50 dark:bg-gray-700"
+                                ? "bg-teal-50 dark:bg-gray-700"
                                 : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
                             }`}
                           >

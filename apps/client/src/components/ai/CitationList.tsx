@@ -66,7 +66,7 @@ export default function CitationList({
             <Link
               key={`${c.sourceType}-${c.sourceId}-${i}`}
               to={href}
-              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 hover:border-blue-300 hover:text-blue-700"
+              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 hover:border-teal-300 hover:text-teal-700"
             >
               {label}
               <ExternalLink className="h-3 w-3" />

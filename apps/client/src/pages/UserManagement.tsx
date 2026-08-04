@@ -22,7 +22,7 @@ import {
 import { Button } from "../components/ui/button";
 
 const inputClass =
-  "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none";
+  "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-teal-500 focus:outline-none";
 
 function roleBadgeClass(role: string) {
   const base = "px-2 py-0.5 rounded-full text-xs font-medium";
@@ -32,7 +32,7 @@ function roleBadgeClass(role: string) {
     case "ADMIN":
       return `${base} bg-red-100 text-red-700`;
     case "PATIENT":
-      return `${base} bg-blue-100 text-blue-700`;
+      return `${base} bg-teal-100 text-teal-700`;
     default:
       return `${base} bg-gray-100 text-gray-700`;
   }
@@ -183,7 +183,7 @@ export default function UserManagement() {
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
           <input
-            className="rounded-md border border-gray-300 pl-8 pr-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="rounded-md border border-gray-300 pl-8 pr-2 py-1.5 text-sm focus:border-teal-500 focus:outline-none"
             placeholder={t("users:searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}

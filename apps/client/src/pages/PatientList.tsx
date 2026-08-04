@@ -23,7 +23,7 @@ export default function PatientList() {
         <h1 className="text-2xl font-bold">{t("patients:title")}</h1>
         <Link
           to="/patients/register"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          className="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700"
         >
           + {t("patients:create")}
         </Link>
@@ -66,7 +66,7 @@ export default function PatientList() {
                 <tr key={p.id} className="border-t hover:bg-gray-50">
                   <td className="p-3 font-mono text-sm">{p.mrn}</td>
                   <td className="p-3">
-                    <Link to={`/patients/${p.id}`} className="text-blue-600 hover:underline">
+                    <Link to={`/patients/${p.id}`} className="text-teal-600 hover:underline">
                       {p.fullName}
                     </Link>
                   </td>

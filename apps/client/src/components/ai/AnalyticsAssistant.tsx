@@ -44,7 +44,7 @@ export default function AnalyticsAssistant() {
         <p className="text-sm text-gray-500">{t("analyticsAskHint")}</p>
         <form onSubmit={submit} className="flex gap-2">
           <input
-            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
             placeholder={t("analyticsPlaceholder")}
             value={question}
             onChange={(e) => setQuestion(e.target.value)}

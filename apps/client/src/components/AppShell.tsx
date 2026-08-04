@@ -6,7 +6,7 @@ import Header from "./Layout/Header";
 import ActingBanner from "./Layout/ActingBanner";
 import { CommandPalette } from "./search/CommandPalette";
 
-interface GoToMap { 
+interface GoToMap {
   [key: string]: string;
 }
 
@@ -95,14 +95,14 @@ export function AppShell() {
   }, [navigate]);
 
   return (
-    <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex min-h-screen bg-muted/60">
       {/*
         Visible only on focus: the first Tab on any page jumps past the whole
         sidebar straight to the content.
       */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-blue-700 focus:px-4 focus:py-2 focus:text-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
       >
         {t("skipToContent")}
       </a>
@@ -111,7 +111,7 @@ export function AppShell() {
       <div className="flex flex-1 flex-col">
         <Header onOpenSearch={() => setPaletteOpen(true)} />
         <ActingBanner />
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

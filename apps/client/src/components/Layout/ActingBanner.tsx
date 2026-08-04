@@ -28,7 +28,7 @@ export default function ActingBanner() {
     t("profile:dependantFallback");
 
   return (
-    <div className="flex items-center justify-between gap-3 bg-blue-600 px-8 py-2 text-sm font-medium text-white">
+    <div className="flex items-center justify-between gap-3 bg-primary px-8 py-2 text-sm font-medium text-primary-foreground">
       <span className="flex items-center gap-2">
         <UserRoundCheck className="h-4 w-4 shrink-0" />
         {t("profile:actingFor", { name })} — {t("profile:actingContext")}
@@ -36,7 +36,7 @@ export default function ActingBanner() {
       <button
         type="button"
         onClick={() => setActingPatient(null)}
-        className="shrink-0 underline underline-offset-2 hover:text-blue-100"
+        className="shrink-0 underline underline-offset-2 hover:text-primary-foreground/80"
       >
         {t("profile:switchBackToMe")}
       </button>

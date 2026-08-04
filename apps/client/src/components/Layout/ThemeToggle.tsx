@@ -39,7 +39,7 @@ export function ThemeToggle() {
             aria-label={label}
             title={label}
             onClick={() => setTheme(value)}
-            className={`rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+            className={`rounded-md p-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 ${
               active
                 ? "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-50"
                 : "text-gray-500 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700/50"

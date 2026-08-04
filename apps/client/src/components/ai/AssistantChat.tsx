@@ -82,7 +82,7 @@ export default function AssistantChat({
                   <button
                     key={p}
                     onClick={() => ask(p)}
-                    className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:border-blue-300 hover:text-blue-700"
+                    className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:border-teal-300 hover:text-teal-700"
                   >
                     {p}
                   </button>
@@ -103,7 +103,7 @@ export default function AssistantChat({
               >
                 <div
                   className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                    m.role === "user" ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
+                    m.role === "user" ? "bg-teal-600 text-white" : "bg-gray-200 text-gray-600"
                   }`}
                 >
                   {m.role === "user" ? (
@@ -115,7 +115,7 @@ export default function AssistantChat({
                 <div
                   className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
                     m.role === "user"
-                      ? "bg-blue-600 text-white"
+                      ? "bg-teal-600 text-white"
                       : m.error
                         ? "border border-red-200 bg-red-50 text-red-800"
                         : "border border-gray-200 bg-gray-50 text-gray-800"
@@ -145,7 +145,7 @@ export default function AssistantChat({
           }}
         >
           <input
-            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
             placeholder={t("chatPlaceholder")}
             value={input}
             onChange={(e) => setInput(e.target.value)}

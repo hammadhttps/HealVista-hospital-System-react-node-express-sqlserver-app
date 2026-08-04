@@ -237,7 +237,7 @@ function RetestDialog({
           <DialogDescription>{t("lab:retestDescription")}</DialogDescription>
         </DialogHeader>
         <textarea
-          className="min-h-20 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+          className="min-h-20 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-teal-500 focus:outline-none"
           placeholder={t("lab:retestReasonPlaceholder")}
           value={reason}
           onChange={(e) => onReason(e.target.value)}

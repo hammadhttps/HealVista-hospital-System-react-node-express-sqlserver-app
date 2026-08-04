@@ -107,8 +107,10 @@ const staffNav: { to: string; key: string; icon: LucideIcon }[] = [
 ];
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 px-4 py-2 rounded-lg transition font-medium text-gray-700 hover:bg-blue-100 ${
-    isActive ? "bg-blue-100 text-blue-700" : ""
+  `flex items-center gap-3 px-4 py-2 rounded-lg transition font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${
+    isActive
+      ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground"
+      : ""
   }`;
 
 export default function Sidebar() {
@@ -129,8 +131,8 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="h-full w-64 bg-white shadow-lg flex flex-col">
-      <div className="p-6 text-2xl font-bold text-blue-600">{t("common:appName")}</div>
+    <aside className="h-full w-64 bg-sidebar border-e border-sidebar-border flex flex-col">
+      <div className="p-6 text-2xl font-bold text-primary">{t("common:appName")}</div>
 
       <nav className="flex-1 px-2 space-y-1">
         {links.map(({ to, key, icon: Icon }) => (
@@ -148,7 +150,7 @@ export default function Sidebar() {
           ))}
       </nav>
 
-      <div className="px-2 space-y-1 mb-2 border-t border-gray-100 pt-2">
+      <div className="px-2 space-y-1 mb-2 border-t border-sidebar-border pt-2">
         {sharedNav.map(({ to, key, icon: Icon }) => (
           <NavLink key={to} to={to} className={linkClass}>
             <Icon className="w-5 h-5" />
@@ -159,7 +161,7 @@ export default function Sidebar() {
 
       <button
         onClick={() => setConfirmOpen(true)}
-        className="flex items-center gap-3 px-4 py-2 m-4 rounded-lg text-red-600 hover:bg-red-100 font-medium"
+        className="flex items-center gap-3 px-4 py-2 m-4 rounded-lg text-destructive hover:bg-destructive/10 font-medium"
       >
         <LogOut className="w-5 h-5" /> {t("auth:signOut")}
       </button>

@@ -49,7 +49,7 @@ interface VitalRow {
 }
 
 const inputCls =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none";
+  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none";
 
 function flagTone(flag?: string) {
   if (flag === "HIGH" || flag === "LOW") return "warning";

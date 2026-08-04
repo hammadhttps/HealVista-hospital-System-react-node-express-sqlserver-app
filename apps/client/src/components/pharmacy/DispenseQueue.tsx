@@ -174,7 +174,7 @@ export default function DispenseQueue() {
                               quantity: Number(e.target.value),
                             })
                           }
-                          className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-40"
+                          className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-teal-500 focus:outline-none disabled:opacity-40"
                         />
                         <span className="text-xs text-gray-500">
                           / {t("pharmacy:leftCount", { count: left })} left
@@ -187,7 +187,7 @@ export default function DispenseQueue() {
                         onChange={(e) =>
                           setLine(prescription.id, item.id, { batchNumber: e.target.value })
                         }
-                        className="w-28 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-40"
+                        className="w-28 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-teal-500 focus:outline-none disabled:opacity-40"
                       />
                     </div>
                   );

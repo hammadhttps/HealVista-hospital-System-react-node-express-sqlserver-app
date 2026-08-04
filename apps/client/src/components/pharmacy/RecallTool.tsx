@@ -60,7 +60,7 @@ export default function RecallTool() {
   };
 
   const inputClass =
-    "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none";
+    "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-teal-500 focus:outline-none";
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">

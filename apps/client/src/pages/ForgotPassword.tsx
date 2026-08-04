@@ -27,20 +27,20 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-teal-50/70 to-cyan-100">
       <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
-          <HeartPulse className="w-12 h-12 text-green-600 mb-2" />
-          <h1 className="text-2xl font-bold text-green-800">{t("auth:resetPassword")}</h1>
+          <HeartPulse className="w-12 h-12 text-teal-600 mb-2" />
+          <h1 className="text-2xl font-bold text-teal-800">{t("auth:resetPassword")}</h1>
         </div>
         {sent ? (
           <div className="text-center space-y-4">
-            <div className="p-4 bg-green-50 text-green-700 rounded-lg">
+            <div className="p-4 bg-teal-50 text-teal-700 rounded-lg">
               {t("auth:verificationSent", { email })}
             </div>
             <Link
               to="/login"
-              className="inline-flex items-center gap-2 text-green-600 hover:underline"
+              className="inline-flex items-center gap-2 text-teal-600 hover:underline"
             >
               <ArrowLeft className="w-4 h-4" /> {t("auth:backToLogin")}
             </Link>
@@ -55,7 +55,7 @@ export default function ForgotPassword() {
                 <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                 <input
                   type="email"
-                  className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-400"
+                  className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-400"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -67,12 +67,12 @@ export default function ForgotPassword() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-75"
+              className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 rounded-lg transition disabled:opacity-75"
             >
               {loading ? t("auth:sending") : t("auth:sendVerification")}
             </button>
             <div className="text-center">
-              <Link to="/login" className="text-sm text-green-600 hover:underline">
+              <Link to="/login" className="text-sm text-teal-600 hover:underline">
                 {t("auth:backToLogin")}
               </Link>
             </div>

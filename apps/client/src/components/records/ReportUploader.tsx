@@ -109,7 +109,7 @@ export default function ReportUploader({
   const uploading = pending.some((f) => f.state === "uploading");
 
   return (
-    <Card className={dragOver ? "border-blue-400" : undefined}>
+    <Card className={dragOver ? "border-teal-400" : undefined}>
       <CardContent className="space-y-3 p-4">
         <div
           className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 px-4 py-8 text-center"

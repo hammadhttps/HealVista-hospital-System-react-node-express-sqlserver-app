@@ -104,8 +104,8 @@ export default function KnowledgeBase() {
                     <button
                       key={a.id}
                       onClick={() => navigate(`/kb/${a.id}`)}
-                      className={`w-full rounded-lg px-3 py-2 text-left hover:bg-blue-50 ${
-                        a.id === id ? "bg-blue-50 ring-1 ring-blue-200" : ""
+                      className={`w-full rounded-lg px-3 py-2 text-left hover:bg-teal-50 ${
+                        a.id === id ? "bg-teal-50 ring-1 ring-teal-200" : ""
                       }`}
                     >
                       <p className="truncate text-sm font-medium text-gray-800">{a.title}</p>
@@ -274,7 +274,7 @@ function ArticleFormDialog({
             <textarea
               {...register("content")}
               rows={8}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
             />
             {errors.content && (
               <p className="mt-1 text-xs text-red-600">{errors.content.message}</p>
@@ -292,7 +292,7 @@ function ArticleFormDialog({
             <div>
               <Label>{t("knowledgeBase:department")}</Label>
               <select
-                className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-teal-500 focus:outline-none"
                 defaultValue={article?.departmentId ?? ""}
                 onChange={(e) =>
                   setValue("departmentId", e.target.value || null, { shouldValidate: true })

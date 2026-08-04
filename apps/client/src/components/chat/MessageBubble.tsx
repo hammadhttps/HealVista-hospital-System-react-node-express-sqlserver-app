@@ -23,16 +23,16 @@ export function MessageBubble({ message, isOwn }: Props) {
     <div className={`flex ${isOwn ? "justify-end" : "justify-start"} mb-3`}>
       <div
         className={`max-w-[75%] rounded-lg px-4 py-2 ${
-          isOwn ? "bg-blue-600 text-white rounded-br-sm" : "bg-gray-100 text-gray-900 rounded-bl-sm"
+          isOwn ? "bg-teal-600 text-white rounded-br-sm" : "bg-gray-100 text-gray-900 rounded-bl-sm"
         }`}
       >
         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
         <div className={`flex items-center gap-1 mt-1 ${isOwn ? "justify-end" : "justify-start"}`}>
-          <span className={`text-xs ${isOwn ? "text-blue-200" : "text-gray-400"}`}>
+          <span className={`text-xs ${isOwn ? "text-teal-200" : "text-gray-400"}`}>
             {formatDistanceToNow(new Date(message.sentAt), { addSuffix: true })}
           </span>
           {isOwn && message.readAt && (
-            <svg className="w-3 h-3 text-blue-200" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-3 h-3 text-teal-200" fill="currentColor" viewBox="0 0 20 20">
               <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
               <path
                 fillRule="evenodd"

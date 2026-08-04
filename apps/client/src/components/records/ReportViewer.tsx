@@ -62,7 +62,7 @@ export default function ReportViewer({
               {r.fileType === "pdf" ? (
                 <FileText className="h-5 w-5 shrink-0 text-red-500" />
               ) : (
-                <File className="h-5 w-5 shrink-0 text-blue-500" />
+                <File className="h-5 w-5 shrink-0 text-teal-500" />
               )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{r.title}</p>

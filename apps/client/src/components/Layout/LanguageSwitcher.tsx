@@ -22,7 +22,7 @@ export function LanguageSwitcher() {
         id="language-select"
         value={i18n.language}
         onChange={(e) => void changeLanguage(e.target.value as LanguageCode)}
-        className="rounded-md border border-gray-200 bg-transparent py-1 ps-2 pe-6 text-sm text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-gray-600 dark:text-gray-200"
+        className="rounded-md border border-gray-200 bg-transparent py-1 ps-2 pe-6 text-sm text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600 dark:border-gray-600 dark:text-gray-200"
       >
         {SUPPORTED_LANGUAGES.map((lang) => (
           <option key={lang.code} value={lang.code}>

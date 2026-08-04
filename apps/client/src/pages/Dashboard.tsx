@@ -19,7 +19,7 @@ export function AdminDashboard() {
       <div className="flex flex-wrap gap-3">
         <Link
           to="/admin/analytics"
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           {t("openAnalytics")}
         </Link>
@@ -79,16 +79,14 @@ const QUICK_LINKS: { to: string; key: string }[] = [
 function QuickLinks() {
   const { t } = useTranslation("dashboard");
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-      <h3 className="mb-3 text-sm font-medium text-gray-500 dark:text-gray-400">
-        {t("quickLinks")}
-      </h3>
+    <div className="rounded-lg border border-border bg-card p-6">
+      <h3 className="mb-3 text-sm font-medium text-muted-foreground">{t("quickLinks")}</h3>
       <div className="space-y-2">
         {QUICK_LINKS.map((l) => (
           <Link
             key={l.to}
             to={l.to}
-            className="block rounded-md border border-gray-100 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 dark:border-gray-700 dark:text-blue-300 dark:hover:bg-gray-700/50"
+            className="block rounded-md border border-border px-3 py-2 text-sm text-primary hover:bg-accent hover:text-accent-foreground"
           >
             {t(l.key)}
           </Link>

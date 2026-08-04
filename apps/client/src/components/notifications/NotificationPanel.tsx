@@ -49,7 +49,7 @@ export function NotificationPanel({ onClose, onMarkAllRead }: Props) {
     <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border z-50 max-h-96 flex flex-col">
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <h3 className="font-semibold text-sm">{t("notifications:panelTitle")}</h3>
-        <button onClick={onMarkAllRead} className="text-xs text-blue-600 hover:underline">
+        <button onClick={onMarkAllRead} className="text-xs text-teal-600 hover:underline">
           {t("notifications:markAllRead")}
         </button>
       </div>
@@ -64,7 +64,7 @@ export function NotificationPanel({ onClose, onMarkAllRead }: Props) {
                 if (!n.isRead) markRead.mutate(n.id);
               }}
               className={`w-full text-left px-4 py-3 border-b hover:bg-gray-50 transition-colors ${
-                !n.isRead ? "bg-blue-50" : ""
+                !n.isRead ? "bg-teal-50" : ""
               }`}
             >
               <div className="flex gap-2">

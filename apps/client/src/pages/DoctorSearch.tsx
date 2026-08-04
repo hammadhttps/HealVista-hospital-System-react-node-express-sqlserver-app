@@ -59,7 +59,7 @@ export default function DoctorSearch() {
 
       {filters.departmentId && (
         <button
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-teal-600 hover:underline"
           onClick={() => {
             const { departmentId: _drop, ...rest } = filters;
             setFilters(rest);

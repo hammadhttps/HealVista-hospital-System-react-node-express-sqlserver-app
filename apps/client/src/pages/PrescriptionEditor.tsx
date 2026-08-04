@@ -78,7 +78,7 @@ interface DraftItemRow {
 }
 
 const inputCls =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none";
+  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none";
 const labelCls = "block text-sm font-medium text-gray-700 mb-1";
 
 function emptyItem(): ItemRowValues {
