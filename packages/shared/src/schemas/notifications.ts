@@ -21,10 +21,9 @@ export const notificationTypeEnum = z.enum([
 
 export type NotificationType = z.infer<typeof notificationTypeEnum>;
 
-export const channelEnum = z.enum(["in_app", "email", "sms"]);
+export const channelEnum = z.enum(["in_app", "sms"]);
 
 export const updateNotificationPreferenceSchema = z.object({
-  emailEnabled: z.boolean().optional(),
   smsEnabled: z.boolean().optional(),
   inAppEnabled: z.boolean().optional(),
   appointmentReminders: z.boolean().optional(),

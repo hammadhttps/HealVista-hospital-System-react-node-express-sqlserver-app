@@ -16,9 +16,54 @@ import { env } from "./env.js";
  *
  * Everything cached here is derived data with Postgres as the source of truth,
  * so an eviction or a cold Redis costs latency, never correctness.
+ *
+ * ─── Turning Redis off ──────────────────────────────────────────────────────
+ *
+ * `REDIS_ENABLED=false` disables it completely: no connections are opened and
+ * every helper below returns as though the cache missed. Set it when the Upstash
+ * free tier hits its 500,000-command monthly quota — past that point every
+ * command is rejected anyway, and an app that keeps trying just pays the latency
+ * of a failing round trip on every request.
+ *
+ * What is lost while it is off, and why none of it is data:
+ *
+ *  - Caching. Every read falls through to Postgres. Slower, never wrong.
+ *  - Session revocation markers. `isSessionRevoked` already falls back to
+ *    Postgres, which is the source of truth; revocation still works.
+ *  - Slot locks. Two receptionists could hold the same slot for the seconds
+ *    before the unique constraint rejects the second booking. The constraint is
+ *    what actually guarantees this, not the lock.
+ *  - BullMQ queues and their workers do not start. Reminders and embedding
+ *    backfill pause; `npm run db:embed` catches up the embeddings afterwards.
+ *  - Socket.io drops to its in-memory adapter — correct on a single instance,
+ *    which is what this deployment runs.
+ *
+ * Nothing here is a store of record. That is the property that makes switching
+ * it off a degradation rather than an outage.
  */
 
-const redisUrl = env.REDIS_URL;
+/**
+ * Also worth knowing if you are looking at quota: Upstash's free tier reports
+ * `optimistic-volatile` eviction, not `noeviction`. Keys can therefore be
+ * dropped under memory pressure — which is exactly why messages, sessions and
+ * every cached aggregate keep Postgres as their source of truth and treat Redis
+ * purely as a front. The eviction policy is a property of the Upstash plan and
+ * is not settable over the wire; it is not a bug to fix in code.
+ */
+const redisEnabled = env.REDIS_ENABLED && Boolean(env.REDIS_URL);
+
+const redisUrl = redisEnabled ? env.REDIS_URL : undefined;
+
+if (!redisEnabled) {
+  console.warn(
+    env.REDIS_URL
+      ? "[redis] disabled via REDIS_ENABLED=false — caching, queues and locks are off; Postgres serves everything"
+      : "[redis] no REDIS_URL — caching, queues and locks are off; Postgres serves everything",
+  );
+}
+
+/** True when Redis is available. Read this rather than testing the client. */
+export const isRedisEnabled = redisEnabled;
 
 const baseOptions: RedisOptions = {
   enableReadyCheck: false,

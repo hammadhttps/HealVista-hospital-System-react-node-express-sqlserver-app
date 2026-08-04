@@ -39,7 +39,9 @@ export const billApi = {
 
 export const discountApi = {
   list: (activeOnly = false) =>
-    api.get("/discounts", { params: activeOnly ? { active: "true" } : {} }).then((r) => r.data.data),
+    api
+      .get("/discounts", { params: activeOnly ? { active: "true" } : {} })
+      .then((r) => r.data.data),
 
   create: (data: Record<string, unknown>) => api.post("/discounts", data).then((r) => r.data.data),
 
@@ -50,7 +52,7 @@ export const discountApi = {
 };
 
 export const paymentApi = {
-  createIntent: (data: { billId: string; amount?: string; provider?: "stripe" | "razorpay" }) =>
+  createIntent: (data: { billId: string; amount?: string; provider?: "stripe" }) =>
     api.post("/payments/create-intent", data).then((r) => r.data.data),
 
   recordCash: (data: { billId: string; amount: string; reference?: string }) =>

@@ -214,6 +214,8 @@ model OAuthAccount {
   createdAt      DateTime @default(now())
 
   @@unique([provider, providerUserId])
+  /// Looked up on every Google sign-in to find an existing link.
+  @@index([userId])
   @@map("oauth_accounts")
 }
 
@@ -240,6 +242,9 @@ model DoctorDepartment {
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
   @@id([doctorId, departmentId])
+  /// The department list joins through here to attach doctors — the most-requested
+  /// read in the app.
+  @@index([departmentId])
   @@map("doctor_departments")
 }
 
@@ -322,6 +327,8 @@ model EmergencyContact {
   phone        String
   isPrimary    Boolean @default(false)
 
+  /// Loaded with the patient record.
+  @@index([patientId])
   @@map("emergency_contacts")
 }
 
@@ -419,6 +426,8 @@ model PatientRelationship {
   canViewRecords      Boolean @default(true)
 
   @@unique([guardianPatientId, dependentPatientId])
+  /// Resolved when checking whether a guardian may act for a dependant.
+  @@index([dependentPatientId])
   @@map("patient_relationships")
 }
 
@@ -430,6 +439,9 @@ model FavouriteDoctor {
   createdAt DateTime @default(now())
 
   @@id([patientId, doctorId])
+  /// Indexed both ways: patients list their favourites, and a doctor's popularity
+  /// is counted across patients.
+  @@index([doctorId])
   @@map("favourite_doctors")
 }
 
@@ -516,6 +528,10 @@ model Appointment {
   @@index([patientId, status])
   @@index([doctorId, status])
   @@index([departmentId])
+  /// Self-references: "what followed from this" and the reschedule chain. Both
+  /// are walked when rendering an appointment history.
+  @@index([followUpOfId])
+  @@index([rescheduledFromId])
   @@map("appointments")
 }
 
@@ -729,6 +745,9 @@ model PrescriptionItem {
   quantityDispensed  Int          @default(0)
   quantityPrescribed Int          @default(1)
 
+  /// Every prescription read joins its items, and the analytics "top medicines"
+  /// aggregate groups them.
+  @@index([prescriptionId])
   @@map("prescription_items")
 }
 
@@ -875,6 +894,10 @@ model LabOrder {
   @@index([patientId, orderedAt])
   @@index([status])
   @@index([orderedAt])
+  /// The doctor dashboard counts critical results by doctor, and an appointment
+  /// shows its orders.
+  @@index([appointmentId])
+  @@index([doctorId])
   @@map("lab_orders")
 }
 
@@ -889,6 +912,10 @@ model LabOrderItem {
   referenceRange String?
   flag           ResultFlag?
 
+  /// Every lab order read joins its items, and the analytics "top tests" aggregate
+  /// groups them by test.
+  @@index([labOrderId])
+  @@index([labTestId])
   @@map("lab_order_items")
 }
 
@@ -921,6 +948,8 @@ model Bill {
   payments Payment[]
 
   @@index([patientId, status])
+  /// Discount usage reports group bills by the discount applied.
+  @@index([discountId])
   @@map("bills")
 }
 
@@ -1028,7 +1057,6 @@ model NotificationPreference {
   id                   String  @id @default(uuid())
   userId               String  @unique
   user                 User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailEnabled         Boolean @default(true)
   smsEnabled           Boolean @default(true)
   inAppEnabled         Boolean @default(true)
   appointmentReminders Boolean @default(true)
@@ -1071,7 +1099,7 @@ model ChatMessage {
 }
 
 model DocumentChunk {
-  id           String   @id @default(uuid())
+  id           String                       @id @default(uuid())
   sourceType   String
   sourceId     String
   patientId    String?
@@ -1082,7 +1110,7 @@ model DocumentChunk {
   // pgvector column. Unsupported() — Prisma cannot type vector(1024), so all
   // embedding reads/writes go through raw SQL (docs/architecture/ai-rag.md §2).
   embedding    Unsupported("vector(1024)")?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime                     @default(now())
 
   @@unique([sourceType, sourceId, chunkIndex])
   @@index([patientId, sourceType])
@@ -1101,6 +1129,8 @@ model KbArticle {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
+  /// Knowledge-base browsing filters by department.
+  @@index([departmentId])
   @@map("kb_articles")
 }
 
@@ -1122,15 +1152,15 @@ model AiInteraction {
 }
 
 model AuditLog {
-  id            String   @id @default(uuid())
-  actorUserId   String
-  actor         User     @relation(fields: [actorUserId], references: [id])
-  action        String
-  targetType    String
-  targetId      String
-  ipAddress     String?
-  metadata      Json?
-  createdAt     DateTime @default(now())
+  id             String    @id @default(uuid())
+  actorUserId    String
+  actor          User      @relation(fields: [actorUserId], references: [id])
+  action         String
+  targetType     String
+  targetId       String
+  ipAddress      String?
+  metadata       Json?
+  createdAt      DateTime  @default(now())
   // Append-only correction chain. A follow-up entry may point at the log it corrects;
   // nothing is ever updated or deleted in place.
   correctionOfId String?
@@ -1140,6 +1170,9 @@ model AuditLog {
 
   @@index([targetType, targetId])
   @@index([actorUserId, createdAt])
+  /// Audit logs are append-only, so a correction points at the row it supersedes;
+  /// reading a corrected entry follows this.
+  @@index([correctionOfId])
   @@map("audit_logs")
 }
 
@@ -1170,11 +1203,11 @@ model AccountDeletionRequest {
 
 /// Keyword-search history (Phase 6 global search). Per-user, capped in the service.
 model SearchHistory {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  query      String
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query     String
+  createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
   @@map("search_history")

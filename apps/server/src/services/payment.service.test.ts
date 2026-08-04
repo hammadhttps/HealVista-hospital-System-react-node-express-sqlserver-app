@@ -37,14 +37,6 @@ vi.mock("./payments/stripe.provider", () => ({
     verifyWebhook: (...args: unknown[]) => verifyWebhook(...args),
   },
 }));
-vi.mock("./payments/razorpay.provider", () => ({
-  razorpayProvider: {
-    name: "razorpay",
-    createIntent: vi.fn(),
-    refund: vi.fn(),
-    verifyWebhook: vi.fn(),
-  },
-}));
 
 const D = Prisma.Decimal;
 

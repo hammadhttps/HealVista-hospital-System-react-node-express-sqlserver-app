@@ -12,6 +12,15 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   DIRECT_URL: z.string().url(),
   REDIS_URL: z.string().url().optional(),
+  // Kill switch for Redis — see the header of `config/redis.ts` for exactly what
+  // degrades. Set `REDIS_ENABLED=false` when the Upstash free tier has burned
+  // through its monthly command quota: past that every command is rejected, so
+  // continuing to issue them only adds a failing round trip to each request.
+  // Accepts "false"/"0" as off; anything else (including unset) is on.
+  REDIS_ENABLED: z
+    .enum(["true", "false", "1", "0"])
+    .default("true")
+    .transform((v) => v === "true" || v === "1"),
 
   JWT_ACCESS_SECRET: z.string().min(32),
   JWT_REFRESH_SECRET: z.string().min(32),
@@ -32,19 +41,12 @@ const envSchema = z.object({
 
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
-  RAZORPAY_KEY_ID: z.string().optional(),
-  RAZORPAY_KEY_SECRET: z.string().optional(),
-  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
 
-  SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.coerce.number().default(587),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
-  MAIL_FROM: z.string().default("MediCore <no-reply@medicore.app>"),
-  // "smtp" sends through the configured SMTP server; "log" writes the email to
-  // the server log instead (dev / when no SMTP credentials exist yet). Without
-  // SMTP credentials and with MAILER=smtp, email jobs are skipped, not failed.
-  MAILER: z.enum(["smtp", "log"]).default("smtp"),
+  // Email delivery is deliberately not part of this build. The SMTP service,
+  // worker and queue were removed; these variables were all that remained, and a
+  // config key with nothing reading it is worse than no key at all — it implies
+  // a feature that does not exist. Notifications are delivered in-app and by
+  // SMS. See "Deliberate omissions" in the README.
 
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),

@@ -87,7 +87,9 @@ function safeHandler<T>(namespace: string, event: string, fn: (payload: T) => Pr
 function attachRedisAdapter(server: Server): void {
   const pubClient = createSocketAdapterConnection();
   if (!pubClient) {
-    logger.warn("REDIS_URL not set — socket.io using the in-memory adapter (single instance only)");
+    logger.warn(
+      "Redis unavailable — socket.io using the in-memory adapter (correct for a single instance)",
+    );
     return;
   }
   const subClient = pubClient.duplicate();

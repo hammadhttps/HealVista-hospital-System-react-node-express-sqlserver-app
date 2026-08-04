@@ -76,16 +76,3 @@ export async function stripeWebhook(req: Request, res: Response, next: NextFunct
     next(err);
   }
 }
-
-export async function razorpayWebhook(req: Request, res: Response, next: NextFunction) {
-  try {
-    const signature = req.headers["x-razorpay-signature"];
-    if (typeof signature !== "string") {
-      throw new AppError("Missing x-razorpay-signature header", 400);
-    }
-    const result = await paymentService.handleWebhook("razorpay", req.body as Buffer, signature);
-    res.status(200).json({ received: true, ...result });
-  } catch (err) {
-    next(err);
-  }
-}

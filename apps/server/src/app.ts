@@ -83,11 +83,6 @@ app.post(
   express.raw({ type: "application/json" }),
   paymentController.stripeWebhook,
 );
-app.post(
-  "/api/payments/webhook/razorpay",
-  express.raw({ type: "application/json" }),
-  paymentController.razorpayWebhook,
-);
 
 // Body parsing
 app.use(express.json({ limit: "10mb" }));

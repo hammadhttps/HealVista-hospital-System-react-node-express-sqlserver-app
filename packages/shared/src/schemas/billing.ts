@@ -11,13 +11,7 @@ export const moneyString = z
 
 export const billItemKindEnum = z.enum(["CONSULTATION", "LAB", "PHARMACY", "PROCEDURE", "OTHER"]);
 
-export const billStatusEnum = z.enum([
-  "draft",
-  "finalised",
-  "partially_paid",
-  "paid",
-  "void",
-]);
+export const billStatusEnum = z.enum(["draft", "finalised", "partially_paid", "paid", "void"]);
 
 export const paymentMethodEnum = z.enum(["CARD", "CASH", "BANK_TRANSFER", "WALLET", "INSURANCE"]);
 
@@ -65,12 +59,7 @@ export type ListBillsInput = z.infer<typeof listBillsSchema>;
 // ─── Discounts ──────────────────────────────────────────────────────────────
 
 export const discountTypeEnum = z.enum(["percentage", "fixed"]);
-export const discountCategoryEnum = z.enum([
-  "employee",
-  "senior_citizen",
-  "student",
-  "campaign",
-]);
+export const discountCategoryEnum = z.enum(["employee", "senior_citizen", "student", "campaign"]);
 
 export const createDiscountSchema = z
   .object({
@@ -83,14 +72,14 @@ export const createDiscountSchema = z
     validUntil: z.string().datetime().optional(),
     isActive: z.boolean().default(true),
   })
-  .refine(
-    (d) => d.type !== "percentage" || Number(d.value) <= 100,
-    { message: "A percentage discount cannot exceed 100", path: ["value"] },
-  )
-  .refine(
-    (d) => !d.validFrom || !d.validUntil || new Date(d.validFrom) < new Date(d.validUntil),
-    { message: "validFrom must be before validUntil", path: ["validUntil"] },
-  );
+  .refine((d) => d.type !== "percentage" || Number(d.value) <= 100, {
+    message: "A percentage discount cannot exceed 100",
+    path: ["value"],
+  })
+  .refine((d) => !d.validFrom || !d.validUntil || new Date(d.validFrom) < new Date(d.validUntil), {
+    message: "validFrom must be before validUntil",
+    path: ["validUntil"],
+  });
 
 export type CreateDiscountInput = z.infer<typeof createDiscountSchema>;
 
@@ -107,12 +96,14 @@ export const updateDiscountSchema = z.object({
 
 export type UpdateDiscountInput = z.infer<typeof updateDiscountSchema>;
 
-export const applyDiscountSchema = z.object({
-  discountId: z.string().uuid().optional(),
-  code: z.string().min(2).max(40).optional(),
-}).refine((d) => !!d.discountId || !!d.code, {
-  message: "Provide either discountId or code",
-});
+export const applyDiscountSchema = z
+  .object({
+    discountId: z.string().uuid().optional(),
+    code: z.string().min(2).max(40).optional(),
+  })
+  .refine((d) => !!d.discountId || !!d.code, {
+    message: "Provide either discountId or code",
+  });
 
 export type ApplyDiscountInput = z.infer<typeof applyDiscountSchema>;
 
@@ -121,7 +112,7 @@ export type ApplyDiscountInput = z.infer<typeof applyDiscountSchema>;
 export const createIntentSchema = z.object({
   billId: z.string().uuid(),
   amount: moneyString.optional(), // omitted = pay the full outstanding balance
-  provider: z.enum(["stripe", "razorpay"]).default("stripe"),
+  provider: z.enum(["stripe"]).default("stripe"),
 });
 
 export type CreateIntentInput = z.infer<typeof createIntentSchema>;

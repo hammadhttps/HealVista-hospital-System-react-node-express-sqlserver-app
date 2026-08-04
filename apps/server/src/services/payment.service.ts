@@ -7,7 +7,6 @@ import { dispatchNotification } from "./notification.service.js";
 import * as settingsService from "./settings.service.js";
 import { BILL_STATUS, assertCanAccessBill, deriveStatus, type Actor } from "./bill.service.js";
 import { stripeProvider } from "./payments/stripe.provider.js";
-import { razorpayProvider } from "./payments/razorpay.provider.js";
 import type { PaymentProvider } from "./payments/PaymentProvider.js";
 import type {
   CashPaymentInput,
@@ -20,7 +19,6 @@ const D = Prisma.Decimal;
 
 const providers: Record<string, PaymentProvider> = {
   stripe: stripeProvider,
-  razorpay: razorpayProvider,
 };
 
 function getProvider(name: string): PaymentProvider {
@@ -168,7 +166,11 @@ export async function recordCashPayment(input: CashPaymentInput, actor: Actor) {
     throw new AppError("Amount exceeds the outstanding balance on this bill", 400);
   }
 
-  const { payment, bill: updated, patient } = await recordPayment({
+  const {
+    payment,
+    bill: updated,
+    patient,
+  } = await recordPayment({
     billId: input.billId,
     amount,
     method: "CASH",
@@ -205,7 +207,11 @@ async function notifyReceipt(
       type: "PAYMENT_RECEIPT",
       title: "Payment received",
       message: `We received ${amount.toFixed(2)} for invoice ${bill.billNumber}. Outstanding balance: ${bill.balance.toFixed(2)}.`,
-      data: { amount: amount.toFixed(2), description: `Invoice ${bill.billNumber}`, receiptUrl: "" },
+      data: {
+        amount: amount.toFixed(2),
+        description: `Invoice ${bill.billNumber}`,
+        receiptUrl: "",
+      },
     });
   } catch (err) {
     // A notification failure must never roll back a recorded payment.

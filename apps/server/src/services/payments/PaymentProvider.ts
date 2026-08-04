@@ -1,9 +1,9 @@
 /**
- * One interface, two gateways.
+ * One interface, one gateway.
  *
  * Nothing outside `payments/*.provider.ts` may import a gateway SDK — call sites
- * depend on this interface only. That keeps Stripe and Razorpay interchangeable and
- * lets tests substitute a fake without network access.
+ * depend on this interface only. That keeps Stripe swappable and lets tests
+ * substitute a fake without network access.
  */
 
 export interface PaymentIntent {
@@ -30,7 +30,7 @@ export interface VerifiedWebhookEvent {
 }
 
 export interface PaymentProvider {
-  readonly name: "stripe" | "razorpay";
+  readonly name: "stripe";
 
   createIntent(params: {
     amount: string;

@@ -23,7 +23,6 @@ export default function NotificationPreferences() {
 
   const channels = [
     { key: "inAppEnabled", label: t("notifications:inApp"), desc: t("notifications:inAppDesc") },
-    { key: "emailEnabled", label: t("notifications:email"), desc: t("notifications:emailDesc") },
     { key: "smsEnabled", label: t("notifications:sms"), desc: t("notifications:smsDesc") },
   ];
 

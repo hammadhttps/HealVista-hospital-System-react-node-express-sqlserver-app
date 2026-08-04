@@ -18,7 +18,10 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: redis-server --appendonly yes
+    # allkeys-lru + a maxmemory cap so a long-lived dev box evicts stale cache
+    # instead of filling up and refusing writes. Applies to local Redis only —
+    # Upstash's eviction policy is a plan property (see README "Redis on the free tier").
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redisdata:/data
 

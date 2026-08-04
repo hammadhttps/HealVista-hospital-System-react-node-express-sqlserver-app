@@ -26,7 +26,6 @@ vi.mock("../config/redis", () => ({ redis: null, getCached: vi.fn(), setCached: 
 vi.mock("../config/bull", () => ({
   addReminderJob: vi.fn(),
   addNotificationJob: vi.fn(),
-  emailQueue: null,
   smsQueue: null,
   reminderQueue: null,
 }));

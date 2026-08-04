@@ -594,8 +594,6 @@ const ur: DeepReadonlyShape<typeof en> = {
     categories: "اقسام",
     inApp: "ایپ میں",
     inAppDesc: "ایپ کے اندر اطلاعات دکھائیں۔",
-    email: "ای میل",
-    emailDesc: "اطلاعات ای میل سے بھیجیں۔",
     sms: "SMS",
     smsDesc: "اطلاعات ٹیکسٹ پیغام سے بھیجیں۔",
     appointmentReminders: "ملاقات کی یاد دہانیاں",

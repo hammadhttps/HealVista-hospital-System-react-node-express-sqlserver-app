@@ -35,9 +35,6 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
   if (overridesPreferences || (prefs?.smsEnabled ?? true)) {
     channels.push("sms");
   }
-  if (!overridesPreferences && (prefs?.emailEnabled ?? true)) {
-    channels.push("email");
-  }
 
   if (channels.length === 0) return;
 
@@ -77,21 +74,6 @@ export async function dispatchNotification(input: DispatchInput): Promise<void> 
       await addNotificationJob({
         type: "sms",
         to: user.phone,
-        notificationType: type,
-        data: data ?? {},
-      });
-    }
-  }
-
-  if (channels.includes("email") && data && userId) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true },
-    });
-    if (user?.email) {
-      await addNotificationJob({
-        type: "email",
-        to: user.email,
         notificationType: type,
         data: data ?? {},
       });

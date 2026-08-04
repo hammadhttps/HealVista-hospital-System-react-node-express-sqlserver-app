@@ -3,7 +3,6 @@ import { env } from "./config/env.js";
 import { logger } from "./utils/logger.js";
 import { setupSocketIO } from "./sockets/index.js";
 import { startSlotGenerationWorker } from "./slots/worker.js";
-import { startEmailWorker } from "./workers/email.worker.js";
 import { startSmsWorker } from "./workers/sms.worker.js";
 import { startReminderWorker } from "./workers/reminder.worker.js";
 import { startRecordWorker } from "./workers/record.worker.js";
@@ -21,7 +20,6 @@ setupSocketIO(server);
 
 if (env.NODE_ENV !== "test") {
   startSlotGenerationWorker();
-  startEmailWorker();
   startSmsWorker();
   startReminderWorker();
   startRecordWorker();

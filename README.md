@@ -18,8 +18,8 @@ accountant refunds a card payment, and the admin watches no-show rates and reven
 | Database     | PostgreSQL (Neon) + pgvector                                                  |
 | Cache/Queues | Redis (Upstash / Docker) + BullMQ                                             |
 | AI           | Jina AI + pgvector RAG                                                        |
-| Payments     | Stripe (card) + Razorpay, plus cash                                           |
-| Comms        | Nodemailer, Twilio SMS, Socket.io, in-app notifications                       |
+| Payments     | Stripe (card), plus cash                                                      |
+| Comms        | Twilio SMS, Socket.io, in-app notifications                                   |
 
 **PERN + AI**: PostgreSQL · Express · React · Node · Jina AI RAG
 
@@ -43,7 +43,7 @@ accountant refunds a card payment, and the admin watches no-show rates and reven
 - Discounts (percentage/fixed) with a **live total preview** before applying; one per bill
 - Partial payments — cash by reception, card online via Stripe Elements; automatic status transitions
 - Refunds (full/partial) that go back through the payment gateway; printable receipts
-- Notifications fanning out to in-app + email + SMS with per-user preferences
+- Notifications fanning out to in-app + SMS with per-user preferences
 - 24h/1h reminders and doctor-set follow-up reminders via BullMQ
 
 **Phase 4 — Clinical Core**
@@ -135,6 +135,46 @@ docs/               Architecture, setup, roadmap, phase reports
 - **Database**: Soft deletes (`deletedAt`), audit logs for every clinical/financial write.
 
 See `docs/architecture/` for details.
+
+## Redis on the free tier — quota, eviction, and the kill switch
+
+Redis (Upstash in production, Docker locally) is a **performance layer, never a store of record** —
+everything cached in it is derived data whose source of truth is Postgres. That design decision is
+what makes the two sections below safe.
+
+### Eviction policy
+
+The Upstash free tier ships with `optimistic-volatile` eviction, not `noeviction`. Under memory
+pressure keys can be dropped — which is exactly why every cached aggregate, chat message, and session
+marker keeps Postgres as its source of truth. The policy is a property of the Upstash plan and cannot
+be changed over the wire; it is not a bug to fix in code. Local Docker Redis in `docker-compose.yml`
+runs with `allkeys-lru` + a `maxmemory` cap so a long-lived dev box evicts stale cache instead of
+filling up.
+
+### Monthly command quota (500,000) and `REDIS_ENABLED=false`
+
+Upstash's free tier allows **500,000 commands per month**. When that is used up, every command is
+rejected — and an app that keeps issuing them just pays the latency of a failing round trip on every
+request. The fix is the **kill switch** in `apps/server/.env`:
+
+```
+REDIS_ENABLED=false
+```
+
+With it set, the server opens **zero** Redis connections and every helper fails open. What degrades,
+and why none of it loses data:
+
+| Feature               | While Redis is off                                                         |
+| --------------------- | -------------------------------------------------------------------------- |
+| Caching               | Every read falls through to Postgres — slower, never wrong                 |
+| Session revocation    | Read from Postgres (the source of truth) — still enforced                  |
+| Slot locks            | Fall back to the DB unique constraint, which is the real guarantee         |
+| BullMQ queues/workers | Do not start; reminders pause and `npm run db:embed` catches up embeddings |
+| Socket.io             | In-memory adapter — correct on this single-instance deployment             |
+
+Set `REDIS_ENABLED=false` the moment you see the 500k quota warning, keep the app fully functional
+on Postgres, and turn it back on when the month resets. The app logs a clear warning at boot when
+Redis is off.
 
 ## Roles
 

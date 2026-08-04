@@ -1,18 +1,28 @@
 import { prisma } from "../src/config/db.js";
 import { embeddingsQueue, type EmbeddableSourceType } from "../src/config/bull.js";
+import { embedSource } from "../src/ai/embeddings.service.js";
 
 /**
  * Backfills embeddings for an existing database.
  *
- * Enqueues every embeddable source to the `embeddings` queue so the worker's
- * throttling and backoff apply. Idempotent — re-running replaces chunks, never
- * duplicates them. Jobs are batched with `addBulk` because a per-row `queue.add`
- * over a remote Redis (Upstash) is a full round-trip each time.
+ * Two modes, because Redis is optional in this deployment:
+ *
+ *  - **Queued** (default, when Redis is up): enqueues every source to the
+ *    `embeddings` queue so the worker's throttling and backoff apply. Jobs are
+ *    batched with `addBulk` — a per-row `queue.add` over a remote Redis is a
+ *    full round trip each time.
+ *
+ *  - **Direct** (`--direct`, or automatically when there is no queue): embeds
+ *    in-process, one source at a time. Without this the backfill was impossible
+ *    whenever Redis was off — it enqueued to a queue that did not exist and
+ *    reported success having done nothing, which left RAG retrieving from an
+ *    empty table with no error anywhere to explain why.
+ *
+ * Idempotent either way: re-running replaces a source's chunks, never
+ * duplicates them.
  */
 async function main() {
-  if (!process.env.REDIS_URL) {
-    console.warn("REDIS_URL is not set — the embeddings queue needs Redis to run.");
-  }
+  const direct = process.argv.includes("--direct") || !embeddingsQueue;
 
   type JobPayload = { name: string; data: { sourceType: EmbeddableSourceType; sourceId: string } };
 
@@ -58,6 +68,37 @@ async function main() {
     jobs.push({ name: "embed", data: { sourceType: "kb_article", sourceId: a.id } });
   }
 
+  const counts =
+    `notes ${notes.length}, labs ${orders.length}, rx ${prescriptions.length}, ` +
+    `records ${records.length}, kb ${articles.length}`;
+
+  if (direct) {
+    console.log(`[db:embed] Direct mode — embedding ${jobs.length} sources (${counts})`);
+    let done = 0;
+    let failed = 0;
+
+    for (const job of jobs) {
+      try {
+        await embedSource(job.data.sourceType, job.data.sourceId);
+        done += 1;
+        // One line per source would bury the failures, so report periodically.
+        if (done % 10 === 0) console.log(`[db:embed]   ${done}/${jobs.length}`);
+      } catch (err) {
+        failed += 1;
+        // Keep going: one unembeddable source (empty text, provider hiccup)
+        // must not abandon the rest of the backfill.
+        console.warn(
+          `[db:embed]   failed ${job.data.sourceType} ${job.data.sourceId}: ` +
+            (err instanceof Error ? err.message : String(err)),
+        );
+      }
+    }
+
+    console.log(`[db:embed] Done — ${done} embedded, ${failed} failed.`);
+    if (failed > 0) process.exitCode = 1;
+    return;
+  }
+
   let enqueued = 0;
   if (embeddingsQueue && jobs.length > 0) {
     // addBulk is one pipeline; chunk it so a single command never gets huge.
@@ -69,13 +110,9 @@ async function main() {
   }
 
   console.log(
-    `[db:embed] Enqueued ${enqueued} sources ` +
-      `(notes ${notes.length}, labs ${orders.length}, rx ${prescriptions.length}, records ${records.length}, kb ${articles.length}). ` +
+    `[db:embed] Enqueued ${enqueued} sources (${counts}). ` +
       "The embeddings worker will process them.",
   );
-  if (!embeddingsQueue) {
-    console.warn("[db:embed] No Redis connection — jobs were not enqueued.");
-  }
 }
 
 main()

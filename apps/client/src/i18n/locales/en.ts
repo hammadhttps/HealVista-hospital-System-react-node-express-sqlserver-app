@@ -586,8 +586,6 @@ const en = {
     categories: "Categories",
     inApp: "In-app",
     inAppDesc: "Show notifications inside the app.",
-    email: "Email",
-    emailDesc: "Send notifications by email.",
     sms: "SMS",
     smsDesc: "Send notifications by text message.",
     appointmentReminders: "Appointment reminders",

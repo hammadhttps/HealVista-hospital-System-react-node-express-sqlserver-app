@@ -16,10 +16,6 @@ export const slotGenerationQueue = bullConnection
   ? new Queue("slot-generation", { ...connection, defaultJobOptions })
   : null;
 
-export const emailQueue = bullConnection
-  ? new Queue("emails", { ...connection, defaultJobOptions })
-  : null;
-
 export const smsQueue = bullConnection
   ? new Queue("sms", { ...connection, defaultJobOptions })
   : null;
@@ -57,16 +53,15 @@ export const complianceQueue = bullConnection
   : null;
 
 interface NotificationJobData {
-  type: "email" | "sms";
+  type: "sms";
   to: string;
   notificationType: string;
   data: Record<string, string>;
 }
 
 export async function addNotificationJob(jobData: NotificationJobData): Promise<void> {
-  const queue = jobData.type === "email" ? emailQueue : smsQueue;
-  if (!queue) return;
-  await queue.add(`${jobData.type}-${jobData.notificationType}`, jobData);
+  if (!smsQueue) return;
+  await smsQueue.add(`${jobData.type}-${jobData.notificationType}`, jobData);
 }
 
 interface ReminderJobData {
