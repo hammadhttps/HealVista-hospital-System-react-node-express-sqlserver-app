@@ -18,3 +18,9 @@ export const chatPaginationSchema = z.object({
 });
 
 export type ChatPaginationInput = z.infer<typeof chatPaginationSchema>;
+
+export const createDirectChatThreadSchema = z.object({
+  doctorId: z.string().uuid(),
+});
+
+export type CreateDirectChatThreadInput = z.infer<typeof createDirectChatThreadSchema>;

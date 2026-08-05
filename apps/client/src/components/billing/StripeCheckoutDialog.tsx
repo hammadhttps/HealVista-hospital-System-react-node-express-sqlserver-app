@@ -27,6 +27,16 @@ function getStripePromise(): Promise<Stripe | null> | null {
 }
 
 /**
+ * Kick off the ~300KB Stripe.js fetch as early as possible. Called when a billing
+ * page mounts so that by the time "Pay Card" is clicked the SDK is usually already
+ * resolved (the cached promise is reused), leaving only the backend intent request
+ * on the critical path of the first checkout render.
+ */
+export function preloadStripe(): void {
+  getStripePromise();
+}
+
+/**
  * An explicit `appearance` serves two purposes:
  * - It disables Stripe's automatic font-sync. Without it Stripe detects the
  *   host page's font (Mulish) and tries to reload it from Google Fonts inside

@@ -291,6 +291,9 @@ export async function getAppointments(
         patient: { select: { id: true, fullName: true, mrn: true } },
         doctor: { select: { id: true, fullName: true } },
         slot: true,
+        // Lets the appointment card deep-link straight into the patient's
+        // conversation with the treating doctor.
+        chatThread: { select: { id: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,

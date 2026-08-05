@@ -7,8 +7,8 @@ import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { format } from "date-fns";
-import { useState } from "react";
-import StripeCheckoutDialog from "../components/billing/StripeCheckoutDialog";
+import { useEffect, useState } from "react";
+import StripeCheckoutDialog, { preloadStripe } from "../components/billing/StripeCheckoutDialog";
 
 const statusVariant: Record<string, string> = {
   draft: "secondary",
@@ -30,6 +30,10 @@ export default function MyBills() {
   const { t } = useTranslation(["common", "bills"]);
   const { data, isLoading, isError } = useMyBills();
   const [checkoutBill, setCheckoutBill] = useState<{ id: string; balance: string } | null>(null);
+
+  useEffect(() => {
+    preloadStripe();
+  }, []);
 
   const bills = data?.bills ?? [];
   const outstanding = data?.outstandingBalance ?? "0.00";
@@ -133,7 +137,10 @@ export default function MyBills() {
                   </Button>
                   {Number(bill.balance) > 0 &&
                     (bill.status === "finalised" || bill.status === "partially_paid") && (
-                      <Button size="sm" onClick={() => setCheckoutBill({ id: bill.id, balance: bill.balance })}>
+                      <Button
+                        size="sm"
+                        onClick={() => setCheckoutBill({ id: bill.id, balance: bill.balance })}
+                      >
                         {t("billing:payCard")}
                       </Button>
                     )}

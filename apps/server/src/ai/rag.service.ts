@@ -59,7 +59,7 @@ function buildCitations(chunks: RetrievedChunk[]): Citation[] {
 }
 
 const assistantOutputSchema = z.object({
-  answer: z.string().min(1).max(4000),
+  answer: z.string().min(1).max(2000),
 });
 
 const NO_RESULTS_ANSWER =
@@ -79,7 +79,14 @@ async function buildAssistantAnswer(
   }
 
   const citations = buildCitations(chunks);
-  const context = chunks.map((c) => `[${c.sourceType} ${c.sourceId}]\n${c.content}`).join("\n\n");
+  // Present the excerpts in document order (source, then chunk position) so the
+  // model reads each record as a coherent passage instead of similarity-ordered
+  // fragments. Citations keep their similarity ranking for the UI.
+  const context = chunks
+    .slice()
+    .sort((a, b) => (a.sourceId === b.sourceId ? a.chunkIndex - b.chunkIndex : 0))
+    .map((c) => `[${c.sourceType} ${c.sourceId}]\n${c.content}`)
+    .join("\n\n");
 
   try {
     const result = await generateValidated(getProvider(), {
@@ -87,8 +94,8 @@ async function buildAssistantAnswer(
       prompt: `Question from the user:\n"${stripPII(question)}"\n\nRelevant record excerpts:\n${context}`,
       schema: assistantOutputSchema,
       system:
-        "Answer the question using ONLY the record excerpts provided. If the excerpts do not answer it, say so. Cite the records you used by their [source] markers. Do not give general medical advice beyond the records.",
-      maxTokens: 1024,
+        "Answer the question using ONLY the record excerpts provided. If the excerpts do not answer it, say so. Cite the records you used by their [source] markers. Do not give general medical advice beyond the records. Answer in the same language the user asked in. Prefer short paragraphs and bullet points.",
+      maxTokens: 512,
     });
 
     const usage = getProvider().lastUsage();
@@ -196,7 +203,7 @@ export async function assistant(
 }
 
 const timelineOutputSchema = z.object({
-  summary: z.string().min(1).max(4000),
+  summary: z.string().min(1).max(2000),
 });
 
 export interface TimelineSummaryResult {
@@ -267,8 +274,8 @@ export async function timelineSummary(
       prompt: `Relevant record excerpts for one patient:\n${context}\n\nProduce a concise chronological summary of the patient's recent history. If a topic is not covered by the excerpts, do not invent it.`,
       schema: timelineOutputSchema,
       system:
-        "Summarise ONLY what the excerpts contain. Do not diagnose. Note gaps rather than filling them.",
-      maxTokens: 1024,
+        "Summarise ONLY what the excerpts contain. Do not diagnose. Note gaps rather than filling them. Answer in the same language the user asked in. Prefer short paragraphs and bullet points.",
+      maxTokens: 512,
     });
 
     const usage = getProvider().lastUsage();

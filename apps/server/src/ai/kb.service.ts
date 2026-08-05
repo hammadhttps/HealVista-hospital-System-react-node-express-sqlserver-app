@@ -144,7 +144,7 @@ export async function deleteKbArticle(id: string, actor: Actor) {
 // ─── KB assistant (RAG over policies/FAQs/guidelines) ───────────────────────
 
 const kbAnswerSchema = z.object({
-  answer: z.string().min(1).max(4000),
+  answer: z.string().min(1).max(2000),
 });
 
 export interface KbCitation {
@@ -233,8 +233,8 @@ export async function askKb(question: string, actor: Actor): Promise<KbAskResult
       prompt: `Question:\n"${stripPII(question)}"\n\nKnowledge base excerpts:\n${context}`,
       schema: kbAnswerSchema,
       system:
-        "Answer from the knowledge base excerpts only — hospital policies, FAQs, and guidelines. If they do not cover the question, say so. Cite the [source] markers you used.",
-      maxTokens: 1024,
+        "Answer from the knowledge base excerpts only — hospital policies, FAQs, and guidelines. If they do not cover the question, say so. Cite the [source] markers you used. Answer in the same language the user asked in. Prefer short paragraphs and bullet points.",
+      maxTokens: 512,
     });
 
     const usage = getProvider().lastUsage();

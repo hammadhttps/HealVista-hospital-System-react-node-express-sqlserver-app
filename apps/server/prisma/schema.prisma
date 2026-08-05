@@ -312,6 +312,7 @@ model Patient {
   favouriteDoctors  FavouriteDoctor[]
   guardianOf        PatientRelationship[] @relation("Guardian")
   guardedBy         PatientRelationship[] @relation("Dependent")
+  chatThreads       ChatThread[]      @relation("ChatThreadPatient")
 
   @@index([fullName])
   @@index([createdAt])
@@ -358,6 +359,7 @@ model Doctor {
   noteTemplates NoteTemplate[]
   favouritedBy  FavouriteDoctor[]
   labOrders     LabOrder[]
+  chatThreads   ChatThread[]        @relation("ChatThreadDoctor")
 
   @@index([verificationStatus, averageRating])
   @@map("doctors")
@@ -1067,15 +1069,25 @@ model NotificationPreference {
 }
 
 model ChatThread {
-  id            String        @id @default(uuid())
-  appointmentId String        @unique
-  appointment   Appointment   @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  createdAt     DateTime      @default(now())
+  id            String       @id @default(uuid())
+  /// Threads are either attached to an appointment (set) or a direct
+  /// patient↔doctor conversation (null — then patientId/doctorId are set).
+  appointmentId String?      @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  patientId     String?
+  patient       Patient?     @relation("ChatThreadPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId      String?
+  doctor        Doctor?      @relation("ChatThreadDoctor", fields: [doctorId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
   /// Last activity, for ordering the thread list. Previously `createdAt` was
   /// overwritten on every send, which destroyed the real creation time.
   lastMessageAt DateTime?
   messages      ChatMessage[]
 
+  /// One direct thread per patient–doctor pair. Prisma has no partial unique
+  /// index syntax, so the `appointmentId IS NULL` uniqueness is enforced with a
+  /// partial index created in the migration that added these columns.
+  @@index([patientId, doctorId])
   @@index([lastMessageAt])
   @@map("chat_threads")
 }

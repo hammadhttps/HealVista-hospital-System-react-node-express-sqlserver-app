@@ -11,6 +11,7 @@ import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { FavouriteToggle } from "../components/doctors/FavouriteToggle";
+import { MessageDoctorButton } from "../components/chat/MessageDoctorButton";
 
 export default function DoctorSearch() {
   const { t } = useTranslation(["common", "nav", "doctors"]);
@@ -106,6 +107,7 @@ export default function DoctorSearch() {
                   {t("doctors:fee", { amount: Number(doc.consultationFee).toFixed(2) })} &middot;{" "}
                   {t("doctors:yearsExp", { years: doc.experienceYears })}
                 </p>
+                <MessageDoctorButton doctorId={doc.id} />
               </CardContent>
             </Card>
           ))}

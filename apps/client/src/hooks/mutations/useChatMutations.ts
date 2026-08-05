@@ -21,3 +21,13 @@ export function useMarkChatRead() {
     },
   });
 }
+
+export function useCreateOrGetDirectThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: chatApi.createOrGetDirectThread,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: chatKeys.threads });
+    },
+  });
+}

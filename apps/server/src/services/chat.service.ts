@@ -24,6 +24,25 @@ const THREADS_TTL_SECONDS = 30;
  */
 const THREAD_LIST_LIMIT = 100;
 
+/**
+ * The two participants of a conversation, whichever way the thread was created.
+ *
+ * Every thread stores `patientId`/`doctorId` — appointment threads and direct
+ * threads alike — so participation checks never branch on "which kind". The
+ * appointment link is a fallback for rows created before the backfill, not a
+ * separate access path.
+ */
+function participantOf(thread: {
+  patientId: string | null;
+  doctorId: string | null;
+  appointment?: { patientId: string; doctorId: string } | null;
+}): { patientId: string; doctorId: string } {
+  return {
+    patientId: thread.patientId ?? thread.appointment?.patientId ?? "",
+    doctorId: thread.doctorId ?? thread.appointment?.doctorId ?? "",
+  };
+}
+
 async function invalidateThreadCache(threadId: string): Promise<void> {
   await delCachedByPrefix(cacheKeys.chatMessagesPrefix(threadId));
 
@@ -31,6 +50,8 @@ async function invalidateThreadCache(threadId: string): Promise<void> {
   const thread = await prisma.chatThread.findUnique({
     where: { id: threadId },
     select: {
+      patient: { select: { userId: true } },
+      doctor: { select: { userId: true } },
       appointment: {
         select: {
           patient: { select: { userId: true } },
@@ -41,14 +62,19 @@ async function invalidateThreadCache(threadId: string): Promise<void> {
   });
   if (!thread) return;
 
-  await delCached(
-    cacheKeys.chatThreads(thread.appointment.patient.userId),
-    cacheKeys.chatThreads(thread.appointment.doctor.userId),
-  );
+  const userIds = [
+    thread.patient?.userId,
+    thread.doctor?.userId,
+    thread.appointment?.patient?.userId,
+    thread.appointment?.doctor?.userId,
+  ].filter((id): id is string => Boolean(id));
+
+  if (userIds.length === 0) return;
+  await delCached(...userIds.map((id) => cacheKeys.chatThreads(id)));
 }
 
 /**
- * Whether a user may take part in the conversation attached to an appointment.
+ * Whether a user may take part in a conversation between a patient and a doctor.
  *
  * One resolver rather than the same boolean written at four call sites — that
  * duplication is precisely how one of them ends up not knowing about guardians, and a
@@ -56,7 +82,7 @@ async function invalidateThreadCache(threadId: string): Promise<void> {
  */
 async function canParticipate(
   userId: string,
-  appointment: { patientId: string; doctorId: string },
+  participant: { patientId: string; doctorId: string },
   mode: "read" | "write" = "read",
 ): Promise<boolean> {
   const user = await prisma.user.findUnique({
@@ -70,15 +96,15 @@ async function canParticipate(
   // it — a message from the desk appearing in a clinical conversation reads to the
   // patient as coming from their doctor.
   if (user.role === "RECEPTIONIST") return mode === "read";
-  if (user.role === "DOCTOR") return user.doctor?.id === appointment.doctorId;
+  if (user.role === "DOCTOR") return user.doctor?.id === participant.doctorId;
 
   if (user.role === "PATIENT" && user.patient) {
-    if (user.patient.id === appointment.patientId) return true;
+    if (user.patient.id === participant.patientId) return true;
 
     // A guardian speaks for their dependant. Gated on record access rather than
     // booking: this conversation is about the patient's care, not their calendar.
     const dependents = await getDependentPatientIds(user.patient.id, "records");
-    return dependents.includes(appointment.patientId);
+    return dependents.includes(participant.patientId);
   }
 
   return false;
@@ -95,26 +121,22 @@ async function loadThreads(userId: string) {
   });
   if (!user) throw new AppError("User not found", 404);
 
+  // patientId/doctorId sit directly on the thread (direct or appointment
+  // linked), so each role filters on its own side with no join through
+  // appointments. Both participants' names are returned for the list UI.
+  const include = {
+    appointment: { select: { id: true, appointmentNo: true } },
+    patient: { select: { id: true, userId: true, fullName: true } },
+    doctor: { select: { id: true, userId: true, fullName: true } },
+    messages: { orderBy: { sentAt: "desc" }, take: 1 },
+  } as const;
+
   if (user.role === "PATIENT" && user.patient) {
     // Own threads plus those of dependants whose records they may see.
     const dependents = await getDependentPatientIds(user.patient.id, "records");
-    const appointments = await prisma.appointment.findMany({
-      where: { patientId: { in: [user.patient.id, ...dependents] }, deletedAt: null },
-      select: { id: true, chatThread: true },
-    });
-    const threadIds = appointments.filter((a) => a.chatThread).map((a) => a.chatThread!.id);
     return prisma.chatThread.findMany({
-      where: { id: { in: threadIds } },
-      include: {
-        appointment: {
-          select: {
-            id: true,
-            appointmentNo: true,
-            doctor: { select: { user: { select: { id: true, email: true } } } },
-          },
-        },
-        messages: { orderBy: { sentAt: "desc" }, take: 1 },
-      },
+      where: { patientId: { in: [user.patient.id, ...dependents] } },
+      include,
       orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
       take: THREAD_LIST_LIMIT,
     });
@@ -122,17 +144,8 @@ async function loadThreads(userId: string) {
 
   if (user.role === "DOCTOR" && user.doctor) {
     return prisma.chatThread.findMany({
-      where: { appointment: { doctorId: user.doctor.id, deletedAt: null } },
-      include: {
-        appointment: {
-          select: {
-            id: true,
-            appointmentNo: true,
-            patient: { select: { fullName: true } },
-          },
-        },
-        messages: { orderBy: { sentAt: "desc" }, take: 1 },
-      },
+      where: { doctorId: user.doctor.id },
+      include,
       orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
       take: THREAD_LIST_LIMIT,
     });
@@ -140,17 +153,7 @@ async function loadThreads(userId: string) {
 
   if (user.role === "ADMIN" || user.role === "RECEPTIONIST") {
     return prisma.chatThread.findMany({
-      include: {
-        appointment: {
-          select: {
-            id: true,
-            appointmentNo: true,
-            doctor: { select: { user: { select: { email: true } } } },
-            patient: { select: { fullName: true } },
-          },
-        },
-        messages: { orderBy: { sentAt: "desc" }, take: 1 },
-      },
+      include,
       orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
       take: THREAD_LIST_LIMIT,
     });
@@ -167,21 +170,29 @@ async function loadThreads(userId: string) {
 export async function isThreadParticipant(threadId: string, userId: string): Promise<boolean> {
   const thread = await prisma.chatThread.findUnique({
     where: { id: threadId },
-    include: { appointment: { select: { patientId: true, doctorId: true } } },
+    select: {
+      patientId: true,
+      doctorId: true,
+      appointment: { select: { patientId: true, doctorId: true } },
+    },
   });
   if (!thread) return false;
 
-  return canParticipate(userId, thread.appointment);
+  return canParticipate(userId, participantOf(thread));
 }
 
 export async function getMessages(threadId: string, userId: string, page: number, limit: number) {
   const thread = await prisma.chatThread.findUnique({
     where: { id: threadId },
-    include: { appointment: { select: { patientId: true, doctorId: true } } },
+    select: {
+      patientId: true,
+      doctorId: true,
+      appointment: { select: { patientId: true, doctorId: true } },
+    },
   });
   if (!thread) throw new AppError("Thread not found", 404);
 
-  if (!(await canParticipate(userId, thread.appointment))) {
+  if (!(await canParticipate(userId, participantOf(thread)))) {
     throw new AppError("Not a participant of this thread", 403);
   }
 
@@ -213,11 +224,15 @@ export async function getMessages(threadId: string, userId: string, page: number
 export async function sendMessage(threadId: string, userId: string, content: string) {
   const thread = await prisma.chatThread.findUnique({
     where: { id: threadId },
-    include: { appointment: { select: { patientId: true, doctorId: true } } },
+    select: {
+      patientId: true,
+      doctorId: true,
+      appointment: { select: { patientId: true, doctorId: true } },
+    },
   });
   if (!thread) throw new AppError("Thread not found", 404);
 
-  if (!(await canParticipate(userId, thread.appointment, "write"))) {
+  if (!(await canParticipate(userId, participantOf(thread), "write"))) {
     throw new AppError("Not a participant of this thread", 403);
   }
 
@@ -272,6 +287,8 @@ async function threadRecipientUserIds(threadId: string, senderUserId: string): P
   const thread = await prisma.chatThread.findUnique({
     where: { id: threadId },
     select: {
+      patient: { select: { userId: true } },
+      doctor: { select: { userId: true } },
       appointment: {
         select: {
           patient: { select: { userId: true } },
@@ -282,22 +299,29 @@ async function threadRecipientUserIds(threadId: string, senderUserId: string): P
   });
   if (!thread) return [];
 
-  return [thread.appointment.patient.userId, thread.appointment.doctor.userId].filter(
-    (id) => id !== senderUserId,
-  );
+  return [
+    thread.patient?.userId,
+    thread.doctor?.userId,
+    thread.appointment?.patient?.userId,
+    thread.appointment?.doctor?.userId,
+  ].filter((id): id is string => Boolean(id) && id !== senderUserId);
 }
 
 export async function markThreadRead(threadId: string, userId: string) {
   const thread = await prisma.chatThread.findUnique({
     where: { id: threadId },
-    include: { appointment: { select: { patientId: true, doctorId: true } } },
+    select: {
+      patientId: true,
+      doctorId: true,
+      appointment: { select: { patientId: true, doctorId: true } },
+    },
   });
   if (!thread) throw new AppError("Thread not found", 404);
 
   // This loaded the thread but never checked participation, so any authenticated user
   // could mark any thread read — clearing the real recipient's unread badge for a
   // message they had not seen.
-  if (!(await canParticipate(userId, thread.appointment))) {
+  if (!(await canParticipate(userId, participantOf(thread)))) {
     throw new AppError("Not a participant of this thread", 403);
   }
 
@@ -327,7 +351,49 @@ export async function createThreadForAppointment(appointmentId: string) {
   });
   if (existing) return existing;
 
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    select: { patientId: true, doctorId: true },
+  });
+  if (!appointment) throw new AppError("Appointment not found", 404);
+
   return prisma.chatThread.create({
-    data: { appointmentId },
+    data: {
+      appointmentId,
+      patientId: appointment.patientId,
+      doctorId: appointment.doctorId,
+    },
+  });
+}
+
+/**
+ * Find or create the direct patient↔doctor conversation behind a doctor card's
+ * "Message" button. Only the patient's own profile may be the starting side; a
+ * guardian messaging on behalf of a dependant uses their own profile's threads
+ * (which already include dependant threads) or books an appointment instead.
+ */
+export async function createOrGetDirectThread(userId: string, doctorId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, patient: { select: { id: true } } },
+  });
+  if (!user) throw new AppError("User not found", 404);
+  if (user.role !== "PATIENT" || !user.patient) {
+    throw new AppError("Only patients can start a direct chat", 403);
+  }
+
+  const doctor = await prisma.doctor.findFirst({
+    where: { id: doctorId, deletedAt: null, verificationStatus: "VERIFIED" },
+    select: { id: true },
+  });
+  if (!doctor) throw new AppError("Doctor not found", 404);
+
+  const existing = await prisma.chatThread.findFirst({
+    where: { patientId: user.patient.id, doctorId },
+  });
+  if (existing) return existing;
+
+  return prisma.chatThread.create({
+    data: { patientId: user.patient.id, doctorId },
   });
 }

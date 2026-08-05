@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { validate } from "../middlewares/validate.middleware.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
-import { sendMessageSchema } from "@healvista/shared";
+import { createDirectChatThreadSchema, sendMessageSchema } from "@healvista/shared";
 import * as chatController from "../controllers/chat.controller.js";
 
 const router = Router();
@@ -15,5 +15,11 @@ router.post(
   chatController.sendMessage,
 );
 router.patch("/threads/:threadId/read", authenticate, chatController.markRead);
+router.post(
+  "/threads",
+  authenticate,
+  validate(createDirectChatThreadSchema),
+  chatController.createThread,
+);
 
 export default router;

@@ -1681,6 +1681,26 @@ async function seedDemoState(opts: {
       create: { doctorId: doctor.id, startTime: start, endTime: end, isBooked: true },
     });
 
+    // Re-seeding on a later day can leave the target slot held by an older demo
+    // appointment (its "tomorrow" slot has become "today"). Move any such holder
+    // onto its own freshly-generated slot before claiming the target slot.
+    const holder = await prisma.appointment.findFirst({
+      where: { slotId: slot.id, appointmentNo: { not: a.no } },
+    });
+    if (holder) {
+      const holderCfg = demoAppts.find((d) => d.no === holder.appointmentNo);
+      if (holderCfg) {
+        const hStart = at(holderCfg.day, holderCfg.hour, holderCfg.minute);
+        const hEnd = new Date(hStart.getTime() + 30 * 60 * 1000);
+        const hSlot = await prisma.appointmentSlot.upsert({
+          where: { doctorId_startTime: { doctorId: holder.doctorId, startTime: hStart } },
+          update: { endTime: hEnd, isBooked: true },
+          create: { doctorId: holder.doctorId, startTime: hStart, endTime: hEnd, isBooked: true },
+        });
+        await prisma.appointment.update({ where: { id: holder.id }, data: { slotId: hSlot.id } });
+      }
+    }
+
     const data: Prisma.AppointmentUncheckedCreateInput = {
       appointmentNo: a.no,
       patientId: patient.id,
@@ -2078,9 +2098,13 @@ async function seedDemoState(opts: {
   }
 
   // ── Chat threads between patient and doctor ───────────────────────────
+  // Appointment-linked threads: a follow-up on a completed visit, so both the
+  // patient's and the treating doctor's chat lists are populated. Every thread
+  // also stores patientId/doctorId (the migration backfilled the existing rows).
   const chatPairs = [
     {
       appointmentNo: "APT-1000",
+      hour: 7,
       messages: [
         "Good morning Alex, how is the chest tightness?",
         "Much better doctor, thank you.",
@@ -2089,10 +2113,47 @@ async function seedDemoState(opts: {
     },
     {
       appointmentNo: "APT-1001",
+      hour: 8,
       messages: [
         "Hello, any fever since yesterday?",
         "No fever today, appetite is back.",
         "Excellent — keep hydrated and rest.",
+      ],
+    },
+    {
+      appointmentNo: "APT-1002",
+      hour: 9,
+      messages: [
+        "Brian, how has the breathing been since the last visit?",
+        "Much easier, the new inhaler routine helps.",
+        "Good. Keep it up and come back if it worsens.",
+      ],
+    },
+    {
+      appointmentNo: "APT-1003",
+      hour: 10,
+      messages: [
+        "Any new headaches or dizziness since your visit?",
+        "Only the occasional mild headache, nothing like before.",
+        "Good. Keep the log and bring it to the next appointment.",
+      ],
+    },
+    {
+      appointmentNo: "APT-1006",
+      hour: 11,
+      messages: [
+        "Are the migraines still at the same frequency?",
+        "Down to about one a week now.",
+        "That is good progress — continue the same medication plan.",
+      ],
+    },
+    {
+      appointmentNo: "APT-1010",
+      hour: 12,
+      messages: [
+        "Any changes since the last visit?",
+        "All good, thank you doctor.",
+        "Glad to hear it — reach out if anything changes.",
       ],
     },
   ];
@@ -2104,8 +2165,17 @@ async function seedDemoState(opts: {
     if (!appt) continue;
     const thread = await prisma.chatThread.upsert({
       where: { appointmentId: appt.id },
-      update: { lastMessageAt: at(0, 7, 30) },
-      create: { appointmentId: appt.id, lastMessageAt: at(0, 7, 30) },
+      update: {
+        patientId: appt.patientId,
+        doctorId: appt.doctorId,
+        lastMessageAt: at(0, c.hour, 30),
+      },
+      create: {
+        appointmentId: appt.id,
+        patientId: appt.patientId,
+        doctorId: appt.doctorId,
+        lastMessageAt: at(0, c.hour, 30),
+      },
     });
     const msgCount = await prisma.chatMessage.count({ where: { threadId: thread.id } });
     if (msgCount === 0) {
@@ -2116,11 +2186,128 @@ async function seedDemoState(opts: {
             threadId: thread.id,
             senderUserId: senderId,
             content: c.messages[i],
-            sentAt: new Date(at(0, 7, 0).getTime() + i * 10 * 60 * 1000),
+            sentAt: new Date(at(0, c.hour, 0).getTime() + i * 10 * 60 * 1000),
           },
         });
       }
     }
+  }
+
+  // Direct patient↔doctor threads (no appointment): the "Message doctor" flow.
+  // Pairs are chosen so the two have never met in an appointment, making each a
+  // standalone direct conversation rather than a follow-up to a visit.
+  const directChats = [
+    {
+      patientEmail: "alex@example.com",
+      doctorEmail: "meera@medicore.com",
+      hour: 9,
+      messages: [
+        "Hello Alex, I saw your message about the knee pain.",
+        "Hi doctor, it started after my run last week.",
+        "Apply ice twice a day and ease off running for a few days. If it persists, book a consult.",
+      ],
+    },
+    {
+      patientEmail: "carlos@example.com",
+      doctorEmail: "sarah@medicore.com",
+      hour: 9,
+      messages: [
+        "Hello Carlos, how are you feeling on the new medication?",
+        "Much better, doctor. No chest pain this week.",
+        "Excellent. Keep the blood pressure log and we will review it soon.",
+      ],
+    },
+    {
+      patientEmail: "brian@example.com",
+      doctorEmail: "rafael@medicore.com",
+      hour: 10,
+      messages: [
+        "Hi Brian, you mentioned new headaches — any visual changes?",
+        "No, just a dull pain in the mornings.",
+        "Keep a record of when they happen, and we will check at your consult.",
+      ],
+    },
+    {
+      patientEmail: "emily@example.com",
+      doctorEmail: "jason@medicore.com",
+      hour: 10,
+      messages: [
+        "Emily, has the rash spread since the last cream?",
+        "It has improved a lot, only a small patch remains.",
+        "Good — keep using the cream for a few more days and it should clear.",
+      ],
+    },
+    {
+      patientEmail: "farah@example.com",
+      doctorEmail: "rafael@medicore.com",
+      hour: 11,
+      messages: [
+        "Farah, are the migraine triggers still mostly stress and lack of sleep?",
+        "Yes, and I have been tracking them like you asked.",
+        "Perfect — bring the log to your appointment and we will adjust the plan.",
+      ],
+    },
+    {
+      patientEmail: "dina@example.com",
+      doctorEmail: "priya@medicore.com",
+      hour: 11,
+      messages: [
+        "Hello Dina, any questions about the test results?",
+        "The report looks fine to me, but I was worried about one value.",
+        "That value is within range for your age — nothing to worry about.",
+      ],
+    },
+    {
+      patientEmail: "zara@example.com",
+      doctorEmail: "david@medicore.com",
+      hour: 12,
+      messages: [
+        "Hi Zara, how is the little one's cough today?",
+        "Better, and sleeping through the night now.",
+        "Great to hear. Call us if the fever returns.",
+      ],
+    },
+    {
+      patientEmail: "sofia@example.com",
+      doctorEmail: "omar@medicore.com",
+      hour: 12,
+      messages: [
+        "Sofia, how have the sleep patterns been this week?",
+        "Improving — I have been following the routine we discussed.",
+        "That is encouraging. Let us continue and review at our next session.",
+      ],
+    },
+  ];
+  for (const c of directChats) {
+    const patient = p(c.patientEmail);
+    const doctor = dr(c.doctorEmail);
+    if (!patient || !doctor) continue;
+    let thread = await prisma.chatThread.findFirst({
+      where: { patientId: patient.id, doctorId: doctor.id },
+    });
+    if (!thread) {
+      thread = await prisma.chatThread.create({
+        data: { patientId: patient.id, doctorId: doctor.id },
+      });
+    }
+    const msgCount = await prisma.chatMessage.count({ where: { threadId: thread.id } });
+    if (msgCount === 0) {
+      for (let i = 0; i < c.messages.length; i++) {
+        const senderId = i % 2 === 0 ? doctor.userId : patient.userId;
+        await prisma.chatMessage.create({
+          data: {
+            threadId: thread.id,
+            senderUserId: senderId,
+            content: c.messages[i],
+            sentAt: new Date(at(0, c.hour, 0).getTime() + i * 12 * 60 * 1000),
+          },
+        });
+      }
+    }
+    await prisma.chatThread.update({
+      where: { id: thread.id },
+      data: { lastMessageAt: at(0, c.hour, 0) },
+    });
   }
 
   // ── Notifications for the bell ────────────────────────────────────────

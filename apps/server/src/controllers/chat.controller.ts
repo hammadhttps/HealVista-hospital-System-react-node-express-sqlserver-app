@@ -43,3 +43,13 @@ export async function markRead(req: Request, res: Response, next: NextFunction) 
     next(err);
   }
 }
+
+export async function createThread(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { doctorId } = req.body;
+    const thread = await chatService.createOrGetDirectThread(req.user!.userId, doctorId);
+    sendSuccess(res, thread, 201);
+  } catch (err) {
+    next(err);
+  }
+}

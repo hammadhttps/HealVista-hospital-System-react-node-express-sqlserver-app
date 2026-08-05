@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -18,7 +18,7 @@ import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { getErrorMessage } from "../utils/errors";
 import { previewDiscount } from "../lib/billingPreview";
-import StripeCheckoutDialog from "../components/billing/StripeCheckoutDialog";
+import StripeCheckoutDialog, { preloadStripe } from "../components/billing/StripeCheckoutDialog";
 
 const STATUS_TABS = [
   { value: "", key: "common:all" },
@@ -39,6 +39,11 @@ const statusVariant: Record<string, string> = {
 export default function BillingConsole() {
   const { t } = useTranslation(["billing", "common", "nav"]);
   const [tab, setTab] = useState("");
+
+  useEffect(() => {
+    preloadStripe();
+  }, []);
+
   const [cashAmounts, setCashAmounts] = useState<Record<string, string>>({});
   const [previewDiscounts, setPreviewDiscounts] = useState<Record<string, string>>({});
   const [checkoutBill, setCheckoutBill] = useState<{ id: string; balance: string } | null>(null);

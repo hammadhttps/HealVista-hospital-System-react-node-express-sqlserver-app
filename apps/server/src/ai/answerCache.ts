@@ -21,6 +21,6 @@ export async function getCachedAnswer<T>(key: string): Promise<T | null> {
   return getCached<T>(key);
 }
 
-export async function setCachedAnswer(key: string, value: unknown, ttlSec = 300): Promise<void> {
+export async function setCachedAnswer(key: string, value: unknown, ttlSec = 900): Promise<void> {
   await setCached(key, value, ttlSec);
 }

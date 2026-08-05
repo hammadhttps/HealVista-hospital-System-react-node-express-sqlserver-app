@@ -52,4 +52,8 @@ export const chatApi = {
 
   markRead: (threadId: string) =>
     api.patch(`/chat/threads/${threadId}/read`).then((r) => r.data.data),
+
+  /** Get the direct patient↔doctor thread for a doctor, creating it if needed. */
+  createOrGetDirectThread: (doctorId: string) =>
+    api.post("/chat/threads", { doctorId }).then((r) => r.data.data),
 };

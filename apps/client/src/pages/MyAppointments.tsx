@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useMyAppointments } from "../hooks/queries/useAppointments";
 import { useCancelAppointment, useCheckIn } from "../hooks/mutations/useAppointmentMutations";
@@ -24,7 +25,8 @@ const statusColor: Record<string, string> = {
 };
 
 export default function MyAppointments() {
-  const { t } = useTranslation(["appointments", "common", "nav"]);
+  const { t } = useTranslation(["appointments", "common", "nav", "chat"]);
+  const navigate = useNavigate();
   const [tab, setTab] = useState("");
   const cancelMutation = useCancelAppointment();
   const checkInMutation = useCheckIn();
@@ -136,6 +138,15 @@ export default function MyAppointments() {
                               appointmentNo={apt.appointmentNo}
                             />
                           )}
+                        {apt.chatThread?.id && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => navigate(`/chat?thread=${apt.chatThread.id}`)}
+                          >
+                            {t("chat:messageDoctor")}
+                          </Button>
+                        )}
                         <AppointmentAssistButton appointmentId={apt.id} />
                       </div>
                     </CardContent>

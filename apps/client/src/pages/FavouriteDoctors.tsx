@@ -6,6 +6,7 @@ import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { FavouriteToggle } from "../components/doctors/FavouriteToggle";
+import { MessageDoctorButton } from "../components/chat/MessageDoctorButton";
 
 export default function FavouriteDoctors() {
   const { t } = useTranslation(["common", "doctors", "favourites"]);
@@ -64,6 +65,7 @@ export default function FavouriteDoctors() {
                     })}
                   </p>
                 )}
+                <MessageDoctorButton doctorId={fav.doctorId} />
               </CardContent>
             </Card>
           ))}

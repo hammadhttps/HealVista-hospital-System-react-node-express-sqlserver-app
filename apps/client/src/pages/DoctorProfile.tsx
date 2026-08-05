@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Badge } from "../components/ui/badge";
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
+import { MessageDoctorButton } from "../components/chat/MessageDoctorButton";
 import { format } from "date-fns";
 
 export default function DoctorProfile() {
@@ -52,8 +53,9 @@ export default function DoctorProfile() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-2xl">{doctor.fullName}</CardTitle>
+          <MessageDoctorButton doctorId={doctor.id} />
         </CardHeader>
         <CardContent className="space-y-4">
           <p>{doctor.bio}</p>
