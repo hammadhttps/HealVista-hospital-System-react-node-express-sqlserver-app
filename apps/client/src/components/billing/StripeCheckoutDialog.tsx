@@ -18,19 +18,41 @@ import { getErrorMessage } from "../../utils/errors";
  */
 let stripePromise: Promise<Stripe | null> | null = null;
 
+/**
+ * Stripe's font-sync copies Google Fonts stylesheets it finds on the host page
+ * into its sandboxed iframes, where Stripe's own CSP blocks them — that is what
+ * surfaces as the noisy "style-src" console errors on checkout. HealVista
+ * self-hosts Geist and never ships a Google Fonts link, but a stale cached page
+ * or a future `<link>` would re-trigger the noise. Strip any such link before
+ * Stripe initialises so font-sync has nothing to copy.
+ */
+function stripStrayGoogleFonts(): void {
+  for (const el of Array.from(document.querySelectorAll('link[rel="stylesheet"]'))) {
+    const href = el.getAttribute("href") ?? "";
+    if (href.includes("fonts.googleapis.com")) {
+      el.remove();
+    }
+  }
+}
+
 function getStripePromise(): Promise<Stripe | null> | null {
   if (!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) return null;
   if (!stripePromise) {
+    stripStrayGoogleFonts();
     stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
   }
   return stripePromise;
 }
 
 /**
- * Kick off the ~300KB Stripe.js fetch as early as possible. Called when a billing
- * page mounts so that by the time "Pay Card" is clicked the SDK is usually already
- * resolved (the cached promise is reused), leaving only the backend intent request
- * on the critical path of the first checkout render.
+ * An explicit `appearance` serves two purposes:
+ * - It pins the font Stripe renders the Payment Element in. Without it Stripe
+ *   falls back to font-sync, which reloads the host page's font from Google
+ *   Fonts inside the sandboxed iframe — where Stripe's own CSP blocks the
+ *   stylesheet and logs the "style-src" violations. Setting `fontFamily` (plus
+ *   never shipping a Google Fonts `<link>` in the first place) removes the
+ *   cause entirely.
+ * - It matches the on-brand teal accents instead of Stripe's defaults.
  */
 export function preloadStripe(): void {
   getStripePromise();
