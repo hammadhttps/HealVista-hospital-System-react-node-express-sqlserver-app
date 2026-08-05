@@ -19,12 +19,10 @@ import { getErrorMessage } from "../../utils/errors";
 let stripePromise: Promise<Stripe | null> | null = null;
 
 /**
- * Stripe's font-sync copies Google Fonts stylesheets it finds on the host page
- * into its sandboxed iframes, where Stripe's own CSP blocks them — that is what
- * surfaces as the noisy "style-src" console errors on checkout. HealVista
- * self-hosts Geist and never ships a Google Fonts link, but a stale cached page
- * or a future `<link>` would re-trigger the noise. Strip any such link before
- * Stripe initialises so font-sync has nothing to copy.
+ * Defensive guard: if a Google Fonts <link> is ever present on the host page,
+ * remove it before Stripe loads. With `theme: "none"` (see CHECKOUT_APPEARANCE)
+ * Stripe no longer font-syncs the host page's font, so this is belt-and-suspenders
+ * against a regression that would re-introduce the CSP violation.
  */
 function stripStrayGoogleFonts(): void {
   for (const el of Array.from(document.querySelectorAll('link[rel="stylesheet"]'))) {
@@ -45,14 +43,9 @@ function getStripePromise(): Promise<Stripe | null> | null {
 }
 
 /**
- * An explicit `appearance` serves two purposes:
- * - It pins the font Stripe renders the Payment Element in. Without it Stripe
- *   falls back to font-sync, which reloads the host page's font from Google
- *   Fonts inside the sandboxed iframe — where Stripe's own CSP blocks the
- *   stylesheet and logs the "style-src" violations. Setting `fontFamily` (plus
- *   never shipping a Google Fonts `<link>` in the first place) removes the
- *   cause entirely.
- * - It matches the on-brand teal accents instead of Stripe's defaults.
+ * Preloads the Stripe.js SDK early so it is cached by the time the user opens
+ * the checkout dialog. See CHECKOUT_APPEARANCE for the appearance config that
+ * prevents Stripe from loading its default font from Google Fonts.
  */
 export function preloadStripe(): void {
   getStripePromise();
@@ -60,17 +53,17 @@ export function preloadStripe(): void {
 
 /**
  * An explicit `appearance` serves two purposes:
- * - It disables Stripe's automatic font-sync. Without it Stripe detects the
- *   host page's font (Mulish) and tries to reload it from Google Fonts inside
- *   its sandboxed iframe, where Stripe's own CSP blocks the stylesheet. That
- *   blocked load is what surfaces as the CSP violation and the "message channel
- *   closed" race in the console — they look alarming, but disabling font-sync
- *   removes the cause entirely.
+ * - `theme: "none"` prevents Stripe from loading its default font (Mulish) from
+ *   Google Fonts inside its sandboxed iframe. Stripe's own CSP
+ *   (`style-src 'self'`) blocks that load, which surfaces as the noisy "style-src"
+ *   CSP violation and the "message channel closed" race that breaks the payment
+ *   flow. Self-hosting Geist and setting `fontFamily` keeps the UI consistent
+ *   without triggering the external font load at all.
  * - It matches the on-brand teal accents instead of Stripe's defaults.
  */
 const CHECKOUT_APPEARANCE = {
   appearance: {
-    theme: "stripe",
+    theme: "none",
     variables: {
       colorPrimary: "#0f766e",
       colorBackground: "#ffffff",
