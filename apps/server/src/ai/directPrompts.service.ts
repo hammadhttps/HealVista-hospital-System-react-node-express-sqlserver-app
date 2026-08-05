@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "../config/db.js";
 import { env } from "../config/env.js";
+import { isRedisEnabled } from "../config/redis.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { addSummaryJob } from "../config/bull.js";
@@ -10,7 +11,7 @@ import {
   type Actor,
 } from "../services/access.service.js";
 import { assertTreatingDoctor } from "../services/note.service.js";
-import { signDeliveryUrl } from "../services/record.service.js";
+import { signDeliveryUrl, extractRecordText } from "../services/record.service.js";
 import { getProvider, isAiConfigured } from "./index.js";
 import { generateValidated, AiGenerationError } from "./guardrails.js";
 import { stripPII } from "./pii.js";
@@ -441,15 +442,32 @@ const reportSummaryOutputSchema = z.object({
 });
 
 /**
- * Runs inside the summaries worker (never in a request). Generates the report
- * summary and writes `MedicalRecord.aiSummary`. Idempotent — a record that already
- * has a summary is skipped, and a failure writes a deterministic `fallback` marker
- * so the queue stops retrying instead of hammering the free tier.
+ * Runs inside the summaries worker (never in a request) — or inline from
+ * `enqueueReportSummary` when Redis is off and no worker can run. Generates the
+ * report summary and writes `MedicalRecord.aiSummary`. Idempotent — a record that
+ * already has a summary is skipped, and a failure writes a deterministic
+ * `fallback` marker so the queue stops retrying instead of hammering the free tier.
  */
 export async function summarizeRecord(recordId: string): Promise<void> {
-  const record = await prisma.medicalRecord.findUnique({ where: { id: recordId } });
+  let record = await prisma.medicalRecord.findUnique({ where: { id: recordId } });
   if (!record || record.deletedAt) return;
   if (record.aiSummary) return;
+
+  // A PDF uploaded while the queue was down may never have been extracted. Pull
+  // the text inline so the summary still has something to read.
+  if (!record.extractedText?.trim() && record.fileType === "pdf") {
+    try {
+      const { extracted } = await extractRecordText(recordId);
+      if (extracted) {
+        record = await prisma.medicalRecord.findUnique({ where: { id: recordId } });
+      }
+    } catch (err) {
+      console.error("[summaries] Inline text extraction failed:", err);
+    }
+  }
+
+  // The reassignment above widens the narrowed type; re-narrow before use.
+  if (!record || record.deletedAt) return;
   if (!record.extractedText || !record.extractedText.trim()) return;
 
   const logUser = record.uploadedById ? { userId: record.uploadedById, role: "SYSTEM" } : null;
@@ -546,9 +564,29 @@ export async function enqueueReportSummary(
   const record = await prisma.medicalRecord.findUnique({ where: { id: recordId } });
   if (!record || record.deletedAt) throw new AppError("Record not found", 404);
   await assertClinicalAccess(record.patientId, actor);
-  if (!record.extractedText || !record.extractedText.trim()) {
+
+  // A PDF that was uploaded while the queue was down may never have had its text
+  // extracted. Pull it inline so the record is summarisable either way.
+  if (!record.extractedText?.trim() && record.fileType === "pdf") {
+    try {
+      await extractRecordText(recordId);
+    } catch (err) {
+      console.error("[record] Failed to extract text for summary:", err);
+    }
+  }
+
+  const fresh = await prisma.medicalRecord.findUnique({ where: { id: recordId } });
+  if (!fresh || !fresh.extractedText || !fresh.extractedText.trim()) {
     throw new AppError("This record has no extractable text to summarise", 400);
   }
+
+  // Without Redis the BullMQ summary worker cannot run — summarise inline so the
+  // caller still gets a result. Idempotent: a record already summarised is skipped.
+  if (!isRedisEnabled) {
+    await summarizeRecord(recordId);
+    return { queued: false };
+  }
+
   await addSummaryJob(recordId);
   return { queued: true };
 }

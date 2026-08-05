@@ -285,6 +285,20 @@ const seedUsers: SeedUser[] = [
     dateOfBirth: "2000-01-30",
     city: "Rawalpindi",
   },
+  {
+    email: "hammad@example.com",
+    role: "PATIENT",
+    fullName: "Hammad ul Hassan",
+    gender: "Male",
+    bloodGroup: "B+",
+    dateOfBirth: "1993-03-15",
+    city: "Lahore",
+    allergies: [{ allergen: "Penicillin", severity: "MODERATE", reaction: "Skin rash" }],
+    conditions: [
+      { condition: "Hypertension", notes: "Stage 1, managed on amlodipine" },
+      { condition: "Dyslipidemia", notes: "On atorvastatin" },
+    ],
+  },
 
   // ── Doctors ─────────────────────────────────────────────────────────
   {
@@ -2626,6 +2640,242 @@ async function seedDemoState(opts: {
         },
       });
     }
+  }
+
+  // ── Hammad ul Hassan — AI-summarisable clinical history ───────────────
+  // Rich history so a doctor can open this patient and ask the AI to summarise
+  // his records. Records carry `extractedText` directly (marker URLs), so the
+  // demo needs no Cloudinary/PDF step; the summary endpoint then works as-is.
+  const hammad = p("hammad@example.com");
+  const hammadId = hammad.id;
+  const sarahDoctor = dr("sarah@medicore.com");
+
+  if ((await prisma.medicalRecord.count({ where: { patientId: hammadId } })) === 0) {
+    const hammadRecords = [
+      {
+        marker: "seed://hammad-record-1.txt",
+        title: "Cardiology consultation",
+        text: "Cardiology consultation: 32-year-old male with stage 1 hypertension and mixed dyslipidaemia. BP 148/94 seated, HR 82 regular. No peripheral oedema; fundoscopy normal. ECG sinus rhythm, no ischaemic changes. Advised amlodipine 5 mg daily and atorvastatin 20 mg at night, DASH diet, salt restriction, and 30 minutes of moderate exercise most days. Repeat BP check and lipid panel in 8 weeks.",
+      },
+      {
+        marker: "seed://hammad-record-2.txt",
+        title: "Lipid and metabolic panel",
+        text: "Laboratory report: Total cholesterol 224 mg/dL (HIGH, target below 200). LDL cholesterol 152 mg/dL (HIGH, target below 100). HDL cholesterol 34 mg/dL (LOW, target above 40). Triglycerides 190 mg/dL (HIGH, target below 150). HbA1c 5.6% (normal). TSH 2.1 mIU/L (normal). Serum creatinine 0.9 mg/dL (normal). Interpretation: mixed dyslipidaemia; continue statin therapy and reinforce dietary modification.",
+      },
+      {
+        marker: "seed://hammad-record-3.txt",
+        title: "Discharge summary",
+        text: "Discharge summary: admitted with hypertensive urgency — BP 178/108 at presentation with headache, no neurological deficit. Bloods and ECG unremarkable. Managed with oral amlodipine titration; BP 138/86 on discharge. Home on amlodipine 5 mg and atorvastatin 20 mg. Advised to avoid NSAIDs, monitor BP at home, and follow up in cardiology clinic in 2 weeks.",
+      },
+    ];
+    for (const r of hammadRecords) {
+      await prisma.medicalRecord.create({
+        data: {
+          patientId: hammadId,
+          fileUrl: r.marker,
+          fileType: "text/plain",
+          title: r.title,
+          category: "Document",
+          extractedText: r.text,
+          uploadedById: sarahDoctor.userId,
+          uploadedAt: daysAgo(randInt(25, 40), 10, 30),
+        },
+      });
+    }
+  }
+
+  // A completed cardiology follow-up so the record set also has a signed note,
+  // a dispensed prescription, verified labs, and vitals to summarise.
+  const hammadAppt = await prisma.appointment.findUnique({
+    where: { appointmentNo: "APT-SEED-HAMMAD" },
+  });
+  if (!hammadAppt) {
+    const start = at(-21, 10, 30);
+    const end = new Date(start.getTime() + 30 * 60 * 1000);
+    const slot = await prisma.appointmentSlot.upsert({
+      where: { doctorId_startTime: { doctorId: sarahDoctor.id, startTime: start } },
+      update: { endTime: end, isBooked: true },
+      create: { doctorId: sarahDoctor.id, startTime: start, endTime: end, isBooked: true },
+    });
+    const appointment = await prisma.appointment.create({
+      data: {
+        appointmentNo: "APT-SEED-HAMMAD",
+        patientId: hammadId,
+        doctorId: sarahDoctor.id,
+        slotId: slot.id,
+        departmentId: doctorDeptMap.get(sarahDoctor.id) ?? null,
+        status: "COMPLETED",
+        source: "ONLINE",
+        reasonNote: "Hypertension follow-up and lipid results review",
+        qrToken: "demo-apt-seed-hammad",
+        checkedInAt: new Date(start.getTime() - 15 * 60 * 1000),
+        consultStartAt: start,
+        consultEndAt: end,
+        createdAt: new Date(start.getTime() - 24 * 60 * 60 * 1000),
+      },
+    });
+
+    await prisma.consultationNote.create({
+      data: {
+        appointmentId: appointment.id,
+        authorUserId: sarahDoctor.userId,
+        subjective:
+          "Patient reports feeling well on amlodipine. Occasional morning headache resolved. Home BP 132-140/84-90. No chest pain or dyspnoea on exertion.",
+        objective:
+          "BP 136/86, HR 78 regular. BMI 27.1. Cardiovascular exam unremarkable; no bruits or oedema.",
+        assessment: "Stage 1 hypertension and mixed dyslipidaemia; improving on current therapy.",
+        plan: "Continue amlodipine 5 mg and atorvastatin 20 mg. Repeat lipid panel in 3 months. Continue home BP diary.",
+        diagnosisCodes: ["I10", "E78.5"],
+        isDraft: false,
+        aiAssisted: false,
+        signedAt: new Date(start.getTime() + 60 * 60 * 1000),
+      },
+    });
+
+    await prisma.prescription.create({
+      data: {
+        appointmentId: appointment.id,
+        isDraft: false,
+        notes: "Take as directed. Report any muscle pain with atorvastatin.",
+        followUpAfterDays: 90,
+        items: {
+          create: [
+            {
+              medicineId: medicineByName.get("Amlodipine")?.id,
+              medicineName: "Amlodipine",
+              dosage: "5 mg",
+              frequency: "Once daily",
+              durationDays: 90,
+              quantityPrescribed: 90,
+              instructions: "Take in the morning",
+            },
+            {
+              medicineId: medicineByName.get("Atorvastatin")?.id,
+              medicineName: "Atorvastatin",
+              dosage: "20 mg",
+              frequency: "Once nightly",
+              durationDays: 90,
+              quantityPrescribed: 90,
+              instructions: "Take at bedtime",
+            },
+          ],
+        },
+      },
+    });
+
+    const lipidTest = labTestByCode.get("LIPID");
+    if (lipidTest) {
+      await prisma.labOrder.create({
+        data: {
+          orderNumber: "LAB-SEED-HAMMAD",
+          appointmentId: appointment.id,
+          patientId: hammadId,
+          doctorId: sarahDoctor.id,
+          status: "VERIFIED",
+          orderedAt: new Date(start.getTime() - 2 * 24 * 60 * 60 * 1000),
+          sampleCollectedAt: new Date(start.getTime() - 60 * 60 * 1000),
+          completedAt: new Date(start.getTime() - 30 * 60 * 1000),
+          verifiedAt: start,
+          verifiedById: labTechUserIds[0] ?? null,
+          notes: "Lipid panel — baseline on atorvastatin",
+          items: {
+            create: [
+              {
+                labTestId: lipidTest.id,
+                resultValue: "224",
+                unit: "mg/dL",
+                referenceRange: lipidTest.referenceRange,
+                flag: "HIGH",
+              },
+              {
+                labTestId: lipidTest.id,
+                resultValue: "152",
+                unit: "mg/dL",
+                referenceRange: lipidTest.referenceRange,
+                flag: "HIGH",
+              },
+              {
+                labTestId: lipidTest.id,
+                resultValue: "34",
+                unit: "mg/dL",
+                referenceRange: lipidTest.referenceRange,
+                flag: "LOW",
+              },
+              {
+                labTestId: lipidTest.id,
+                resultValue: "190",
+                unit: "mg/dL",
+                referenceRange: lipidTest.referenceRange,
+                flag: "HIGH",
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    if ((await prisma.vitalReading.count({ where: { patientId: hammadId } })) === 0) {
+      const vitals = [
+        { type: "blood_pressure", value: 136, unit: "mmHg", rec: start },
+        { type: "heart_rate", value: 78, unit: "bpm", rec: start },
+        { type: "temperature", value: 36.7, unit: "°C", rec: start },
+        { type: "spo2", value: 98, unit: "%", rec: start },
+        { type: "blood_pressure", value: 148, unit: "mmHg", rec: at(-40, 9, 30) },
+        { type: "blood_pressure", value: 178, unit: "mmHg", rec: at(-60, 15, 0) },
+      ];
+      for (const v of vitals) {
+        await prisma.vitalReading.create({
+          data: {
+            patientId: hammadId,
+            appointmentId: v.rec.getTime() === start.getTime() ? appointment.id : undefined,
+            recordedByUserId: sarahDoctor.userId,
+            type: v.type,
+            value: v.value,
+            unit: v.unit,
+            recordedAt: v.rec,
+          },
+        });
+      }
+    }
+  }
+
+  if ((await prisma.patientInsurance.count({ where: { patientId: hammadId } })) === 0) {
+    await prisma.patientInsurance.create({
+      data: {
+        patientId: hammadId,
+        providerName: "State Life Insurance",
+        policyNumber: "SL-7788-2210",
+        coveragePercentage: 70,
+        validUntil: new Date("2027-12-31"),
+        isActive: true,
+      },
+    });
+  }
+
+  if ((await prisma.familyHistory.count({ where: { patientId: hammadId } })) === 0) {
+    await prisma.familyHistory.create({
+      data: { patientId: hammadId, relationship: "Father", condition: "Hypertension" },
+    });
+    await prisma.familyHistory.create({
+      data: {
+        patientId: hammadId,
+        relationship: "Mother",
+        condition: "Type 2 Diabetes",
+        notes: "Diagnosed at 48",
+      },
+    });
+  }
+
+  if ((await prisma.lifestyleProfile.count({ where: { patientId: hammadId } })) === 0) {
+    await prisma.lifestyleProfile.create({
+      data: {
+        patientId: hammadId,
+        smokingStatus: "Non-smoker",
+        alcoholUse: "Occasional",
+        exerciseFreq: "1-2x/week",
+        dietNotes: "High sodium intake; DASH diet counselling provided",
+      },
+    });
   }
 
   // ── Recent-patient audit rows for clinician dashboards ────────────────

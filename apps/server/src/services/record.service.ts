@@ -3,7 +3,8 @@ import PDFDocument from "pdfkit";
 import cloudinary from "../config/cloudinary.js";
 import { env } from "../config/env.js";
 import { prisma } from "../config/db.js";
-import { addRecordExtractionJob } from "../config/bull.js";
+import { isRedisEnabled } from "../config/redis.js";
+import { addEmbeddingJob, addRecordExtractionJob } from "../config/bull.js";
 import { deleteChunksForSource } from "../ai/embeddings.service.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
@@ -50,6 +51,79 @@ export type RecordCategory = (typeof ALLOWED_CATEGORIES)[number];
 // Tight to the shared schema's whitelist (pdf/png/jpeg). `jpg` is accepted as the
 // common alias of `jpeg`. Everything else — including webp and heic — is rejected.
 const ALLOWED_FILE_TYPES = ["pdf", "png", "jpeg", "jpg"];
+
+/** Cap on extracted text so a huge scan never bloats Postgres. */
+const MAX_EXTRACTED_CHARS = 100_000;
+
+/**
+ * Downloads a PDF record behind its signed delivery URL and stores the extracted
+ * plain text in `MedicalRecord.extractedText`, then enqueues it for embedding.
+ *
+ * Queue-independent by design: the record worker calls this for queued uploads,
+ * and `registerRecord` falls back to it inline when Redis is off (BullMQ cannot
+ * run), so a PDF upload is always searchable and summarisable. Best-effort — a
+ * scan failure leaves the record without text and never fails the upload that
+ * created it.
+ */
+export async function extractRecordText(
+  recordId: string,
+): Promise<{ extracted: boolean; chars: number }> {
+  const record = await prisma.medicalRecord.findUnique({ where: { id: recordId } });
+  if (!record || record.deletedAt) return { extracted: false, chars: 0 };
+  if (record.fileType !== "pdf") return { extracted: false, chars: 0 };
+  if (record.extractedText && record.extractedText.trim()) {
+    return { extracted: true, chars: record.extractedText.length };
+  }
+
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+
+  const signedUrl = signDeliveryUrl(record.fileUrl, "pdf");
+  const res = await fetch(signedUrl);
+  if (!res.ok) throw new Error(`Failed to download record (HTTP ${res.status})`);
+
+  const task = getDocument({
+    data: new Uint8Array(await res.arrayBuffer()),
+    disableWorker: true,
+    disableFontFace: true,
+  });
+  const pdf = await task.promise;
+
+  let text = "";
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    text += content.items.map((item) => item.str).join(" ") + "\n";
+  }
+
+  if (!text.trim()) return { extracted: false, chars: 0 };
+
+  await prisma.medicalRecord.update({
+    where: { id: recordId },
+    data: { extractedText: text.slice(0, MAX_EXTRACTED_CHARS) },
+  });
+
+  // The uploader is the actor for the audit trail; a record with no uploader
+  // (seeded data) simply skips the audit row rather than inventing one.
+  if (record.uploadedById) {
+    await writeAuditLog({
+      actorUserId: record.uploadedById,
+      action: "MEDICAL_RECORD_TEXT_EXTRACTED",
+      targetType: "medical_record",
+      targetId: recordId,
+      metadata: { patientId: record.patientId, chars: text.length },
+    });
+  }
+
+  // The extracted text is what RAG searches — enqueue it for embedding once it
+  // exists. Best-effort; the backfill script catches anything a queue outage drops.
+  try {
+    await addEmbeddingJob("medical_record", recordId);
+  } catch (err) {
+    console.error("[record] Failed to enqueue embedding:", err);
+  }
+
+  return { extracted: true, chars: text.length };
+}
 
 /**
  * Issues a signed, scoped upload authorisation.
@@ -168,10 +242,20 @@ export async function registerRecord(
   // Kick off text extraction for the search/RAG pipeline (Phase 5). Best-effort —
   // a queue outage or a scan failure must never fail the upload that just succeeded.
   if (record.fileType === "pdf") {
-    try {
-      await addRecordExtractionJob(record.id);
-    } catch (err) {
-      console.error("[record] Failed to enqueue text extraction:", err);
+    if (!isRedisEnabled) {
+      // Redis/BullMQ is off, so no worker will ever process this upload. Extract
+      // inline so the PDF is immediately searchable and summarisable.
+      try {
+        await extractRecordText(record.id);
+      } catch (err) {
+        console.error("[record] Inline text extraction failed:", err);
+      }
+    } else {
+      try {
+        await addRecordExtractionJob(record.id);
+      } catch (err) {
+        console.error("[record] Failed to enqueue text extraction:", err);
+      }
     }
   }
 
