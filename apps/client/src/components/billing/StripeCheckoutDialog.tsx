@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,9 +10,47 @@ import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { getErrorMessage } from "../../utils/errors";
 
-const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
-  ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
-  : null;
+/**
+ * Stripe.js is an ~300KB fetch. It is only needed while the checkout dialog is
+ * open, so we defer loading the SDK until the first open instead of loading it
+ * when the billing page mounts. The resolved Stripe instance is cached and
+ * reused across opens.
+ */
+let stripePromise: Promise<Stripe | null> | null = null;
+
+function getStripePromise(): Promise<Stripe | null> | null {
+  if (!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) return null;
+  if (!stripePromise) {
+    stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+  }
+  return stripePromise;
+}
+
+/**
+ * An explicit `appearance` serves two purposes:
+ * - It disables Stripe's automatic font-sync. Without it Stripe detects the
+ *   host page's font (Mulish) and tries to reload it from Google Fonts inside
+ *   its sandboxed iframe, where Stripe's own CSP blocks the stylesheet. That
+ *   blocked load is what surfaces as the CSP violation and the "message channel
+ *   closed" race in the console — they look alarming, but disabling font-sync
+ *   removes the cause entirely.
+ * - It matches the on-brand teal accents instead of Stripe's defaults.
+ */
+const CHECKOUT_APPEARANCE = {
+  appearance: {
+    theme: "stripe",
+    variables: {
+      colorPrimary: "#0f766e",
+      colorBackground: "#ffffff",
+      colorText: "#1a2e2b",
+      colorDanger: "#b91c1c",
+      borderRadius: "6px",
+      fontFamily:
+        '"Inter", "Geist", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    },
+  },
+  loader: "auto",
+} as const;
 
 function CheckoutForm({
   clientSecret,
@@ -102,8 +140,15 @@ export default function StripeCheckoutDialog({
     let cancelled = false;
     const prepare = async () => {
       setIsPreparing(true);
+      // Kick off the SDK fetch and the intent request in parallel — Stripe.js
+      // takes the longest to arrive, so warming it now (not when the dialog has
+      // already been rendered) hides most of its latency.
+      const sdk = getStripePromise();
       try {
-        const intent = await createIntent.mutateAsync({ billId, amount: balance, provider: "stripe" });
+        const [intent] = await Promise.all([
+          createIntent.mutateAsync({ billId, amount: balance, provider: "stripe" }),
+          sdk,
+        ]);
         if (!cancelled) {
           setClientSecret(intent.clientSecret);
         }
@@ -131,9 +176,7 @@ export default function StripeCheckoutDialog({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t("billing:payCard")}</DialogTitle>
-            <DialogDescription>
-              {t("billing:stripeUnavailable")}
-            </DialogDescription>
+            <DialogDescription>{t("billing:stripeUnavailable")}</DialogDescription>
           </DialogHeader>
           <div className="flex justify-end">
             <Button disabled>{t("billing:payCard")}</Button>
@@ -143,7 +186,7 @@ export default function StripeCheckoutDialog({
     );
   }
 
-  if (!stripePromise || !clientSecret) {
+  if (!getStripePromise() || !clientSecret) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent>
@@ -164,11 +207,9 @@ export default function StripeCheckoutDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{t("billing:payCard")}</DialogTitle>
-          <DialogDescription>
-            {t("billing:payAmount", { amount: balance })}
-          </DialogDescription>
+          <DialogDescription>{t("billing:payAmount", { amount: balance })}</DialogDescription>
         </DialogHeader>
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <Elements stripe={getStripePromise()} options={{ ...CHECKOUT_APPEARANCE, clientSecret }}>
           <CheckoutForm
             clientSecret={clientSecret}
             onSuccess={() => {
