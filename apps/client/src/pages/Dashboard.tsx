@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import AssistantChat from "../components/ai/AssistantChat";
+import KbAssistant from "../components/ai/KbAssistant";
 import AIDisclaimer from "../components/ai/AIDisclaimer";
 import AnalyticsAssistant from "../components/ai/AnalyticsAssistant";
 import { RoleDashboard } from "../components/dashboard/RoleDashboard";
@@ -31,7 +32,11 @@ export function AdminDashboard() {
 
 export function DoctorDashboard() {
   const { t } = useTranslation("dashboard");
-  return <RoleDashboard title={t("doctor")} />;
+  return (
+    <RoleDashboard title={t("doctor")}>
+      <KbAssistant />
+    </RoleDashboard>
+  );
 }
 
 export function ReceptionistDashboard() {
@@ -64,6 +69,9 @@ export function PatientDashboard() {
           <QuickLinks />
           <AIDisclaimer />
         </div>
+      </div>
+      <div className="mt-6">
+        <KbAssistant title={t("askGeneral")} />
       </div>
     </RoleDashboard>
   );

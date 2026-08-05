@@ -4,7 +4,11 @@ import { env } from "../config/env.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { addSummaryJob } from "../config/bull.js";
-import { assertClinicalAccess, type Actor } from "../services/access.service.js";
+import {
+  assertClinicalAccess,
+  assertNoteReadAccess,
+  type Actor,
+} from "../services/access.service.js";
 import { assertTreatingDoctor } from "../services/note.service.js";
 import { signDeliveryUrl } from "../services/record.service.js";
 import { getProvider, isAiConfigured } from "./index.js";
@@ -547,4 +551,124 @@ export async function enqueueReportSummary(
   }
   await addSummaryJob(recordId);
   return { queued: true };
+}
+
+// ─── Appointment assistant (patient + doctor) ────────────────────────────────
+
+const appointmentOutputSchema = z.object({
+  answer: z.string().min(1).max(3000),
+});
+
+export interface AppointmentAssistResult {
+  answer: string | null;
+  factSheet: string;
+  fallback: boolean;
+}
+
+/**
+ * Guided AI answer about a specific appointment.
+ *
+ * Access: a doctor only for an appointment they treat (or were referred into);
+ * everyone else passes the standard clinical gate — a patient for their own
+ * appointment (and guardians), admins, and contextual pharmacy/lab roles. The
+ * deterministic `factSheet` is always returned and doubles as the non-AI fallback,
+ * so an outage never leaves the caller without the appointment's own facts.
+ */
+export async function explainAppointment(
+  appointmentId: string,
+  actor: Actor,
+  question?: string,
+): Promise<AppointmentAssistResult> {
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    include: {
+      doctor: {
+        include: { departments: { include: { department: { select: { name: true } } } } },
+      },
+      slot: true,
+      note: { select: { signedAt: true } },
+      prescription: { select: { items: true } },
+      labOrders: { take: 5, orderBy: { orderedAt: "desc" } },
+    },
+  });
+  if (!appointment || appointment.deletedAt) throw new AppError("Appointment not found", 404);
+
+  if (actor.role === "DOCTOR") {
+    await assertNoteReadAccess(appointmentId, actor);
+  } else {
+    await assertClinicalAccess(appointment.patientId, actor);
+  }
+
+  const department = appointment.doctor.departments[0]?.department?.name ?? null;
+  const factSheet = [
+    `Appointment ${appointment.appointmentNo}`,
+    `Doctor: ${appointment.doctor.fullName}${department ? ` (${department})` : ""}`,
+    `Scheduled: ${appointment.slot.startTime.toISOString()} – ${appointment.slot.endTime.toISOString()}`,
+    `Status: ${appointment.status}`,
+    appointment.reasonNote ? `Reason given: ${appointment.reasonNote}` : "",
+    appointment.note?.signedAt
+      ? "A signed consultation note exists for this visit."
+      : "No signed consultation note yet.",
+    appointment.prescription && appointment.prescription.items.length > 0
+      ? `A prescription covering ${appointment.prescription.items.length} item(s) was written.`
+      : "No prescription on record.",
+    appointment.labOrders.length > 0
+      ? `${appointment.labOrders.length} lab order(s): ${appointment.labOrders
+          .map((o) => o.orderNumber)
+          .join(", ")}`
+      : "No lab orders linked.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const fail = async (): Promise<AppointmentAssistResult> => {
+    await logInteraction({
+      userId: actor.userId,
+      feature: "appointment-assist",
+      question: `${appointmentId}${question ? ` :: ${question}` : ""}`,
+      wasFallback: true,
+    });
+    return { answer: null, factSheet, fallback: true };
+  };
+  if (!isAiConfigured()) return fail();
+
+  const prompt = [
+    question
+      ? "Answer the following question using ONLY the appointment details below."
+      : "Give a short, practical guide for this appointment — what to expect, and what to do before and at it.",
+    ...(question ? [`Question: "${stripPII(question)}"`] : []),
+    `Appointment details:\n${stripPII(factSheet)}`,
+    "Never name a condition as a fact. This is an administrative and preparation assistant — do not give medical advice beyond the appointment details.",
+  ].join("\n");
+
+  try {
+    const result = await generateValidated(getProvider(), {
+      feature: "appointment-assist",
+      prompt,
+      schema: appointmentOutputSchema,
+      maxTokens: 1024,
+    });
+
+    const usage = getProvider().lastUsage();
+    await writeAuditLog({
+      actorUserId: actor.userId,
+      action: "AI_APPOINTMENT_ASSIST",
+      targetType: "appointment",
+      targetId: appointmentId,
+      metadata: { patientId: appointment.patientId, hasQuestion: Boolean(question) },
+    });
+    await logInteraction({
+      userId: actor.userId,
+      feature: "appointment-assist",
+      question: appointmentId,
+      responseRef: result.answer,
+      latencyMs: usage.latencyMs,
+      tokensUsed: usage.tokensUsed,
+      wasFallback: false,
+    });
+    return { answer: result.answer, factSheet, fallback: false };
+  } catch (err) {
+    if (!(err instanceof AiGenerationError)) throw err;
+    return fail();
+  }
 }

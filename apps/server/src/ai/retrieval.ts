@@ -137,21 +137,28 @@ export async function retrieve(
   }
   const [vector] = vectors;
 
+  // Prisma sends a JS array bind parameter as a Postgres array, which its driver
+  // cannot cast into the pgvector `vector` type at all — it throws
+  // "Value is a list but `vector` is not". Passing pgvector's own text literal
+  // (`[a,b,c]`) as a string and casting `::vector` works on every proven path and
+  // is identical to how the write path stores embeddings.
+  const vectorLiteral = `[${vector.join(",")}]`;
+
   const rows: ChunkRow[] = clinical
     ? await prisma.$queryRaw`
         SELECT id, content, "sourceType", "sourceId", "patientId", "chunkIndex",
-               1 - (embedding <=> ${vector}::vector) AS similarity
+               1 - (embedding <=> ${vectorLiteral}::vector) AS similarity
         FROM document_chunks
         WHERE "patientId" = ANY(${scope.patientIds}::text[]) AND embedding IS NOT NULL
-        ORDER BY embedding <=> ${vector}::vector
+        ORDER BY embedding <=> ${vectorLiteral}::vector
         LIMIT ${k}
       `
     : await prisma.$queryRaw`
         SELECT id, content, "sourceType", "sourceId", "patientId", "chunkIndex",
-               1 - (embedding <=> ${vector}::vector) AS similarity
+               1 - (embedding <=> ${vectorLiteral}::vector) AS similarity
         FROM document_chunks
         WHERE "patientId" IS NULL AND embedding IS NOT NULL
-        ORDER BY embedding <=> ${vector}::vector
+        ORDER BY embedding <=> ${vectorLiteral}::vector
         LIMIT ${k}
       `;
 

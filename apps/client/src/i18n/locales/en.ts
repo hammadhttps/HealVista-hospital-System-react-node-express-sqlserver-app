@@ -115,6 +115,7 @@ const en = {
     myAppointments: "My appointments",
     myBills: "My bills",
     askAboutHealth: "Ask about your health",
+    askGeneral: "Ask a general question",
     recentPatients: "Recently accessed patients",
   },
 
@@ -988,6 +989,12 @@ const en = {
     symptomPlaceholder: "Describe a symptom, e.g. persistent headache…",
     findDoctors: "Find doctors in {{department}}",
     showingDoctors: "Showing doctors in {{department}}.",
+    appointmentAssist: "Ask about this appointment",
+    appointmentAssistHint: "Ask when it is, what to expect, or how to prepare.",
+    appointmentAssistPlaceholder: "e.g. What should I prepare for this visit?",
+    factSheet: "Appointment details",
+    analysisUnavailable:
+      "The AI is unavailable right now — these are the appointment's own details.",
   },
 
   chat: {

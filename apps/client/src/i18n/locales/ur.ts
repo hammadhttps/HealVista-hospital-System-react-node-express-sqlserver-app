@@ -124,6 +124,7 @@ const ur: DeepReadonlyShape<typeof en> = {
     myAppointments: "میری ملاقاتیں",
     myBills: "میرے بل",
     askAboutHealth: "اپنی صحت کے بارے میں پوچھیں",
+    askGeneral: "عمومی سوال پوچھیں",
     recentPatients: "حال ہی میں دیکھے گئے مریض",
   },
 
@@ -997,6 +998,11 @@ const ur: DeepReadonlyShape<typeof en> = {
     symptomPlaceholder: "علامت بیان کریں، مثلاً مسلسل سر درد…",
     findDoctors: "{{department}} میں ڈاکٹر تلاش کریں",
     showingDoctors: "{{department}} میں ڈاکٹر دکھائے جا رہے ہیں۔",
+    appointmentAssist: "اس ملاقات کے بارے میں پوچھیں",
+    appointmentAssistHint: "وقت، توقع، یا تیاری کے بارے میں پوچھیں۔",
+    appointmentAssistPlaceholder: "مثلاً اس دورے کے لیے کیا تیاری کروں؟",
+    factSheet: "ملاقات کی تفصیل",
+    analysisUnavailable: "AI فی الحال دستیاب نہیں — یہ ملاقات کی اپنی تفصیل ہے۔",
   },
 
   chat: {

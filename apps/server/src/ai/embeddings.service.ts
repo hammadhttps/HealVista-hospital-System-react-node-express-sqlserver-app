@@ -143,6 +143,8 @@ export async function embedSource(
 
   // The vector column is `Unsupported()` in Prisma, so it is not on the client —
   // writes go through raw SQL exactly like reads do (docs/architecture/ai-rag.md §2).
+  // The embedding is passed as pgvector's text literal (`[a,b,c]`) and cast, never
+  // as a JS array — Prisma cannot coerce a bind-array into the `vector` type.
   const values = chunks.map(
     (chunk, i) => Prisma.sql`(
       ${randomUUID()},
@@ -153,7 +155,7 @@ export async function embedSource(
       ${chunk.index},
       ${chunk.text},
       ${chunk.tokenCount},
-      ${vectors[i]}::vector
+      ${`[${vectors[i].join(",")}]`}::vector
     )`,
   );
 

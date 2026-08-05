@@ -54,6 +54,14 @@ export function useSymptomCheck() {
   });
 }
 
+export function useAppointmentAssist() {
+  return useMutation({
+    mutationFn: ({ appointmentId, question }: { appointmentId: string; question?: string }) =>
+      aiApi.appointmentAssist(appointmentId, question),
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+}
+
 // ─── Hospital knowledge base ────────────────────────────────────────────────
 
 export function useKbAsk() {

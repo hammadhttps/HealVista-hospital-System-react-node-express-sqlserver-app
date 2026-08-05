@@ -12,7 +12,7 @@ import { generateValidated, AiGenerationError } from "./guardrails.js";
 import { stripPII } from "./pii.js";
 import { logInteraction } from "./aiInteraction.service.js";
 import { answerCacheKey, getCachedAnswer, setCachedAnswer } from "./answerCache.js";
-import type { Actor } from "../services/access.service.js";
+import { assertClinicalAccess, type Actor } from "../services/access.service.js";
 
 /**
  * RAG features (Phase 5.5) — retrieval-backed answers over a patient's records.
@@ -173,6 +173,23 @@ export async function assistant(
       throw new AppError("Not authorised to access this patient's records", 403);
     }
     return runAssistant(question, actor, { patientIds: [patientId] }, "doctor-assistant");
+  }
+
+  // Pharmacists and lab technicians get *contextual* clinical access in the
+  // access model — a pharmacist while a prescription is waiting to dispense, a lab
+  // technician while a lab order exists. Route their AI through that same gate so
+  // it reads exactly the patients the rest of the app lets them read. Receptionist
+  // and accountant stay excluded (`NON_CLINICAL_ROLES`) and admin stays KB-only by
+  // the retrieval design — they all still throw 403 here via assertClinicalAccess.
+  if (actor.role === "PHARMACIST" || actor.role === "LAB_TECHNICIAN") {
+    if (!patientId) throw new AppError("Specify the patient you are asking about", 400);
+    await assertClinicalAccess(patientId, actor);
+    return runAssistant(
+      question,
+      actor,
+      { patientIds: [patientId] },
+      `${actor.role.toLowerCase()}-assistant`,
+    );
   }
 
   throw new AppError("Only patients and doctors can use the assistant", 403);

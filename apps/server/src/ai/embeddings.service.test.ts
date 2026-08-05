@@ -67,7 +67,7 @@ describe("embedSource", () => {
     expect(values[4]).toBeNull();
     expect(values[5]).toBe(0);
     expect(String(values[6])).toContain("Fire Safety Policy");
-    expect(values[8]).toEqual([0.1, 0.2, 0.3]);
+    expect(values[8]).toBe("[0.1,0.2,0.3]");
   });
 
   it("is idempotent — re-embedding replaces chunks without accumulating", async () => {

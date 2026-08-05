@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { requireRole } from "../middlewares/rbac.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
-import { aiRateLimit } from "../ai/aiRateLimit.middleware.js";
+
 import * as clinical from "../controllers/clinical.controller.js";
 import {
   allergyInputSchema,
@@ -264,12 +264,11 @@ router.post(
   clinical.signNote,
 );
 // AI SOAP draft — returns text, persists nothing. Treating-doctor-only gate lives
-// in soapDraft.service. Rate-limited per user like the other interactive AI.
+// in soapDraft.service.
 router.post(
   "/appointments/:appointmentId/note/draft",
   authenticate,
   requireRole("DOCTOR"),
-  aiRateLimit(5, 60_000),
   clinical.draftNote,
 );
 router.post(

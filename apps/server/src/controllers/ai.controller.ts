@@ -7,6 +7,7 @@ import * as kbService from "../ai/kb.service.js";
 import * as analyticsService from "../ai/analytics.service.js";
 import {
   AssistantQueryInput,
+  AppointmentAssistInput,
   TimelineSummaryParams,
   SemanticSearchInput,
   SemanticSearchAllInput,
@@ -53,6 +54,20 @@ export async function recommendFollowUp(req: Request, res: Response, next: NextF
     const result = await directPrompts.recommendFollowUp(
       req.params.appointmentId as string,
       req.user!,
+    );
+    sendSuccess(res, result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function assistAppointment(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { question } = req.validated as AppointmentAssistInput;
+    const result = await directPrompts.explainAppointment(
+      req.params.appointmentId as string,
+      req.user!,
+      question,
     );
     sendSuccess(res, result);
   } catch (err) {

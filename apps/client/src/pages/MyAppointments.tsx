@@ -9,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../components/ui/tabs"
 import { Skeleton } from "../components/primitives/Skeleton";
 import { EmptyState } from "../components/primitives/EmptyState";
 import { AppointmentQR } from "../components/appointments/AppointmentQR";
+import AppointmentAssistButton from "../components/ai/AppointmentAssistButton";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -135,6 +136,7 @@ export default function MyAppointments() {
                               appointmentNo={apt.appointmentNo}
                             />
                           )}
+                        <AppointmentAssistButton appointmentId={apt.id} />
                       </div>
                     </CardContent>
                   </Card>

@@ -27,6 +27,17 @@ export const assistantQuerySchema = z.object({
 
 export type AssistantQueryInput = z.infer<typeof assistantQuerySchema>;
 
+/**
+ * Appointment AI assistant. A patient asks about their own appointment, a doctor
+ * about one they treat; the service verifies the relationship and returns a guided
+ * answer. `question` is optional — omitted, it produces a prep/recap of the visit.
+ */
+export const appointmentAssistSchema = z.object({
+  question: z.string().min(1).max(1000).optional(),
+});
+
+export type AppointmentAssistInput = z.infer<typeof appointmentAssistSchema>;
+
 /** Timeline summary targets one patient via the path param. */
 export const timelineSummaryParamsSchema = z.object({
   patientId: z.string().uuid(),

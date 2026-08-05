@@ -113,6 +113,12 @@ export interface RecordSummary {
   fallback?: boolean;
 }
 
+export interface AppointmentAssistResult {
+  answer: string | null;
+  factSheet: string;
+  fallback: boolean;
+}
+
 export interface SoapDraftResult {
   draft: { subjective: string; objective: string; assessment: string; plan: string };
   source: "ai" | "rules";
@@ -165,10 +171,18 @@ export const aiApi = {
     api
       .post<{ data: SymptomCheckResult }>("/ai/symptom-check", { message })
       .then((r) => r.data.data),
+
+  /** Guided answer about a specific appointment — patient's own, or doctor's. */
+  appointmentAssist: (appointmentId: string, question?: string) =>
+    api
+      .post<{ data: AppointmentAssistResult }>(`/ai/appointments/${appointmentId}/assist`, {
+        question,
+      })
+      .then((r) => r.data.data),
 };
 
 export const kbApi = {
-  /** Staff-facing list. ADMIN sees drafts too. */
+  /** Everyone authenticated can read and ask (patients get general Q&A). */
   list: () => api.get<{ data: KbArticleRow[] }>("/ai/kb").then((r) => r.data.data),
   get: (id: string) => api.get<{ data: KbArticle }>(`/ai/kb/${id}`).then((r) => r.data.data),
   ask: (question: string) =>
