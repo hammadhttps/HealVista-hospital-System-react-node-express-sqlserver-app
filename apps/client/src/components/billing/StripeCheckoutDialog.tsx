@@ -63,7 +63,7 @@ export function preloadStripe(): void {
  */
 const CHECKOUT_APPEARANCE = {
   appearance: {
-    theme: "none",
+    theme: "none" as "stripe" | "night" | "flat",
     variables: {
       colorPrimary: "#0f766e",
       colorBackground: "#ffffff",
