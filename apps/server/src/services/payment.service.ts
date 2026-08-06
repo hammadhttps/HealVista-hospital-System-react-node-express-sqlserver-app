@@ -2,12 +2,13 @@ import { Prisma } from "@prisma/client";
 import PDFDocument from "pdfkit";
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
+import { logger } from "../utils/logger.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { dispatchNotification } from "./notification.service.js";
 import * as settingsService from "./settings.service.js";
 import { BILL_STATUS, assertCanAccessBill, deriveStatus, type Actor } from "./bill.service.js";
 import { stripeProvider } from "./payments/stripe.provider.js";
-import type { PaymentProvider } from "./payments/PaymentProvider.js";
+import type { PaymentProvider, PaymentIntent } from "./payments/PaymentProvider.js";
 import type {
   CashPaymentInput,
   CreateIntentInput,
@@ -120,12 +121,47 @@ export async function createIntent(input: CreateIntentInput, actor: Actor) {
   const settings = (await settingsService.get()) as { currency: string };
   const provider = getProvider(input.provider);
 
-  const intent = await provider.createIntent({
-    amount: amount.toFixed(2),
-    currency: settings.currency,
-    billId: bill.id,
-    patientEmail: bill.patient.user?.email,
-  });
+  logger.info(
+    {
+      billId: bill.id,
+      billNumber: bill.billNumber,
+      provider: provider.name,
+      amount: amount.toString(),
+      currency: settings.currency,
+    },
+    "Creating payment intent",
+  );
+
+  let intent: PaymentIntent;
+  try {
+    intent = await provider.createIntent({
+      amount: amount.toFixed(2),
+      currency: settings.currency,
+      billId: bill.id,
+      patientEmail: bill.patient.user?.email,
+    });
+  } catch (err) {
+    // Logged with the full stack here so an operator can see exactly which bill,
+    // provider and amount failed — then rethrown for the central handler to map
+    // into a meaningful response (unconfigured gateway → 503, Stripe SDK error →
+    // its own status).
+    logger.error(
+      {
+        err,
+        billId: bill.id,
+        billNumber: bill.billNumber,
+        provider: provider.name,
+        amount: amount.toString(),
+      },
+      "Payment intent creation failed",
+    );
+    throw err;
+  }
+
+  logger.info(
+    { billId: bill.id, providerRef: intent.providerRef, amount: amount.toString() },
+    "Payment intent created",
+  );
 
   // Recorded as PENDING now; the webhook is what promotes it to SUCCEEDED. The
   // client returning "success" is a hint, never the source of truth.

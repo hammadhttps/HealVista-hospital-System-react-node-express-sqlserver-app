@@ -194,7 +194,10 @@ export function useCreatePaymentIntent() {
       return { snapshot };
     },
     onError: (_error, _variables, context) => restoreQueries(queryClient, context?.snapshot),
-    onSettled: () => {
+    // Invalidating on `onSuccess` only — never on failure. A failed intent (unconfigured
+    // gateway, declined card) must surface as an error, not kick off refetches of bills and
+    // payment history that loop the network until ERR_INSUFFICIENT_RESOURCES.
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: paymentKeys.all });
       queryClient.invalidateQueries({ queryKey: billKeys.all });
     },
@@ -204,14 +207,8 @@ export function useCreatePaymentIntent() {
 export function useRefundPayment() {
   const invalidate = useInvalidateBilling();
   return useMutation({
-    mutationFn: ({
-      paymentId,
-      ...data
-    }: {
-      paymentId: string;
-      amount?: string;
-      reason: string;
-    }) => paymentApi.refund(paymentId, data),
+    mutationFn: ({ paymentId, ...data }: { paymentId: string; amount?: string; reason: string }) =>
+      paymentApi.refund(paymentId, data),
     onSuccess: invalidate,
   });
 }

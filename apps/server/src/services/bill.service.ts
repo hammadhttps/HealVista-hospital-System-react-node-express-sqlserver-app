@@ -2,6 +2,7 @@ import { Prisma, BillItemKind } from "@prisma/client";
 import PDFDocument from "pdfkit";
 import { prisma } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
+import { logger } from "../utils/logger.js";
 import { writeAuditLog } from "../utils/audit.js";
 import * as settingsService from "./settings.service.js";
 import { getDependentPatientIds } from "./access.service.js";
@@ -580,6 +581,18 @@ export async function getBills(filters: ListBillsInput, actor: Actor) {
     }),
     prisma.bill.count({ where }),
   ]);
+
+  logger.debug(
+    {
+      role: actor.role,
+      page,
+      limit,
+      total,
+      status: filters.status ?? null,
+      patientId: filters.patientId ?? null,
+    },
+    "Bills listed",
+  );
 
   return { bills, total, page, limit };
 }

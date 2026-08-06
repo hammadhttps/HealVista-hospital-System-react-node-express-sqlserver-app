@@ -6,7 +6,10 @@ import { AppError } from "../utils/AppError.js";
 
 export async function createIntent(req: Request, res: Response, next: NextFunction) {
   try {
-    const intent = await paymentService.createIntent(req.body, req.user!);
+    // `req.validated` is the Zod-parsed body — reading `req.body` would bypass the
+    // schema's `.default("stripe")` on `provider` and fail with "Unknown payment
+    // provider: undefined" for any client that omits it.
+    const intent = await paymentService.createIntent(req.validated, req.user!);
     sendSuccess(res, intent, 201);
   } catch (err) {
     next(err);

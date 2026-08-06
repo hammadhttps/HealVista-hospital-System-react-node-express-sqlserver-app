@@ -25,3 +25,5 @@ CLAUDE.md
 docs
 
 nul
+.vercel
+.env*

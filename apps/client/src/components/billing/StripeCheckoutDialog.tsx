@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { useTranslation } from "react-i18next";
@@ -149,51 +149,57 @@ export default function StripeCheckoutDialog({
   const createIntent = useCreatePaymentIntent();
   const queryClient = useQueryClient();
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [isPreparing, setIsPreparing] = useState(false);
+  const preparedForRef = useRef<string | null>(null);
 
   const canUseStripe = Boolean(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+  const { mutateAsync, reset: resetIntent } = createIntent;
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (onOpenChange) onOpenChange(nextOpen);
   };
 
+  /**
+   * Requests a fresh PaymentIntent for the selected bill. Its deps are the bill
+   * and `mutateAsync` (stable for the lifetime of the hook), so its identity only
+   * changes when a different bill/amount is selected — never when the mutation
+   * itself moves between idle/pending/success/error.
+   */
+  const prepareIntent = useCallback(async () => {
+    // Kick off the SDK fetch and the intent request in parallel — Stripe.js
+    // takes the longest to arrive, so warming it now (not when the dialog has
+    // already been rendered) hides most of its latency.
+    const [intent] = await Promise.all([
+      mutateAsync({ billId, amount: balance, provider: "stripe" }),
+      getStripePromise(),
+    ]);
+    setClientSecret(intent.clientSecret);
+  }, [billId, balance, mutateAsync]);
+
   useEffect(() => {
     if (!open || !canUseStripe) {
+      preparedForRef.current = null;
+      setClientSecret(null);
       return;
     }
+    // Exactly one intent per open. Without this guard the mutation's own state
+    // transitions re-render the component and re-run the effect, which fires a
+    // new create-intent request on every loop — flooding the API and, when the
+    // gateway is down, retrying forever (net::ERR_INSUFFICIENT_RESOURCES).
+    if (preparedForRef.current === billId) return;
+    preparedForRef.current = billId;
+    setClientSecret(null);
+    void prepareIntent().catch(() => {
+      // The failure is rendered from createIntent.error. Deliberately not retried
+      // here: a failing gateway must surface an error, not spawn requests.
+    });
+  }, [open, canUseStripe, billId, prepareIntent]);
 
-    let cancelled = false;
-    const prepare = async () => {
-      setIsPreparing(true);
-      // Kick off the SDK fetch and the intent request in parallel — Stripe.js
-      // takes the longest to arrive, so warming it now (not when the dialog has
-      // already been rendered) hides most of its latency.
-      const sdk = getStripePromise();
-      try {
-        const [intent] = await Promise.all([
-          createIntent.mutateAsync({ billId, amount: balance, provider: "stripe" }),
-          sdk,
-        ]);
-        if (!cancelled) {
-          setClientSecret(intent.clientSecret);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          toast.error(getErrorMessage(error, t("billing:paymentFailed")));
-        }
-      } finally {
-        if (!cancelled) {
-          setIsPreparing(false);
-        }
-      }
-    };
-
-    void prepare();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, canUseStripe, billId, balance, createIntent, t]);
+  const retryIntent = () => {
+    preparedForRef.current = null;
+    setClientSecret(null);
+    resetIntent();
+    void prepareIntent();
+  };
 
   if (!canUseStripe) {
     return (
@@ -211,7 +217,10 @@ export default function StripeCheckoutDialog({
     );
   }
 
-  if (!getStripePromise() || !clientSecret) {
+  const stripeInstance = getStripePromise();
+
+  // Loading: the Stripe.js fetch, the intent round-trip, or both are in flight.
+  if (!stripeInstance || (!clientSecret && !createIntent.isError)) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent>
@@ -227,6 +236,29 @@ export default function StripeCheckoutDialog({
     );
   }
 
+  // The intent could not be created (unconfigured gateway, declined card, Stripe
+  // outage). Show why and let the user retry manually — never auto-retry in a loop.
+  if (!clientSecret) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("billing:payCard")}</DialogTitle>
+            <DialogDescription role="alert">
+              {getErrorMessage(createIntent.error, t("billing:paymentFailed"))}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => handleOpenChange(false)}>
+              {t("common:cancel")}
+            </Button>
+            <Button onClick={retryIntent}>{t("common:retry")}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-xl">
@@ -234,7 +266,7 @@ export default function StripeCheckoutDialog({
           <DialogTitle>{t("billing:payCard")}</DialogTitle>
           <DialogDescription>{t("billing:payAmount", { amount: balance })}</DialogDescription>
         </DialogHeader>
-        <Elements stripe={getStripePromise()} options={{ ...CHECKOUT_APPEARANCE, clientSecret }}>
+        <Elements stripe={stripeInstance} options={{ ...CHECKOUT_APPEARANCE, clientSecret }}>
           <CheckoutForm
             clientSecret={clientSecret}
             onSuccess={() => {
