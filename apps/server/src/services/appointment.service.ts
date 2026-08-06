@@ -1,4 +1,4 @@
-import { prisma } from "../config/db.js";
+import { prisma, prismaDirect } from "../config/db.js";
 import { redis } from "../config/redis.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
@@ -344,7 +344,7 @@ export async function cancelAppointment(
     throw new AppError("Cannot cancel an appointment in this state", 400);
   }
 
-  const cancelled = await prisma.$transaction(async (tx) => {
+  const cancelled = await prismaDirect.$transaction(async (tx) => {
     const updated = await tx.appointment.update({
       where: { id: appointmentId },
       data: {
@@ -442,7 +442,7 @@ export async function rescheduleAppointment(
     throw new AppError("New slot is already booked", 409);
 
   try {
-    const rescheduled = await prisma.$transaction(async (tx) => {
+    const rescheduled = await prismaDirect.$transaction(async (tx) => {
       await tx.appointmentSlot.update({
         where: { id: appointment.slotId },
         data: { isBooked: false },

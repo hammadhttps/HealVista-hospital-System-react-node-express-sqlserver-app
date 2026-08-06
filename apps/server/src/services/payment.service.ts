@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import PDFDocument from "pdfkit";
-import { prisma } from "../config/db.js";
+import { prisma, prismaDirect } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { logger } from "../utils/logger.js";
 import { writeAuditLog } from "../utils/audit.js";
@@ -58,7 +58,7 @@ async function recordPayment(params: {
   receivedById?: string | null;
   reference?: string | null;
 }) {
-  return prisma.$transaction(async (tx) => {
+  return prismaDirect.$transaction(async (tx) => {
     const bill = await tx.bill.findUnique({
       where: { id: params.billId },
       include: { patient: { select: { userId: true, fullName: true } } },
@@ -298,7 +298,7 @@ export async function handleWebhook(providerName: string, rawBody: Buffer, signa
       return { status: "already_settled", eventId: event.eventId };
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prismaDirect.$transaction(async (tx) => {
       await tx.payment.update({ where: { id: pending.id }, data: { status: "SUCCEEDED" } });
 
       const bill = await tx.bill.findUnique({
@@ -366,7 +366,7 @@ export async function refundPayment(paymentId: string, input: RefundInput, actor
     refundRef = result.refundRef;
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await prismaDirect.$transaction(async (tx) => {
     const totalRefunded = payment.refundedAmount.plus(amount);
 
     await tx.payment.update({
@@ -436,8 +436,8 @@ export async function getPaymentHistory(filters: PaymentHistoryInput, actor: Act
   if (filters.method) where.method = filters.method;
   if (filters.fromDate || filters.toDate) {
     where.createdAt = {};
-    if (filters.fromDate) where.createdAt.gte = new Date(filters.fromDate);
-    if (filters.toDate) where.createdAt.lte = new Date(filters.toDate);
+    if (filters.fromDate) where.createdAt.gte = filters.fromDate;
+    if (filters.toDate) where.createdAt.lte = filters.toDate;
   }
 
   const [payments, total] = await Promise.all([

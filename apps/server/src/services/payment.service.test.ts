@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../config/db.js";
 
-vi.mock("../config/db", () => ({
-  prisma: {
+vi.mock("../config/db", () => {
+  const prisma = {
     bill: { findUnique: vi.fn(), update: vi.fn() },
     payment: {
       create: vi.fn(),
@@ -17,8 +17,9 @@ vi.mock("../config/db", () => ({
     user: { findMany: vi.fn() },
     webhookEvent: { create: vi.fn() },
     $transaction: vi.fn(),
-  },
-}));
+  };
+  return { prisma, prismaDirect: prisma };
+});
 
 vi.mock("../config/redis", () => ({ redis: null, getCached: vi.fn(), setCached: vi.fn() }));
 vi.mock("../utils/audit", () => ({ writeAuditLog: vi.fn() }));

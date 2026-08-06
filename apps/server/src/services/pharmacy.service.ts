@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "../config/db.js";
+import { prisma, prismaDirect } from "../config/db.js";
 import { redis } from "../config/redis.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
@@ -165,7 +165,7 @@ export async function adjustStock(
     throw new AppError("An inventory adjustment needs a reason", 400);
   }
 
-  const result = await prisma.$transaction(async (tx) => {
+  const result = await prismaDirect.$transaction(async (tx) => {
     const inventory = await tx.inventory.findUnique({
       where: { medicineId: input.medicineId },
     });
@@ -266,7 +266,7 @@ export async function dispense(prescriptionId: string, lines: DispenseLine[], ac
 
   const affectedMedicineIds: string[] = [];
 
-  await prisma.$transaction(async (tx) => {
+  await prismaDirect.$transaction(async (tx) => {
     for (const line of lines) {
       const item = itemsById.get(line.prescriptionItemId)!;
 

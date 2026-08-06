@@ -20,13 +20,21 @@ import { PrismaClient } from "@prisma/client";
  */
 const DEFAULT_CONNECTION_LIMIT = "25";
 const DEFAULT_POOL_TIMEOUT = "20";
+// Interactive transactions run on the direct client. Neon caps direct
+// connections far below what a pgbouncer pool can multiplex, and an interactive
+// transaction holds one for its whole lifetime, so a small pool is deliberate:
+// these are brief and low-concurrency by nature.
+const DEFAULT_DIRECT_CONNECTION_LIMIT = "5";
 
-function withPoolSettings(url: string | undefined): string | undefined {
+function withPoolSettings(
+  url: string | undefined,
+  limit: string = DEFAULT_CONNECTION_LIMIT,
+): string | undefined {
   if (!url) return url;
   try {
     const parsed = new URL(url);
     if (!parsed.searchParams.has("connection_limit")) {
-      parsed.searchParams.set("connection_limit", DEFAULT_CONNECTION_LIMIT);
+      parsed.searchParams.set("connection_limit", limit);
     }
     if (!parsed.searchParams.has("pool_timeout")) {
       parsed.searchParams.set("pool_timeout", DEFAULT_POOL_TIMEOUT);
@@ -39,7 +47,10 @@ function withPoolSettings(url: string | undefined): string | undefined {
   }
 }
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+  prismaDirect: PrismaClient | undefined;
+};
 
 export const prisma =
   globalForPrisma.prisma ??
@@ -47,6 +58,41 @@ export const prisma =
     datasources: { db: { url: withPoolSettings(process.env.DATABASE_URL) } },
   });
 
+/**
+ * A second client pinned to the **direct** connection (DIRECT_URL), used only
+ * for interactive `$transaction` callbacks.
+ *
+ * Interactive transactions are not reliable over Neon's PgBouncer-compatible
+ * pooler: a transaction holds a pooler connection for its whole lifetime, and
+ * under load the pooler stalls them past Prisma's 5s interactive-transaction
+ * timeout ("Transaction not found" / "Transaction already closed"). Direct
+ * connections are real sessions, so the transaction's statements stay on one
+ * backend. All other queries keep going through `prisma` (pooled), where the
+ * pooler's multiplexing is exactly what fan-out queries need.
+ */
+export const prismaDirect =
+  globalForPrisma.prismaDirect ??
+  new PrismaClient({
+    // Prisma's interactive-transaction defaults are aggressive for a serverless
+    // Postgres: `maxWait` (acquire a connection, default 2s) and `timeout` (run
+    // the whole transaction, default 5s) both intermittently expired under Neon's
+    // variable latency — "Unable to start a transaction in the given time" and
+    // "Transaction not found" (P2028) respectively. maxWait also has to absorb
+    // re-establishing a direct connection that Neon closed during an idle gap.
+    // 20s/30s absorb latency spikes without letting a genuinely dead connection
+    // hang forever.
+    transactionOptions: { maxWait: 20_000, timeout: 30_000 },
+    datasources: {
+      db: {
+        url: withPoolSettings(
+          process.env.DIRECT_URL ?? process.env.DATABASE_URL,
+          DEFAULT_DIRECT_CONNECTION_LIMIT,
+        ),
+      },
+    },
+  });
+
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
+  globalForPrisma.prismaDirect = prismaDirect;
 }

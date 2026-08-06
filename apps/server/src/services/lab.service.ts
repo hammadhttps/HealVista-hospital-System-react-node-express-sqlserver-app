@@ -1,4 +1,4 @@
-import { prisma } from "../config/db.js";
+import { prisma, prismaDirect } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { addEmbeddingJob } from "../config/bull.js";
@@ -309,7 +309,7 @@ export async function enterResults(orderId: string, results: ResultInput[], acto
 
   // Results and the status change move together — a COMPLETED order with half its
   // results written is a report someone will read as if it were whole.
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await prismaDirect.$transaction(async (tx) => {
     for (const r of results) {
       await tx.labOrderItem.update({
         where: { id: r.itemId },

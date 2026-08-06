@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { prisma } from "../config/db.js";
+import { prisma, prismaDirect } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import type { AdminCreateUserInput, UserListQueryInput } from "@healvista/shared";
@@ -75,7 +75,7 @@ export async function createUser(input: AdminCreateUserInput, actorUserId?: stri
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
 
-  const created = await prisma.$transaction(async (tx) => {
+  const created = await prismaDirect.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
         email: input.email,

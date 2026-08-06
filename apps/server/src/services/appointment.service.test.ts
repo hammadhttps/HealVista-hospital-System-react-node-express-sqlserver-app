@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { prisma } from "../config/db.js";
 
-vi.mock("../config/db", () => ({
-  prisma: {
+vi.mock("../config/db", () => {
+  const prisma = {
     appointmentSlot: { findUnique: vi.fn(), update: vi.fn() },
     appointment: {
       create: vi.fn(),
@@ -19,8 +19,9 @@ vi.mock("../config/db", () => ({
     favouriteDoctor: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn(), findMany: vi.fn() },
     auditLog: { create: vi.fn() },
     $transaction: vi.fn(),
-  },
-}));
+  };
+  return { prisma, prismaDirect: prisma };
+});
 
 vi.mock("../config/redis", () => ({ redis: null, getCached: vi.fn(), setCached: vi.fn() }));
 vi.mock("../config/bull", () => ({

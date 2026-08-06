@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
-import { prisma } from "../config/db.js";
+import { prisma, prismaDirect } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { writeAuditLog } from "../utils/audit.js";
 import { DELETION_GRACE_DAYS } from "@healvista/shared";
@@ -317,7 +317,7 @@ export async function anonymiseAccount(userId: string): Promise<void> {
 
   const anonymousEmail = `deleted-${userId}@anonymised.invalid`;
 
-  await prisma.$transaction(async (tx) => {
+  await prismaDirect.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: userId },
       data: {

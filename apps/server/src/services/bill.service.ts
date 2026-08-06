@@ -1,6 +1,6 @@
 import { Prisma, BillItemKind } from "@prisma/client";
 import PDFDocument from "pdfkit";
-import { prisma } from "../config/db.js";
+import { prisma, prismaDirect } from "../config/db.js";
 import { AppError } from "../utils/AppError.js";
 import { logger } from "../utils/logger.js";
 import { writeAuditLog } from "../utils/audit.js";
@@ -442,7 +442,7 @@ export async function updateBill(billId: string, input: UpdateBillInput, actor: 
 
   // Replace the item set and recompute in one transaction so a bill is never
   // left with new items and stale totals.
-  const updated = await prisma.$transaction(async (tx) => {
+  const updated = await prismaDirect.$transaction(async (tx) => {
     await tx.billItem.deleteMany({ where: { billId } });
     return tx.bill.update({
       where: { id: billId },
@@ -567,8 +567,8 @@ export async function getBills(filters: ListBillsInput, actor: Actor) {
   if (filters.status) where.status = filters.status;
   if (filters.fromDate || filters.toDate) {
     where.createdAt = {};
-    if (filters.fromDate) where.createdAt.gte = new Date(filters.fromDate);
-    if (filters.toDate) where.createdAt.lte = new Date(filters.toDate);
+    if (filters.fromDate) where.createdAt.gte = filters.fromDate;
+    if (filters.toDate) where.createdAt.lte = filters.toDate;
   }
 
   const [bills, total] = await Promise.all([
