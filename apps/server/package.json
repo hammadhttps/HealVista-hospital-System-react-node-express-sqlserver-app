@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@healvista/shared": "*",
-    "@prisma/client": "^6.5.0",
+    "@prisma/client": "^7.9.1",
     "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^3.0.3",
     "bullmq": "^6.0.0",
@@ -63,7 +63,7 @@
     "@types/supertest": "^7.2.1",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
-    "prisma": "^6.5.0",
+    "prisma": "^7.9.1",
     "supertest": "^7.2.2",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
