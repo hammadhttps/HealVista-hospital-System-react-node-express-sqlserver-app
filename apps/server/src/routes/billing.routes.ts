@@ -11,6 +11,7 @@ import {
   updateBillSchema,
   updateDiscountSchema,
   updateInsuranceSchema,
+  voidBillSchema,
 } from "@healvista/shared";
 import * as billingController from "../controllers/billing.controller.js";
 
@@ -51,7 +52,13 @@ router.post(
   requireRole(...BILLING_STAFF),
   billingController.finaliseBill,
 );
-router.post("/:id/void", authenticate, requireRole("ADMIN"), billingController.voidBill);
+router.post(
+  "/:id/void",
+  authenticate,
+  requireRole("ADMIN"),
+  validate(voidBillSchema),
+  billingController.voidBill,
+);
 
 // ─── Discount application (on a bill) ───────────────────────────────────────
 router.post(

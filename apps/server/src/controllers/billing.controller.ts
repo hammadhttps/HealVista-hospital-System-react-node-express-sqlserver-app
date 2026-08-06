@@ -37,7 +37,11 @@ export async function finaliseBill(req: Request, res: Response, next: NextFuncti
 
 export async function voidBill(req: Request, res: Response, next: NextFunction) {
   try {
-    const bill = await billService.voidBill(req.params.id as string, req.body.reason, req.user!);
+    const bill = await billService.voidBill(
+      req.params.id as string,
+      req.validated.reason,
+      req.user!,
+    );
     sendSuccess(res, bill);
   } catch (err) {
     next(err);
@@ -86,10 +90,7 @@ export async function getBill(req: Request, res: Response, next: NextFunction) {
 
 export async function getBillPdf(req: Request, res: Response, next: NextFunction) {
   try {
-    const { doc, filename } = await billService.generateBillPdf(
-      req.params.id as string,
-      req.user!,
-    );
+    const { doc, filename } = await billService.generateBillPdf(req.params.id as string, req.user!);
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
     doc.pipe(res);
@@ -155,10 +156,7 @@ export async function applyDiscount(req: Request, res: Response, next: NextFunct
 
 export async function removeDiscount(req: Request, res: Response, next: NextFunction) {
   try {
-    const bill = await discountService.removeDiscountFromBill(
-      req.params.id as string,
-      req.user!,
-    );
+    const bill = await discountService.removeDiscountFromBill(req.params.id as string, req.user!);
     sendSuccess(res, bill);
   } catch (err) {
     next(err);

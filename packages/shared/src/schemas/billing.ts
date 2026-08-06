@@ -45,11 +45,20 @@ export const updateBillSchema = z.object({
 
 export type UpdateBillInput = z.infer<typeof updateBillSchema>;
 
+/** Only an admin voids, and a voided bill must be explainable later. */
+export const voidBillSchema = z.object({
+  reason: z.string().min(1).max(300),
+});
+
+export type VoidBillInput = z.infer<typeof voidBillSchema>;
+
 export const listBillsSchema = z.object({
   status: billStatusEnum.optional(),
   patientId: z.string().uuid().optional(),
-  fromDate: z.string().optional(),
-  toDate: z.string().optional(),
+  // Coerced dates: a garbage string must fail Zod (400), never reach Prisma as
+  // `new Date("Invalid Date")` and surface as a 500.
+  fromDate: z.coerce.date().optional(),
+  toDate: z.coerce.date().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -136,8 +145,8 @@ export const paymentHistorySchema = z.object({
   billId: z.string().uuid().optional(),
   patientId: z.string().uuid().optional(),
   method: paymentMethodEnum.optional(),
-  fromDate: z.string().optional(),
-  toDate: z.string().optional(),
+  fromDate: z.coerce.date().optional(),
+  toDate: z.coerce.date().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
